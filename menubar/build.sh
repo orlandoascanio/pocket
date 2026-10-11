@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds Pocket.app and installs it into /Applications.
+# Builds Pocket Sync.app (the personal, synced menubar app) and installs it into /Applications.
 # Usage: ./build.sh            (reads SUPABASE_PUBLISHABLE_KEY from ../.secrets.env if present)
 set -euo pipefail
 cd "${0:A:h}"
@@ -8,7 +8,7 @@ cd "${0:A:h}"
 : "${SUPABASE_PUBLISHABLE_KEY:?set SUPABASE_PUBLISHABLE_KEY}"
 
 BUILD=build
-APP="$BUILD/Pocket.app"
+APP="$BUILD/Pocket Sync.app"
 rm -rf "$BUILD"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
@@ -22,8 +22,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Pocket</string>
-  <key>CFBundleDisplayName</key><string>Pocket</string>
+  <key>CFBundleName</key><string>Pocket Sync</string>
+  <key>CFBundleDisplayName</key><string>Pocket Sync</string>
   <key>CFBundleIdentifier</key><string>com.orlandoascanio.pocket</string>
   <key>CFBundleExecutable</key><string>Pocket</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
@@ -43,8 +43,8 @@ fi
 
 codesign --force --sign - "$APP"
 
-pkill -x Pocket 2>/dev/null || true
-rm -rf /Applications/Pocket.app
+pkill -f "/Applications/Pocket Sync.app/Contents/MacOS/Pocket" 2>/dev/null || true
+rm -rf "/Applications/Pocket Sync.app"
 cp -R "$APP" /Applications/
-open /Applications/Pocket.app
-echo "Installed /Applications/Pocket.app"
+open "/Applications/Pocket Sync.app"
+echo "Installed /Applications/Pocket Sync.app"
