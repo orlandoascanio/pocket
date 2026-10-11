@@ -509,6 +509,7 @@ struct PopoverView: View {
     @State private var hovered: String?
     @State private var settleDrafts: [String: String] = [:]
     @State private var pairing: (code: String, expires: Date)?
+    @State private var copiedPairingCode = false
     @State private var saving = false
     @State private var saved = 0
     @State private var spin = 0.0
@@ -920,18 +921,38 @@ struct PopoverView: View {
     private func pairingView(_ p: (code: String, expires: Date)) -> some View {
         VStack(spacing: 10) {
             Text("Pair a device").font(.headline)
-            Text("On your phone or another computer, open the web app and type this code.")
+            Text("On your phone or another computer, open:")
                 .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Text("\(p.code.prefix(3)) \(p.code.suffix(3))")
-                .font(.system(size: 44, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            Link("orlandoascanio.github.io/pocket", destination: Config.webURL)
+                .font(.callout)
+            Text("Enter this code, then tap Pair.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             TimelineView(.periodic(from: .now, by: 1)) { ctx in
                 let left = max(0, Int(p.expires.timeIntervalSince(ctx.date)))
-                Text(left > 0 ? "Expires in \(left / 60):\(String(format: "%02d", left % 60))" : "Expired. Make a new code.")
-                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        Text("\(p.code.prefix(3)) \(p.code.suffix(3))")
+                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .textSelection(.enabled)
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            copiedPairingCode = NSPasteboard.general.setString(p.code, forType: .string)
+                        } label: {
+                            Label(copiedPairingCode ? "Copied" : "Copy", systemImage: copiedPairingCode ? "checkmark" : "doc.on.doc")
+                                .frame(width: 72)
+                        }
+                        .controlSize(.small)
+                        .disabled(left == 0)
+                        .help("Copy pairing code")
+                        .accessibilityLabel(copiedPairingCode ? "Pairing code copied" : "Copy pairing code")
+                    }
+                    Text(left > 0 ? "Expires in \(left / 60):\(String(format: "%02d", left % 60))" : "Expired. Make a new code.")
+                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                }
             }
-            Text("orlandoascanio.github.io/pocket").font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             HStack {
                 Button("New code") { startPairing() }
                 Button("Done") { withAnimation(.snappy) { pairing = nil } }.buttonStyle(.borderedProminent)
@@ -939,6 +960,13 @@ struct PopoverView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
+        .onChange(of: p.code) { _, _ in copiedPairingCode = false }
+        .task(id: copiedPairingCode) {
+            guard copiedPairingCode else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            copiedPairingCode = false
+        }
     }
 
     // MARK: key + footer
@@ -1134,6 +1162,7 @@ struct PopoverView: View {
         Task {
             do {
                 let p = try await store.pairStart()
+                copiedPairingCode = false
                 withAnimation(.snappy) { pairing = p }
             } catch {
                 say("Couldn't make a code")
