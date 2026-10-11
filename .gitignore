@@ -3,3 +3,4 @@ supabase/.temp/
 supabase/.branches/
 menubar/build/
 .DS_Store
+docs/__fake.js

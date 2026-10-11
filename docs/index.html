@@ -17,311 +17,39 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap">
-<style>
-  :root {
-    --bg: #f6f5f2;
-    --surface: #ffffff;
-    --ink: #1b1b1a;
-    --muted: #6d6b66;
-    --line: #e4e2dc;
-    --neg: #c2352b;
-    --pos: #1f7a50;
-    --accent: #1d6b47;
-    --accent-ink: #ffffff;
-    --chip: #ecebe6;
-    --focus: #3a6ff0;
-    --display: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, sans-serif;
-    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-    color-scheme: light dark;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #121212;
-      --surface: #1c1c1c;
-      --ink: #f1f0ec;
-      --muted: #a09e98;
-      --line: #2c2c2b;
-      --neg: #ff6b5e;
-      --pos: #4cc98f;
-      --accent: #4cc98f;
-      --accent-ink: #0d2a1c;
-      --chip: #262626;
-      --focus: #7aa2ff;
-    }
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; }
-  body {
-    background: var(--bg);
-    color: var(--ink);
-    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -webkit-tap-highlight-color: transparent;
-    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
-    caret-color: var(--accent);
-    accent-color: var(--accent);
-    overflow-x: hidden;
-  }
-  ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
-  main { max-width: 520px; margin: 0 auto; padding: 16px 16px 48px; }
-  [hidden] { display: none !important; }
-  .num { font-variant-numeric: tabular-nums; }
-  .ic { width: 18px; height: 18px; flex: none; }
-
-  /* ---------- top bar ---------- */
-  .top { display: flex; justify-content: space-between; align-items: center; height: 32px; }
-  .brand { display: inline-flex; align-items: center; gap: 8px; font: 700 18px/1 var(--display); letter-spacing: -0.01em; }
-  .brand img { width: 26px; height: 26px; border-radius: 7px; }
-  .sync { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
-  .sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--pos); transition: background-color 200ms; }
-  .sync.off::before { background: var(--neg); }
-  .sync.busy::before { background: var(--muted); animation: pulse 900ms ease-in-out infinite; }
-  @keyframes pulse { 50% { transform: scale(.55); opacity: .5; } }
-
-  /* ---------- hero ---------- */
-  .hero { padding: 26px 0 22px; }
-  .hero .label { color: var(--muted); font-size: 15px; }
-  .balance {
-    font: 750 clamp(52px, 17vw, 78px)/1.1 var(--display);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.035em;
-    margin-top: 2px;
-    min-height: 1.1em;
-    transition: color 500ms ease;
-  }
-  .balance.neg { color: var(--neg); }
-  .odo { display: inline-flex; white-space: nowrap; }
-  .odo-col {
-    display: inline-block; height: 1.1em; overflow: hidden;
-    -webkit-mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent);
-            mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent);
-  }
-  .odo-strip { display: block; transition: transform 950ms var(--ease-out); }
-  .odo-strip > span, .odo-sym { display: block; height: 1.1em; line-height: 1.1em; text-align: center; }
-  .odo-sym { display: inline-block; }
-
-  .hero-foot { display: grid; grid-template-columns: 1fr 104px; gap: 10px; align-items: end; margin-top: 4px; }
-  .hero .sub { color: var(--muted); font-size: 14px; }
-  .forecast { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 15px; }
-  .forecast .ic { width: 16px; height: 16px; color: var(--muted); }
-  .forecast b { font-weight: 650; }
-  .forecast .neg { color: var(--neg); }
-  .forecast .detail { color: var(--muted); font-size: 13px; flex-basis: 100%; }
-
-  /* ---------- the pocket character ---------- */
-  .pk-btn { appearance: none; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; border-radius: 18px; justify-self: end; touch-action: manipulation; }
-  .pk { position: relative; width: 104px; height: 112px; }
-  .pk-slot { position: absolute; inset: 0; perspective: 520px; }
-  .coin { position: absolute; left: 41px; top: 2px; width: 50px; height: 50px; transform-style: preserve-3d; }
-  .coin-body { position: absolute; inset: 0; transform-style: preserve-3d; animation: coin-idle 3.6s ease-in-out infinite alternate; }
-  .pk.paused .coin-body, .pk.paused .sweat, .pk.paused .zz span { animation-play-state: paused; }
-  .coin-fly .coin-body { animation: none; }
-  @keyframes coin-idle { from { transform: rotateY(-28deg) translateY(0); } to { transform: rotateY(28deg) translateY(-2px); } }
-  .coin-face {
-    position: absolute; inset: 0; border-radius: 50%;
-    display: grid; place-items: center;
-    backface-visibility: hidden; -webkit-backface-visibility: hidden;
-    background: radial-gradient(circle at 34% 28%, #fff4c4 0 7%, #ffd866 32%, #eba83a 76%, #d48e2a);
-    box-shadow: inset 0 0 0 3px rgb(176 112 26 / .45), inset 0 -5px 7px rgb(150 90 10 / .25);
-    font: 800 27px/1 var(--display); color: #a86a16;
-    transform: translateZ(3px);
-  }
-  .coin-face.back { transform: rotateY(180deg) translateZ(3px); }
-  .coin-edge { position: absolute; inset: 0; border-radius: 50%; background: #c98a22; }
-  .pk-front {
-    position: absolute; left: 4px; top: 38px; width: 96px; height: 74px; overflow: visible;
-    transform-origin: 50% 100%;
-    filter: drop-shadow(0 6px 7px rgb(0 0 0 / .13));
-  }
-  .pk .part { opacity: 0; transition: opacity 140ms ease; }
-  .pk[data-face="happy"]   :is(.e-dot, .m-smile),
-  .pk[data-face="worried"] :is(.e-dot, .m-wavy, .brows, .sweat),
-  .pk[data-face="joy"]     :is(.e-joy, .m-grin),
-  .pk[data-face="oof"]     :is(.e-oof, .m-o),
-  .pk[data-face="hope"]    :is(.e-star, .m-smile),
-  .pk[data-face="sleep"]   :is(.e-sleep, .m-sleep) { opacity: 1; }
-  .look { transition: transform 260ms var(--ease-out); }
-  .blink { transform-box: fill-box; transform-origin: center; }
-  .pk[data-face="worried"] .sweat { animation: sweat 2.6s ease-in-out infinite; }
-  @keyframes sweat { 0%, 30% { transform: translateY(0); } 70% { transform: translateY(18px); opacity: 1; } 100% { transform: translateY(26px); opacity: 0; } }
-  .pk-fx { position: absolute; inset: 0; pointer-events: none; }
-  .bubble {
-    position: absolute; right: -2px; bottom: calc(100% + 2px);
-    white-space: nowrap; pointer-events: none;
-    background: var(--surface); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 14px;
-    padding: 6px 11px; font-size: 13px; font-weight: 650;
-    box-shadow: 0 8px 18px rgb(0 0 0 / .12);
-    transform-origin: 75% 100%;
-  }
-  .bubble::after {
-    content: ""; position: absolute; right: 30px; bottom: -6px; width: 10px; height: 10px;
-    background: var(--surface); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
-    transform: rotate(45deg);
-  }
-  .float-amt { position: absolute; left: 4px; top: 40px; font: 750 15px/1 var(--display); white-space: nowrap; color: var(--pos); }
-  .float-amt.neg { color: var(--neg); }
-  .mini-coin {
-    position: absolute; left: 58px; top: 20px; width: 14px; height: 14px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #fff4c4 0 10%, #ffd866 40%, #e2a136);
-    box-shadow: inset 0 0 0 1.5px rgb(176 112 26 / .5);
-  }
-  .zz { position: absolute; right: 2px; top: 6px; font: 700 15px/1 var(--display); color: var(--muted); }
-  .zz span { position: absolute; opacity: 0; animation: zz 3s ease-out infinite; }
-  .zz span:nth-child(2) { animation-delay: 1s; font-size: 12px; }
-  .zz span:nth-child(3) { animation-delay: 2s; font-size: 10px; }
-  @keyframes zz { 0% { opacity: 0; transform: translate(0, 10px); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(14px, -22px); } }
-
-  /* ---------- flying amount chip ---------- */
-  .fly { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; }
-  .fly-chip {
-    display: inline-block; padding: 6px 12px; border-radius: 999px;
-    background: var(--surface); border: 1px solid var(--line);
-    box-shadow: 0 10px 22px rgb(0 0 0 / .16);
-    font: 750 15px/1.2 var(--display); white-space: nowrap; color: var(--ink);
-  }
-  .fly-chip.pos { color: var(--pos); }
-
-  /* ---------- form ---------- */
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; transition: box-shadow 260ms ease, border-color 260ms ease; }
-  .card.is-editing { border-color: color-mix(in srgb, var(--focus) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 16%, transparent); }
-  .card-title { font: 650 15px/1.2 var(--display); color: var(--ink); margin: 0 0 10px 2px; }
-  .seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: 11px; padding: 3px; gap: 3px; }
-  .seg::before {
-    content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 4.5px);
-    border-radius: 8px; background: var(--surface); box-shadow: 0 1px 3px rgb(0 0 0 / .14);
-    transition: transform 320ms var(--ease-out), background-color 320ms ease;
-  }
-  .seg[data-sign="1"]::before { transform: translateX(calc(100% + 3px)); background: color-mix(in srgb, var(--pos) 15%, var(--surface)); }
-  .seg button { position: relative; z-index: 1; appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 600; padding: 8px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: color 200ms ease; }
-  .seg button .ic { width: 16px; height: 16px; }
-  .seg button[aria-pressed="true"] { color: var(--ink); }
-  .seg button[data-sign="1"][aria-pressed="true"] { color: var(--pos); }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .chips button { appearance: none; flex: none; border: 1px solid transparent; background: var(--chip); color: var(--ink); font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: background-color 180ms ease, color 180ms ease, transform 120ms ease; }
-  .chips button:active { transform: scale(.94); }
-  .chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-  .fields { display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin-top: 10px; }
-  .fields2 { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; align-items: end; }
-  .cap { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px 4px; }
-  input {
-    width: 100%; min-width: 0; font: inherit; font-size: 17px; color: var(--ink);
-    background: var(--bg); border: 1px solid transparent; border-radius: 11px; padding: 11px 12px;
-    transition: border-color 160ms ease, background-color 160ms ease;
-  }
-  input::placeholder { color: var(--muted); opacity: 1; }
-  input:focus { outline: none; border-color: var(--focus); background: var(--surface); }
-  input[type="date"] { font-size: 16px; min-height: 46px; }
-  .btn {
-    appearance: none; border: 0; font: inherit; font-weight: 650; font-size: 16px; border-radius: 11px;
-    padding: 11px 18px; min-height: 46px; cursor: pointer; background: var(--accent); color: var(--accent-ink);
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    transition: transform 120ms ease, background-color 200ms ease, opacity 200ms ease;
-  }
-  .btn:active:not(:disabled) { transform: scale(.96); }
-  .btn:disabled { opacity: .55; cursor: default; }
-  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-  .btn.danger { background: transparent; color: var(--neg); border: 1px solid var(--line); }
-  .btn .ic { width: 22px; height: 22px; }
-  .check-draw path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: draw 380ms var(--ease-out) 40ms forwards; }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
-  .reveal { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 320ms var(--ease-out), opacity 220ms ease; }
-  .reveal.open { grid-template-rows: 1fr; opacity: 1; }
-  .reveal > div { min-height: 0; overflow: hidden; padding: 4px; margin: 0 -4px; }
-  .times { padding-top: 4px; }
-  .edit-actions { display: flex; gap: 8px; padding-top: 4px; }
-  .edit-actions .btn { flex: 1; }
-  .hint { color: var(--muted); font-size: 13px; margin: 4px 2px 0; }
-  .form-msg { color: var(--neg); font-size: 14px; margin: 8px 2px 0; }
-  .form-msg:empty { display: none; }
-  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  .shake { animation: shake 360ms ease; }
-  @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
-
-  /* ---------- lists ---------- */
-  .section { margin-top: 28px; }
-  .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 2px 8px; }
-  .section-head h2 { font-size: 13px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 0; }
-  .section-head .meta { font-size: 13px; color: var(--muted); text-align: right; }
-  .day { margin-top: 16px; }
-  .day:first-child { margin-top: 0; }
-  .day h3 { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0 0 6px 2px; }
-  .rows { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
-  .tx {
-    display: grid; grid-template-columns: 36px 1fr auto; column-gap: 12px; row-gap: 1px; align-items: center;
-    width: 100%; text-align: left; appearance: none; background: none; border: 0; border-top: 1px solid var(--line);
-    padding: 10px 14px; font: inherit; color: inherit;
-    transition: background-color 160ms ease;
-  }
-  button.tx { cursor: pointer; }
-  .tx:first-child { border-top: 0; }
-  button.tx:hover { background: color-mix(in srgb, var(--bg) 70%, transparent); }
-  button.tx:active { background: var(--bg); }
-  .tx.editing { background: color-mix(in srgb, var(--focus) 12%, transparent); }
-  .tx .ico {
-    grid-row: span 2; width: 36px; height: 36px; border-radius: 50%;
-    display: grid; place-items: center; background: var(--chip); color: var(--muted);
-  }
-  .tx .ico.in { background: color-mix(in srgb, var(--pos) 15%, transparent); color: var(--pos); }
-  .tx .ico.out { background: color-mix(in srgb, var(--neg) 11%, transparent); color: var(--neg); }
-  .tx .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tx .amt { font-weight: 650; text-align: right; }
-  .tx .pos { color: var(--pos); }
-  .tx .note { grid-column: 2; font-size: 12px; color: var(--muted); }
-  .tx .note.right { grid-column: 3; text-align: right; }
-  .tx .note.neg { color: var(--neg); }
-  .tx .note .ic { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; }
-  .tx.fresh { animation: row-in 900ms var(--ease-out) both; }
-  @keyframes row-in {
-    0% { clip-path: inset(0 100% 0 0); background-color: color-mix(in srgb, var(--accent) 18%, transparent); }
-    45% { clip-path: inset(0 0 0 0); background-color: color-mix(in srgb, var(--accent) 18%, transparent); }
-    100% { clip-path: inset(0 0 0 0); background-color: transparent; }
-  }
-  .empty { color: var(--muted); text-align: center; padding: 24px 0; font-size: 14px; }
-
-  /* ---------- lock ---------- */
-  .lock { padding-top: 12vh; }
-  .lock .pk-sleep { margin: 0 0 18px -6px; transform: scale(1.25); transform-origin: left bottom; }
-  .lock h1 { font: 750 34px/1.1 var(--display); letter-spacing: -0.02em; margin: 26px 0 6px; }
-  .lock p { color: var(--muted); margin: 0 0 18px; }
-  .lock input { background: var(--surface); border-color: var(--line); }
-  .lock input:focus { border-color: var(--focus); }
-
-  .foot { margin-top: 36px; text-align: center; }
-  .link { appearance: none; background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
-  .link .ic { width: 14px; height: 14px; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .coin-body, .sweat, .zz span, .sync.busy::before { animation: none !important; }
-    .odo-strip { transition: none; }
-    .seg::before { transition: background-color 200ms ease; }
-    .look { transition: none; }
-    .reveal { transition: opacity 200ms ease; }
-    .tx.fresh { animation-name: row-flash; }
-    @keyframes row-flash { from { background-color: color-mix(in srgb, var(--accent) 18%, transparent); } to { background-color: transparent; } }
-    .shake { animation: none; }
-  }
-</style>
+<link rel="stylesheet" href="app.css?v=3">
 </head>
 <body>
 <main>
   <section id="lock" class="lock" hidden>
     <div id="lockPocket"></div>
     <h1>Pocket</h1>
-    <p>Paste your key to wake up your pocket. In the Mac menubar app, use <b>Copy key for phone</b>.</p>
-    <form id="lockForm">
+    <p>Enter the 6-digit code from a device that's already set up. On your Mac: click the balance in the menubar, then <b>Pair a device</b>.</p>
+    <form id="pairForm" autocomplete="off">
       <div class="fields2">
-        <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Key" aria-label="Key" required>
-        <button class="btn" type="submit">Unlock</button>
+        <input id="pairCode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000000" aria-label="Pairing code" required>
+        <button class="btn" type="submit">Pair</button>
       </div>
       <p id="lockMsg" class="form-msg" role="alert"></p>
     </form>
+    <details class="alt">
+      <summary>Use a key instead</summary>
+      <form id="lockForm">
+        <div class="fields2">
+          <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Key" aria-label="Key" required>
+          <button class="btn subtle" type="submit">Unlock</button>
+        </div>
+      </form>
+    </details>
   </section>
 
   <section id="home" hidden>
     <header class="top">
       <span class="brand"><img src="icon.svg" alt="">Pocket</span>
-      <span id="sync" class="sync busy">Syncing…</span>
+      <span class="top-right">
+        <span id="sync" class="sync busy">Syncing…</span>
+        <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings"></button>
+      </span>
     </header>
 
     <div class="hero">
@@ -330,11 +58,13 @@
       <div class="hero-foot">
         <div>
           <div id="sub" class="sub num"></div>
-          <div id="forecast" class="forecast num" hidden></div>
+          <div id="runway" class="runway num" hidden></div>
         </div>
         <button id="pocketBtn" class="pk-btn" type="button" aria-label="Poke your pocket"></button>
       </div>
     </div>
+
+    <div id="quick" class="quick" role="group" aria-label="Quick add"></div>
 
     <form id="txForm" class="card" autocomplete="off">
       <p id="formTitle" class="card-title">New entry</p>
@@ -353,6 +83,7 @@
         <input id="amount" class="num" inputmode="decimal" placeholder="0.00" aria-label="Amount" required>
         <input id="label" placeholder="What was it?" aria-label="What was it" maxlength="120" required>
       </div>
+      <div id="cats" class="cats" role="group" aria-label="Category"></div>
       <div id="timesRow" class="reveal" inert>
         <div><div class="times">
           <label id="timesCap" class="cap" for="times">How many payments?</label>
@@ -366,9 +97,14 @@
         </div>
         <button id="submitBtn" class="btn" type="submit">Add</button>
       </div>
+      <div class="checks">
+        <label id="confirmRow" class="check" hidden><input id="confirmBox" type="checkbox"> Wait for me to confirm each payment arrived</label>
+        <label id="presetRow" class="check"><input id="presetBox" type="checkbox"> Also save as a quick-add button</label>
+      </div>
       <div id="hintWrap" class="reveal" inert><div><p id="hint" class="hint"></p></div></div>
       <div id="editActions" class="reveal" inert>
         <div><div class="edit-actions">
+          <button id="pauseBtn" class="btn ghost" type="button" hidden>Pause</button>
           <button id="deleteBtn" class="btn danger" type="button">Delete</button>
           <button id="cancelBtn" class="btn ghost" type="button">Cancel</button>
         </div></div>
@@ -376,854 +112,121 @@
       <p id="formMsg" class="form-msg" role="alert"></p>
     </form>
 
-    <section id="upcomingSec" class="section" hidden>
-      <div class="section-head"><h2>Coming up</h2><span class="meta">next 30 days</span></div>
-      <div id="upcoming" class="rows"></div>
-    </section>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" role="tab" id="tab-activity" aria-controls="panel-activity" aria-selected="true">Activity</button>
+      <button class="tab" role="tab" id="tab-plan" aria-controls="panel-plan" aria-selected="false">Plan</button>
+      <button class="tab" role="tab" id="tab-insights" aria-controls="panel-insights" aria-selected="false">Insights</button>
+      <span class="tab-ink" aria-hidden="true"></span>
+    </nav>
 
-    <section id="rulesSec" class="section" hidden>
-      <div class="section-head"><h2>Repeating &amp; expected</h2><span id="rulesMeta" class="meta num"></span></div>
-      <div id="rules" class="rows"></div>
-    </section>
+    <div id="panel-activity" class="panel" role="tabpanel" aria-labelledby="tab-activity">
+      <section id="waitingSec" class="section" hidden>
+        <div class="section-head"><h2>Waiting for you</h2><span class="meta">did it arrive?</span></div>
+        <div id="waiting" class="rows"></div>
+      </section>
+      <section class="section">
+        <div class="section-head"><h2>History</h2></div>
+        <div id="filterSlot"></div>
+        <div id="list" aria-live="polite"></div>
+      </section>
+    </div>
 
-    <section class="section">
-      <div class="section-head"><h2>History</h2></div>
-      <div id="list" aria-live="polite"></div>
-    </section>
+    <div id="panel-plan" class="panel" role="tabpanel" aria-labelledby="tab-plan" hidden>
+      <section class="section">
+        <div class="plan-head">
+          <div>
+            <p id="planTitle" class="plan-title"></p>
+            <p id="planSub" class="plan-sub num"></p>
+          </div>
+          <div class="range" role="group" aria-label="Forecast range">
+            <button type="button" data-range="30">1M</button>
+            <button type="button" data-range="91">3M</button>
+            <button type="button" data-range="182">6M</button>
+            <button type="button" data-range="365">1Y</button>
+          </div>
+        </div>
+        <div id="chart" class="chart"></div>
+      </section>
+      <section id="upcomingSec" class="section" hidden>
+        <div class="section-head"><h2>Coming up</h2><span id="upcomingMeta" class="meta"></span></div>
+        <div id="upcoming" class="rows"></div>
+      </section>
+      <section id="rulesSec" class="section" hidden>
+        <div class="section-head"><h2>Repeating &amp; expected</h2><span id="rulesMeta" class="meta num"></span></div>
+        <div id="rules" class="rows"></div>
+      </section>
+      <p id="planEmpty" class="empty" hidden>Nothing planned yet. Add something with Weekly, Monthly or Yearly, or a date in the future.</p>
+    </div>
 
-    <div class="foot"><button id="forget" class="link" type="button"></button></div>
+    <div id="panel-insights" class="panel" role="tabpanel" aria-labelledby="tab-insights" hidden>
+      <section class="section">
+        <div class="scope">
+          <div class="month-nav">
+            <button id="monthPrev" class="icon-btn" type="button" aria-label="Previous month"></button>
+            <b id="monthName"></b>
+            <button id="monthNext" class="icon-btn" type="button" aria-label="Next month"></button>
+          </div>
+          <div class="range" role="group" aria-label="Period">
+            <button type="button" data-scope="month" aria-pressed="true">Month</button>
+            <button type="button" data-scope="all" aria-pressed="false">All time</button>
+          </div>
+        </div>
+        <div id="stats" class="stats"></div>
+        <p id="delta" class="delta"></p>
+      </section>
+      <section class="section">
+        <div class="section-head"><h2>Where it went</h2><span class="meta">tap one to see the purchases</span></div>
+        <div id="bars" class="rows bars"></div>
+      </section>
+    </div>
+
+    <p class="foot-hint">Press <kbd>?</kbd> for keyboard shortcuts</p>
   </section>
 </main>
 
-<script>
-const SUPABASE_URL = "https://upmymrrfpwnqmnaclpyt.supabase.co";
-const SUPABASE_KEY = "sb_publishable_0QeYqlwAKI0Eit1nTB5vFw_PK1fxCaB";
-const POLL_MS = 15000;
-const KEY_STORE = "pocket.key";
-
-const CADENCE = {
-  weekly:   { name: "Weekly",        perMonth: 52 / 12, unit: "week" },
-  biweekly: { name: "Every 2 weeks", perMonth: 26 / 12, unit: "2 weeks" },
-  monthly:  { name: "Monthly",       perMonth: 1,       unit: "month" },
-  yearly:   { name: "Yearly",        perMonth: 1 / 12,  unit: "year" },
-};
-
-const $ = (id) => document.getElementById(id);
-const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const fmt = (n) => money.format(n);
-const signed = (n) => (n > 0 ? "+" : "") + fmt(n);
-const dayFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
-const shortFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-const asDate = (iso) => new Date(iso + "T12:00:00");
-const pick = (list) => list[Math.floor(Math.random() * list.length)];
-
-const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
-const calm = () => motionQuery.matches;
-const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
-
-// ---------- icons (one stroke family) ----------
-const ICONS = {
-  in: '<path d="M17 7 7 17"/><path d="M16 17H7V8"/>',
-  out: '<path d="M7 17 17 7"/><path d="M8 7h9v9"/>',
-  repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
-  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
-  check: '<path d="M5 12.5 10 17 19 7"/>',
-  lock: '<rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
-  trend: '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
-  minus: '<path d="M6 12h12"/>',
-  plus: '<path d="M12 6v12"/><path d="M6 12h12"/>',
-};
-function icon(name, cls = "") {
-  return `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
-}
-
-function mk(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
-}
-
-// ---------- the pocket character ----------
-const COIN_HTML =
-  [-2, -1, 0, 1, 2].map((z) => `<span class="coin-edge" style="transform:translateZ(${z}px)"></span>`).join("") +
-  '<span class="coin-face">$</span><span class="coin-face back">$</span>';
-const INK = "#3b2a1a";
-const POCKET_SVG = `
-<svg class="pk-front" viewBox="0 0 560 430" aria-hidden="true">
-  <defs><linearGradient id="__ID__" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf7"/><stop offset="1" stop-color="#ebe0c8"/></linearGradient></defs>
-  <path d="M0 0H560V256Q560 292 528 308L308 416Q280 430 252 416L32 308Q0 292 0 256Z" fill="url(#__ID__)"/>
-  <rect width="560" height="14" fill="#000" opacity=".08"/>
-  <path d="M42 48H518V242Q518 268 495 280L294 378Q280 385 266 378L65 280Q42 268 42 242Z" fill="none" stroke="#cdb68c" stroke-width="10" stroke-dasharray="26 18" stroke-linecap="round"/>
-  <ellipse cx="160" cy="236" rx="32" ry="16" fill="#f4a6a0" opacity=".55"/>
-  <ellipse cx="400" cy="236" rx="32" ry="16" fill="#f4a6a0" opacity=".55"/>
-  <g class="part brows" stroke="${INK}" stroke-width="12" stroke-linecap="round"><path d="M178 136 232 116"/><path d="M382 136 328 116"/></g>
-  <g class="look"><g class="blink">
-    <g class="part e-dot" fill="${INK}"><circle cx="210" cy="172" r="25"/><circle cx="350" cy="172" r="25"/><circle cx="219" cy="163" r="8" fill="#fff"/><circle cx="359" cy="163" r="8" fill="#fff"/></g>
-    <g class="part e-joy" fill="none" stroke="${INK}" stroke-width="13" stroke-linecap="round"><path d="M184 184Q210 148 236 184"/><path d="M324 184Q350 148 376 184"/></g>
-    <g class="part e-oof" fill="none" stroke="${INK}" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path d="M190 152 230 172 190 192"/><path d="M370 152 330 172 370 192"/></g>
-    <g class="part e-star" fill="${INK}"><path d="M210 138Q216 166 244 172Q216 178 210 206Q204 178 176 172Q204 166 210 138Z"/><path d="M350 138Q356 166 384 172Q356 178 350 206Q344 178 316 172Q344 166 350 138Z"/></g>
-    <g class="part e-sleep" fill="none" stroke="${INK}" stroke-width="12" stroke-linecap="round"><path d="M186 170Q210 192 234 170"/><path d="M326 170Q350 192 374 170"/></g>
-  </g></g>
-  <path class="part m-smile" d="M248 234Q280 266 312 234" fill="none" stroke="${INK}" stroke-width="12" stroke-linecap="round"/>
-  <g class="part m-grin"><path d="M238 228Q280 232 322 228Q318 284 280 286Q242 284 238 228Z" fill="${INK}"/><path d="M256 266Q280 250 304 266Q298 284 280 285Q262 284 256 266Z" fill="#f07c7c"/></g>
-  <path class="part m-wavy" d="M244 254Q262 236 280 254Q298 272 316 254" fill="none" stroke="${INK}" stroke-width="12" stroke-linecap="round"/>
-  <ellipse class="part m-o" cx="280" cy="252" rx="17" ry="21" fill="${INK}"/>
-  <path class="part m-sleep" d="M264 248Q280 258 296 248" fill="none" stroke="${INK}" stroke-width="11" stroke-linecap="round"/>
-  <path class="part sweat" d="M446 92Q466 124 459 140Q452 156 437 152Q422 146 428 128Q434 110 446 92Z" fill="#8fd0f5"/>
-</svg>`;
-
-let pocketCount = 0;
-function makePocket(extra = "") {
-  const el = mk("div", "pk " + extra);
-  el.setAttribute("aria-hidden", "true");
-  const gradId = "pkShade" + (++pocketCount); // unique per instance so a hidden copy can't break the other
-  el.innerHTML = `<div class="pk-slot"><div class="coin"><div class="coin-body">${COIN_HTML}</div></div></div>${POCKET_SVG.replaceAll("__ID__", gradId)}<div class="pk-fx"></div>`;
-  el.dataset.face = "happy";
-  return el;
-}
-
-const pk = { el: null, base: "happy", transient: null, preview: null, timer: 0, blinkTimer: 0, pokes: 0, focusLook: false };
-const part = (sel) => pk.el?.querySelector(sel);
-
-function applyFace() { if (pk.el) pk.el.dataset.face = pk.transient || pk.preview || pk.base; }
-function face(name, ms = 1500) {
-  pk.transient = name;
-  applyFace();
-  clearTimeout(pk.timer);
-  pk.timer = setTimeout(() => { pk.transient = null; applyFace(); }, ms);
-}
-
-function say(text) {
-  const fx = part(".pk-fx");
-  if (!fx) return;
-  fx.querySelector(".bubble")?.remove();
-  const b = mk("div", "bubble", text);
-  fx.append(b);
-  const still = "translateY(0) scale(1)";
-  const frames = calm()
-    ? [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .85 }, { opacity: 0 }]
-    : [{ opacity: 0, transform: "translateY(8px) scale(.7)" }, { opacity: 1, transform: still, offset: .12 },
-       { opacity: 1, transform: still, offset: .85 }, { opacity: 0, transform: "translateY(-4px) scale(.96)" }];
-  b.animate(frames, { duration: 2000, easing: EASE_OUT }).finished.then(() => b.remove(), () => {});
-}
-
-function blink(el = pk.el) {
-  el?.querySelector(".blink")?.animate(
-    [{ transform: "scaleY(1)" }, { transform: "scaleY(.08)" }, { transform: "scaleY(1)" }],
-    { duration: 170, easing: "ease-in-out" });
-}
-function scheduleBlink() {
-  clearTimeout(pk.blinkTimer);
-  if (calm()) return;
-  pk.blinkTimer = setTimeout(() => {
-    const f = pk.el?.dataset.face;
-    if (!document.hidden && (f === "happy" || f === "worried" || f === "hope")) {
-      blink();
-      if (Math.random() < .25) setTimeout(blink, 240); // the occasional double blink
-    }
-    scheduleBlink();
-  }, 2400 + Math.random() * 3400);
-}
-
-function look(dx, dy) { const g = part(".look"); if (g) g.style.transform = `translate(${dx}px, ${dy}px)`; }
-function lookAt(x, y, reach = 300) {
-  if (!pk.el) return;
-  const r = pk.el.getBoundingClientRect();
-  const dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height * .6);
-  const d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / reach);
-  look((dx / d) * 24 * k, (dy / d) * 16 * k);
-}
-
-function squish() {
-  if (calm()) return;
-  part(".pk-front")?.animate(
-    [{ transform: "scale(1, 1)" }, { transform: "scale(1.06, .9)" }, { transform: "scale(.98, 1.03)" }, { transform: "scale(1, 1)" }],
-    { duration: 420, easing: EASE_OUT });
-}
-
-function flyingCoin() {
-  const c = part(".coin").cloneNode(true);
-  c.classList.add("coin-fly");
-  part(".pk-slot").append(c);
-  return c;
-}
-
-function floatAmount(amount) {
-  if (calm()) return;
-  const t = mk("div", "float-amt" + (amount < 0 ? " neg" : ""), signed(amount));
-  part(".pk-fx").append(t);
-  t.animate([{ transform: "translate(-50%, 6px)", opacity: 0 }, { transform: "translate(-50%, -10px)", opacity: 1, offset: .25 },
-             { transform: "translate(-50%, -44px)", opacity: 0 }], { duration: 1300, easing: EASE_OUT })
-    .finished.then(() => t.remove(), () => {});
-}
-
-// Money in: a coin falls into the pocket, which gulps it.
-function coinDrop(amount, showAmount) {
-  if (calm() || !pk.el) return;
-  const c = flyingCoin();
-  c.animate([
-    { transform: "translateY(-120px) rotateY(0deg)", opacity: 0 },
-    { opacity: 1, offset: .2 },
-    { transform: "translateY(44px) rotateY(720deg)", opacity: 1 },
-  ], { duration: 640, easing: "cubic-bezier(0.55, 0, 0.9, 0.4)" }).finished.then(() => {
-    c.remove();
-    squish();
-    part(".coin")?.animate([{ transform: "translateY(0)" }, { transform: "translateY(5px)" }, { transform: "translateY(0)" }],
-      { duration: 360, easing: EASE_OUT });
-  }, () => c.remove());
-  if (showAmount) setTimeout(() => floatAmount(amount), 380);
-}
-
-// Money out: a coin pops out and tumbles away.
-function coinPop(amount) {
-  if (calm() || !pk.el) return;
-  squish();
-  const c = flyingCoin();
-  c.animate([
-    { transform: "translate(0, 40px) rotateY(0deg) rotateZ(0deg)", opacity: 1, easing: "cubic-bezier(0.2, 0.7, 0.4, 1)" },
-    { transform: "translate(-30px, -70px) rotateY(420deg) rotateZ(-25deg)", opacity: 1, offset: .5, easing: "cubic-bezier(0.5, 0, 0.9, 0.5)" },
-    { transform: "translate(-64px, 10px) rotateY(760deg) rotateZ(-50deg)", opacity: 0, filter: "blur(2px)" },
-  ], { duration: 820 }).finished.then(() => c.remove(), () => c.remove());
-  floatAmount(amount);
-}
-
-// Out of the red: a little shower of coins.
-function burst() {
-  if (calm() || !pk.el) return;
-  const fx = part(".pk-fx");
-  for (let i = 0; i < 9; i++) {
-    const m = mk("div", "mini-coin");
-    fx.append(m);
-    const dx = (Math.random() - .5) * 150, up = 50 + Math.random() * 60;
-    m.animate([
-      { transform: "translate(0, 0) scale(.4)", opacity: 0 },
-      { transform: `translate(${dx * .55}px, ${-up}px) scale(1)`, opacity: 1, offset: .4 },
-      { transform: `translate(${dx}px, ${40 + Math.random() * 30}px) scale(.8) rotate(${dx * 3}deg)`, opacity: 0 },
-    ], { duration: 950 + Math.random() * 300, delay: i * 25, easing: "cubic-bezier(0.25, 0.6, 0.6, 1)" })
-      .finished.then(() => m.remove(), () => m.remove());
-  }
-}
-
-function coinArrive() {
-  if (calm() || !pk.el) return;
-  part(".coin")?.animate([
-    { transform: "translateY(-90px) rotateY(-540deg)", opacity: 0 },
-    { opacity: 1, offset: .3 },
-    { transform: "translateY(0) rotateY(0deg)", opacity: 1 },
-  ], { duration: 1000, delay: 250, easing: EASE_OUT, fill: "backwards" }).finished.then(squish, () => {});
-}
-
-// The amount you just entered arcs from the button into its destination.
-function flyChip({ amount, from }, target, done) {
-  const to = target?.getBoundingClientRect();
-  if (calm() || !from || !to || !to.width || to.bottom < 0 || to.top > innerHeight) { done(); return; }
-  const outer = mk("div", "fly");
-  const chip = mk("div", "fly-chip" + (amount > 0 ? " pos" : ""), signed(amount));
-  outer.append(chip);
-  document.body.append(outer);
-  const w = chip.offsetWidth, h = chip.offsetHeight;
-  const x0 = from.left + from.width / 2 - w / 2, y0 = from.top + from.height / 2 - h / 2;
-  const x1 = to.left + to.width / 2 - w / 2, y1 = to.top + Math.min(to.height / 2, 30) - h / 2;
-  const peak = Math.min(y0, y1) - 60;
-  const dur = 720;
-  outer.animate([{ transform: `translateX(${x0}px)` }, { transform: `translateX(${x1}px)` }], { duration: dur, easing: "cubic-bezier(0.4, 0, 0.6, 1)" });
-  chip.animate([
-    { transform: `translateY(${y0}px) scale(.85)`, opacity: 0, easing: "cubic-bezier(0.2, 0.8, 0.4, 1)" },
-    { transform: `translateY(${peak}px) scale(1.08)`, opacity: 1, offset: .42, easing: "cubic-bezier(0.6, 0, 0.9, 0.6)" },
-    { transform: `translateY(${y1}px) scale(.3)`, opacity: .3 },
-  ], { duration: dur }).finished.then(() => outer.remove(), () => outer.remove());
-  setTimeout(done, dur - 140);
-}
-
-const YUM = ["Yum!", "Ooh, shiny!", "Thank you!", "Mmm, coins"];
-const OOF = ["Oof", "Bye-bye, coin", "There it goes", "Spent!"];
-const POKE = ["Hehe", "That tickles!", "Still here!", "Hi there", "Boop"];
-
-// ---------- odometer balance ----------
-function setOdometer(el, value) {
-  const text = fmt(value);
-  el.setAttribute("aria-label", `Money left: ${text}`);
-  let odo = el.querySelector(".odo");
-  if (!odo) {
-    el.textContent = "";
-    odo = mk("span", "odo");
-    odo.setAttribute("aria-hidden", "true");
-    el.append(odo);
-  }
-  const shape = text.replace(/\d/g, "0");
-  if (odo.dataset.shape !== shape) {
-    odo.textContent = "";
-    for (const ch of text) {
-      if (/\d/.test(ch)) {
-        const col = mk("span", "odo-col"), strip = mk("span", "odo-strip");
-        for (let i = 0; i < 10; i++) strip.append(mk("span", null, String(i)));
-        col.append(strip);
-        odo.append(col);
-      } else {
-        odo.append(mk("span", "odo-sym", ch));
-      }
-    }
-    odo.dataset.shape = shape;
-    void odo.offsetWidth; // commit the zero position so the digits roll in
-  }
-  const digits = text.replace(/\D/g, "");
-  const strips = odo.querySelectorAll(".odo-strip");
-  strips.forEach((s, i) => {
-    s.style.transitionDelay = calm() ? "0ms" : `${(strips.length - 1 - i) * 45}ms`;
-    s.style.transform = `translateY(${-Number(digits[i]) * 10}%)`;
-  });
-}
-
-// ---------- state ----------
-let key = null;
-let txs = [], rules = [], upcoming = [];
-let loaded = false;
-let sign = -1;
-let cadence = "once";
-let editing = null; // { kind: "tx" | "rule", id }
-let pollTimer = null;
-let shownBalance = null;
-let knownTx = null, knownRules = null;
-let fresh = { tx: new Set(), rules: new Set() };
-let pendingFlight = null;  // { amount, from, scheduled } from a local add
-let pendingReason = null;  // "delete"
-
-function store(op, v) {
-  try {
-    if (op === "get") return localStorage.getItem(KEY_STORE);
-    if (op === "set") localStorage.setItem(KEY_STORE, v);
-    if (op === "del") localStorage.removeItem(KEY_STORE);
-  } catch { /* storage blocked: the key lives only in memory for this visit */ }
-  return null;
-}
-
-async function rpc(fn, args = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-    method: "POST",
-    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ k: key, ...args }),
-  });
-  const body = res.status === 204 ? null : await res.json().catch(() => null);
-  if (!res.ok) {
-    const err = new Error(body?.message || `HTTP ${res.status}`);
-    err.badKey = body?.code === "28000";
-    throw err;
-  }
-  return body;
-}
-
-function todayISO() {
-  const d = new Date();
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-}
-
-function setSync(state, text) {
-  const el = $("sync");
-  el.className = "sync" + (state ? " " + state : "");
-  el.textContent = text;
-}
-
-async function load({ quiet = false } = {}) {
-  if (!key) return;
-  if (!quiet) setSync("busy", "Syncing…");
-  try {
-    const s = await rpc("pocket_state", { p_today: todayISO() });
-    txs = s.transactions; rules = s.recurring; upcoming = s.upcoming;
-    const txIds = txs.map((t) => t.id), ruleIds = rules.map((r) => r.id);
-    fresh = {
-      tx: new Set(knownTx ? txIds.filter((id) => !knownTx.has(id)) : []),
-      rules: new Set(knownRules ? ruleIds.filter((id) => !knownRules.has(id)) : []),
-    };
-    knownTx = new Set(txIds); knownRules = new Set(ruleIds);
-    loaded = true;
-    render();
-    setBalance(txs.reduce((sum, t) => sum + Number(t.amount), 0));
-    if (pendingFlight) landScheduled();
-    const t = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    setSync("", `Synced ${t}`);
-  } catch (e) {
-    if (e.badKey) return lock("That key didn't work. Paste it again.");
-    setSync("off", "Offline, retrying");
-  }
-}
-
-function setBalance(raw) {
-  const total = Math.round(raw * 100) / 100;
-  const prev = shownBalance;
-  shownBalance = total;
-  setOdometer($("balance"), total);
-  $("balance").classList.toggle("neg", total < 0);
-  pk.base = total < 0 ? "worried" : "happy";
-  applyFace();
-  updatePreview();
-  if (prev === null) { coinArrive(); return; }
-  const diff = Math.round((total - prev) * 100) / 100;
-  if (!diff) return;
-
-  const flight = pendingFlight && pendingFlight.amount > 0 && diff > 0 ? pendingFlight : null;
-  pendingFlight = null;
-  const reason = pendingReason;
-  pendingReason = null;
-  const outOfRed = prev < 0 && total >= 0;
-  const intoRed = prev >= 0 && total < 0;
-
-  const land = () => {
-    if (diff > 0) coinDrop(diff, !flight); else coinPop(diff);
-    if (reason === "delete") { face(diff > 0 ? "joy" : "oof", 1200); say("Poof!"); }
-    else if (outOfRed) { face("joy", 2600); say("We're out of the red!"); burst(); }
-    else if (intoRed) { face("oof", 1200); setTimeout(() => say("Uh oh, we're in the red"), 500); }
-    else if (diff > 0) { face("joy"); say(pick(YUM)); }
-    else { face("oof"); say(pick(OOF)); }
-    if (!calm()) navigator.vibrate?.(diff > 0 ? [8, 40, 8] : 14);
-  };
-  if (flight) flyChip(flight, part(".pk-slot"), land); else land();
-}
-
-// A local add that didn't change the balance yet: it's scheduled, so it flies to Coming up.
-function landScheduled() {
-  const f = pendingFlight;
-  pendingFlight = null;
-  if (!f?.scheduled) return;
-  const target = !$("upcomingSec").hidden ? $("upcomingSec") : $("rulesSec");
-  flyChip(f, target, () => {
-    face(f.amount > 0 ? "hope" : "happy", 1800);
-    say(f.amount > 0 ? "Can't wait!" : "I'll remember it");
-  });
-}
-
-// ---------- rendering ----------
-function row({ id, title, iconName, tone, amount, noteLeft, noteRight, noteRightNeg, onClick, active, isFresh }) {
-  const r = mk(onClick ? "button" : "div", "tx" + (active ? " editing" : "") + (isFresh ? " fresh" : ""));
-  if (id) r.dataset.id = id;
-  if (onClick) { r.type = "button"; r.addEventListener("click", onClick); }
-  const ico = mk("span", "ico" + (tone ? " " + tone : ""));
-  ico.innerHTML = icon(iconName);
-  r.append(ico, mk("span", "what", title), mk("span", "amt num" + (amount > 0 ? " pos" : ""), signed(amount)));
-  if (noteLeft != null || noteRight != null) {
-    const nl = mk("span", "note");
-    if (noteLeft && typeof noteLeft === "object") { nl.innerHTML = icon(noteLeft.icon); nl.append(noteLeft.text); }
-    else nl.textContent = noteLeft || "";
-    r.append(nl, mk("span", "note right num" + (noteRightNeg ? " neg" : ""), noteRight || ""));
-  }
-  return r;
-}
-
-function render() {
-  if (!loaded) return;
-  const total = txs.reduce((s, t) => s + Number(t.amount), 0);
-  document.title = `${fmt(total)} · Pocket`;
-
-  const month = todayISO().slice(0, 7);
-  const monthTx = txs.filter((t) => t.occurred_on.startsWith(month));
-  const spent = monthTx.filter((t) => t.amount < 0).reduce((s, t) => s - Number(t.amount), 0);
-  const got = monthTx.filter((t) => t.amount > 0).reduce((s, t) => s + Number(t.amount), 0);
-  $("sub").textContent = `This month: ${fmt(spent)} spent` + (got ? ` · ${fmt(got)} in` : "");
-
-  const out = upcoming.filter((u) => u.amount < 0).reduce((s, u) => s - Number(u.amount), 0);
-  const inn = upcoming.filter((u) => u.amount > 0).reduce((s, u) => s + Number(u.amount), 0);
-  const fc = $("forecast");
-  fc.hidden = !upcoming.length;
-  if (upcoming.length) {
-    const after = total - out + inn;
-    fc.innerHTML = icon("trend");
-    fc.append("In 30 days ", mk("b", after < 0 ? "neg" : "", fmt(after)));
-    const parts = [];
-    if (out) parts.push(`${fmt(out)} in bills`);
-    if (inn) parts.push(`${fmt(inn)} coming in`);
-    fc.append(mk("span", "detail", parts.join(" · ")));
-  }
-
-  renderUpcoming();
-  renderRules();
-  renderHistory();
-  fresh = { tx: new Set(), rules: new Set() }; // play the arrival once
-}
-
-function renderUpcoming() {
-  const box = $("upcoming");
-  box.textContent = "";
-  $("upcomingSec").hidden = !upcoming.length;
-  for (const u of upcoming.slice(0, 8)) {
-    const amt = Number(u.amount);
-    box.append(row({ title: u.label, iconName: "clock", tone: amt > 0 ? "in" : "", amount: amt, noteLeft: dayFmt.format(asDate(u.due_on)) }));
-  }
-}
-
-function renderRules() {
-  const box = $("rules");
-  box.textContent = "";
-  $("rulesSec").hidden = !rules.length;
-  let outM = 0, inM = 0;
-  for (const r of rules) {
-    const amt = Number(r.amount);
-    const m = r.once ? 0 : Math.abs(amt) * CADENCE[r.cadence].perMonth;
-    if (amt < 0) outM += m; else inM += m;
-    box.append(row({
-      id: r.id,
-      title: r.label,
-      iconName: r.once ? "clock" : "repeat",
-      tone: amt > 0 ? "in" : "",
-      amount: amt,
-      noteLeft: r.once
-        ? `One time · ${dayFmt.format(asDate(r.next_on))}`
-        : `${CADENCE[r.cadence].name} · next ${shortFmt.format(asDate(r.next_on))}` +
-          (r.remaining != null ? ` · ${r.remaining === 1 ? "last one" : r.remaining + " left"}` : ""),
-      noteRight: r.once ? "expected" : `per ${CADENCE[r.cadence].unit}`,
-      active: editing?.kind === "rule" && editing.id === r.id,
-      isFresh: fresh.rules.has(r.id),
-      onClick: () => startEditRule(r),
-    }));
-  }
-  const parts = [];
-  if (outM) parts.push(`≈ ${fmt(outM)}/mo out`);
-  if (inM) parts.push(`≈ ${fmt(inM)}/mo in`);
-  $("rulesMeta").textContent = parts.join(" · ");
-}
-
-function renderHistory() {
-  // txs arrive newest first; walk oldest -> newest to get the balance after each entry
-  const after = new Map();
-  let run = 0;
-  for (let i = txs.length - 1; i >= 0; i--) {
-    run += Number(txs[i].amount);
-    after.set(txs[i].id, run);
-  }
-  const list = $("list");
-  list.textContent = "";
-  if (!txs.length) {
-    list.append(mk("p", "empty", "Nothing here yet. Add your first entry above."));
-    return;
-  }
-  const groups = new Map();
-  for (const t of txs) {
-    if (!groups.has(t.occurred_on)) groups.set(t.occurred_on, []);
-    groups.get(t.occurred_on).push(t);
-  }
-  for (const [day, items] of groups) {
-    const sec = mk("div", "day");
-    sec.append(mk("h3", "", day === todayISO() ? "Today" : dayFmt.format(asDate(day))));
-    const rows = mk("div", "rows");
-    for (const t of items) {
-      const amt = Number(t.amount), v = after.get(t.id);
-      rows.append(row({
-        id: t.id,
-        title: t.label,
-        iconName: amt > 0 ? "in" : "out",
-        tone: amt > 0 ? "in" : "out",
-        amount: amt,
-        noteLeft: t.recurring_id ? { icon: "repeat", text: "Automatic" } : "",
-        noteRight: `left ${fmt(v)}`,
-        noteRightNeg: v < 0,
-        active: editing?.kind === "tx" && editing.id === t.id,
-        isFresh: fresh.tx.has(t.id),
-        onClick: () => startEditTx(t),
-      }));
-    }
-    sec.append(rows);
-    list.append(sec);
-  }
-}
-
-// ---------- form ----------
-function setOpen(el, open) { el.classList.toggle("open", open); el.inert = !open; }
-
-function setSign(s) {
-  sign = s;
-  document.querySelector(".seg").dataset.sign = String(s);
-  document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.sign) === s)));
-  updateFormText();
-  updatePreview();
-}
-
-function setCadence(c) {
-  cadence = c;
-  document.querySelectorAll("#chips button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.cadence === c)));
-  updateFormText();
-}
-
-// While you type, the pocket reacts: starry-eyed for money coming in,
-// nervous when a purchase is bigger than what's left.
-function updatePreview() {
-  const a = parseAmount($("amount").value);
-  let p = null;
-  if (a && editing?.kind !== "tx") {
-    if (sign > 0) p = "hope";
-    else if (shownBalance !== null && a > Math.max(shownBalance, 0)) p = "worried";
-  }
-  if (p !== pk.preview) { pk.preview = p; applyFace(); }
-}
-
-function updateFormText() {
-  const repeating = cadence !== "once";
-  const editingRule = editing?.kind === "rule";
-  const future = !repeating && ($("date").value || todayISO()) > todayISO();
-  setOpen($("timesRow"), repeating && editing?.kind !== "tx");
-  $("timesCap").textContent = editingRule ? "Payments left (including the next one)" : "How many payments?";
-  $("label").placeholder = repeating
-    ? (sign < 0 ? "e.g. Netflix, rent" : "e.g. Paycheck")
-    : (sign < 0 ? "What was it?" : "Where's it from?");
-  $("dateCap").textContent = editingRule ? (repeating ? "Next payment" : "Expected on") : repeating ? (sign < 0 ? "First payment" : "First payday") : "Date";
-  let hint = "";
-  if (repeating && !editing) {
-    hint = `Logged automatically every ${CADENCE[cadence].unit} from this date. Set how many payments if it ends (like 3 freelance payments), or leave it empty.`;
-  } else if (future && editing?.kind !== "tx") {
-    hint = `This is in the future. It counts on ${dayFmt.format(asDate($("date").value))}; until then it shows in Coming up and the 30-day forecast.`;
-  }
-  if (hint) $("hint").textContent = hint;
-  setOpen($("hintWrap"), !!hint);
-  if (!editing) {
-    $("formTitle").textContent = repeating
-      ? (sign < 0 ? "New subscription or bill" : "New repeating income")
-      : future ? (sign < 0 ? "Planned payment" : "Expected money") : "New entry";
-  }
-}
-
-function enterEdit(title, deleteLabel) {
-  $("formTitle").textContent = title;
-  $("submitBtn").textContent = "Save";
-  $("deleteBtn").textContent = deleteLabel;
-  setOpen($("editActions"), true);
-  $("txForm").classList.add("is-editing");
-  $("formMsg").textContent = "";
-  updateFormText();
-  updatePreview();
-  render();
-  $("txForm").scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "center" });
-}
-
-function startEditTx(t) {
-  editing = { kind: "tx", id: t.id };
-  const amt = Number(t.amount);
-  setSign(amt < 0 ? -1 : 1);
-  setCadence("once");
-  $("chips").hidden = true;
-  $("amount").value = Math.abs(amt).toFixed(2);
-  $("label").value = t.label;
-  $("date").value = t.occurred_on;
-  enterEdit("Edit entry", "Delete");
-}
-
-function startEditRule(r) {
-  editing = { kind: "rule", id: r.id };
-  const amt = Number(r.amount);
-  setSign(amt < 0 ? -1 : 1);
-  $("chips").hidden = false;
-  setCadence(r.once ? "once" : r.cadence);
-  $("times").value = r.once || r.remaining == null ? "" : r.remaining;
-  $("amount").value = Math.abs(amt).toFixed(2);
-  $("label").value = r.label;
-  $("date").value = r.next_on;
-  enterEdit(r.once ? "Edit expected payment" : "Edit repeating", r.once ? "Remove" : "Stop repeating");
-}
-
-function resetForm() {
-  editing = null;
-  $("txForm").reset();
-  $("txForm").classList.remove("is-editing");
-  $("chips").hidden = false;
-  setSign(-1);
-  setCadence("once");
-  $("date").value = todayISO();
-  if (!$("submitBtn").dataset.busy) $("submitBtn").textContent = "Add";
-  setOpen($("editActions"), false);
-  $("formMsg").textContent = "";
-  updateFormText();
-  updatePreview();
-  render();
-}
-
-function parseAmount(raw) {
-  const n = Number(String(raw).replace(/[$\s]/g, "").replace(",", "."));
-  return Number.isFinite(n) && n !== 0 ? Math.round(Math.abs(n) * 100) / 100 : null;
-}
-
-function formError(msg, field) {
-  $("formMsg").textContent = msg;
-  field?.focus();
-  const card = $("txForm");
-  card.classList.remove("shake");
-  void card.offsetWidth;
-  card.classList.add("shake");
-  face("oof", 900);
-}
-
-function flashDone(btn) {
-  btn.dataset.busy = "1";
-  btn.style.minWidth = btn.offsetWidth + "px";
-  btn.innerHTML = icon("check", "check-draw");
-  btn.setAttribute("aria-label", "Saved");
-  setTimeout(() => {
-    delete btn.dataset.busy;
-    btn.style.minWidth = "";
-    btn.removeAttribute("aria-label");
-    btn.textContent = editing ? "Save" : "Add";
-  }, 950);
-}
-
-async function onSubmit(e) {
-  e.preventDefault();
-  const amount = parseAmount($("amount").value);
-  const label = $("label").value.trim();
-  const date = $("date").value || todayISO();
-  if (!amount) return formError("Enter an amount, like 9.99", $("amount"));
-  if (!label) return formError("Say what it was", $("label"));
-  const timesRaw = $("times").value.trim();
-  const times = timesRaw === "" ? null : Number(timesRaw);
-  if (cadence !== "once" && times !== null && !(Number.isInteger(times) && times >= 1)) {
-    return formError("Payments must be a whole number, like 3", $("times"));
-  }
-  const btn = $("submitBtn");
-  const from = btn.getBoundingClientRect();
-  btn.disabled = true;
-  try {
-    const today = todayISO();
-    // A one-time entry dated in the future is stored as a rule with a single payment,
-    // so it only counts once its day arrives.
-    const once = cadence === "once";
-    const isNew = !editing;
-    if (editing?.kind === "rule") {
-      await rpc("pocket_recurring_update", { p_id: editing.id, p_amount: sign * amount, p_label: label, p_cadence: once ? "monthly" : cadence, p_next: date, p_active: true, p_today: today, p_left: once ? 1 : times });
-    } else if (editing?.kind === "tx") {
-      await rpc("pocket_update", { p_id: editing.id, p_amount: sign * amount, p_label: label, p_on: date });
-    } else if (!once || date > today) {
-      await rpc("pocket_recurring_add", { p_amount: sign * amount, p_label: label, p_cadence: once ? "monthly" : cadence, p_start: date, p_today: today, p_times: once ? 1 : times });
-    } else {
-      await rpc("pocket_add", { p_amount: sign * amount, p_label: label, p_on: date });
-    }
-    if (isNew) pendingFlight = { amount: sign * amount, from, scheduled: !once || date > today };
-    resetForm();
-    flashDone(btn);
-    await load({ quiet: true });
-    $("amount").focus({ preventScroll: true });
-  } catch (err) {
-    pendingFlight = null;
-    if (err.badKey) return lock("That key didn't work. Paste it again.");
-    formError("Couldn't save. Check your connection and try again.");
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function collapseRow(node) {
-  if (!node || calm()) return;
-  await node.animate([{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(-24px)" }],
-    { duration: 180, easing: "ease-in", fill: "forwards" }).finished;
-  await node.animate([{ height: node.offsetHeight + "px" }, { height: "0px", paddingTop: "0px", paddingBottom: "0px" }],
-    { duration: 220, easing: EASE_OUT, fill: "forwards" }).finished;
-}
-
-async function onDelete() {
-  if (!editing) return;
-  const isRule = editing.kind === "rule";
-  const item = (isRule ? rules : txs).find((x) => x.id === editing.id);
-  const question = isRule
-    ? (item?.once ? `Remove expected “${item?.label}”?` : `Stop “${item?.label}”? Payments already logged stay in your history.`)
-    : `Delete “${item?.label}” (${fmt(Number(item?.amount))})?`;
-  if (!confirm(question)) return;
-  try {
-    await rpc(isRule ? "pocket_recurring_delete" : "pocket_delete", { p_id: editing.id });
-    await collapseRow(document.querySelector(`${isRule ? "#rules" : "#list"} [data-id="${editing.id}"]`));
-    if (isRule) { face("oof", 1000); say("Poof!"); } else pendingReason = "delete";
-    resetForm();
-    await load({ quiet: true });
-  } catch {
-    formError("Couldn't do that. Try again.");
-  }
-}
-
-// ---------- lock / unlock ----------
-function startPolling() {
-  clearInterval(pollTimer);
-  pollTimer = setInterval(() => { if (!document.hidden) load({ quiet: true }); }, POLL_MS);
-}
-
-function lock(msg = "") {
-  key = null;
-  store("del");
-  clearInterval(pollTimer);
-  $("home").hidden = true;
-  $("lock").hidden = false;
-  $("lockMsg").textContent = msg;
-  $("keyInput").value = "";
-  $("keyInput").focus();
-  if (msg) {
-    const f = $("lockForm");
-    f.classList.remove("shake"); void f.offsetWidth; f.classList.add("shake");
-  }
-}
-
-async function unlock(k) {
-  key = k;
-  $("lock").hidden = true;
-  $("home").hidden = false;
-  resetForm();
-  await load();
-  if (key) { store("set", key); startPolling(); }
-}
-
-// ---------- wiring ----------
-document.querySelector('.seg [data-sign="-1"]').innerHTML = icon("minus") + "Spent";
-document.querySelector('.seg [data-sign="1"]').innerHTML = icon("plus") + "Got money";
-$("forget").innerHTML = icon("lock") + "Lock this device";
-
-pk.el = makePocket();
-$("pocketBtn").append(pk.el);
-const sleeper = makePocket("pk-sleep");
-sleeper.dataset.face = "sleep";
-sleeper.querySelector(".pk-fx").innerHTML = '<div class="zz"><span>z</span><span>z</span><span>z</span></div>';
-$("lockPocket").append(sleeper);
-
-$("pocketBtn").addEventListener("click", () => {
-  pk.pokes++;
-  face("joy", 1100);
-  say(POKE[pk.pokes % POKE.length]);
-  if (!calm()) {
-    part(".coin")?.animate([
-      { transform: "translateY(0) rotateY(0deg)" },
-      { transform: "translateY(-26px) rotateY(360deg)", offset: .5, easing: "cubic-bezier(0.5, 0, 0.9, 0.5)" },
-      { transform: "translateY(0) rotateY(720deg)" },
-    ], { duration: 700, easing: "cubic-bezier(0.2, 0.7, 0.4, 1)" }).finished.then(squish, () => {});
-  }
-});
-
-// Pause the idle loops whenever the pocket is offscreen.
-new IntersectionObserver(([e]) => pk.el.classList.toggle("paused", !e.isIntersecting)).observe(pk.el);
-
-// Eyes follow the mouse on desktop, and look at whatever field you're typing in.
-let lookFrame = 0;
-window.addEventListener("pointermove", (e) => {
-  if (calm() || pk.focusLook || e.pointerType !== "mouse" || lookFrame) return;
-  const { clientX: x, clientY: y } = e;
-  lookFrame = requestAnimationFrame(() => { lookFrame = 0; lookAt(x, y); });
-});
-$("txForm").addEventListener("focusin", (e) => {
-  pk.focusLook = true;
-  const r = e.target.getBoundingClientRect();
-  lookAt(r.left + r.width / 2, r.top + r.height / 2, 120);
-});
-$("txForm").addEventListener("focusout", () => { pk.focusLook = false; look(0, 0); });
-
-$("lockForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const k = $("keyInput").value.trim();
-  if (k) unlock(k);
-});
-$("txForm").addEventListener("submit", onSubmit);
-$("deleteBtn").addEventListener("click", onDelete);
-$("cancelBtn").addEventListener("click", resetForm);
-$("forget").addEventListener("click", () => lock());
-$("amount").addEventListener("input", updatePreview);
-$("date").addEventListener("input", updateFormText);
-document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setSign(Number(b.dataset.sign))));
-document.querySelectorAll("#chips button").forEach((b) => b.addEventListener("click", () => setCadence(b.dataset.cadence)));
-document.addEventListener("visibilitychange", () => { if (!document.hidden) load({ quiet: true }); });
-window.addEventListener("focus", () => load({ quiet: true }));
-motionQuery.addEventListener?.("change", scheduleBlink);
-scheduleBlink();
-
-const saved = store("get");
-if (saved) unlock(saved); else lock();
-</script>
+<dialog id="settings" class="sheet" aria-labelledby="settingsTitle">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="settingsTitle">Settings</h2>
+      <button class="icon-btn close-sheet" type="button" aria-label="Close"></button>
+    </div>
+    <h3>Devices</h3>
+    <p class="lead">Each phone or computer gets its own access. Remove one and it's locked out right away.</p>
+    <div id="devices" class="rows"></div>
+    <div id="pairBox" class="rows" style="margin-top:10px" hidden>
+      <div class="code num" id="pairShow"></div>
+      <p class="code-note" id="pairNote"></p>
+    </div>
+    <button id="pairStart" class="btn wide subtle" type="button" style="margin-top:10px">Pair a new device</button>
+    <h3>Quick-add buttons</h3>
+    <p class="lead">Leave the amount empty for things that cost something different each time.</p>
+    <div id="presetList" class="rows"></div>
+    <h3>This device</h3>
+    <button id="forget" class="btn wide ghost" type="button">Lock this device</button>
+  </div>
+</dialog>
+
+<dialog id="keys" class="sheet" aria-labelledby="keysTitle">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="keysTitle">Keyboard shortcuts</h2>
+      <button class="icon-btn close-sheet" type="button" aria-label="Close"></button>
+    </div>
+    <div class="kbd-list" style="margin-top:16px">
+      <kbd>N</kbd><span>New entry (jump to the amount)</span>
+      <kbd>1</kbd><span>…to <kbd>9</kbd>: use a quick-add button</span>
+      <kbd>A</kbd><span>Activity</span>
+      <kbd>P</kbd><span>Plan</span>
+      <kbd>I</kbd><span>Insights</span>
+      <kbd>S</kbd><span>Settings</span>
+      <kbd>Esc</kbd><span>Cancel editing</span>
+      <kbd>?</kbd><span>This list</span>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastBtn" type="button"></button></div>
+
+<script src="app.js?v=3"></script>
 </body>
 </html>

@@ -1,0 +1,16 @@
+# Supabase pauses free projects after a week without activity.
+# This pings the database once a day so Pocket never falls asleep.
+name: Keep database awake
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Pocket
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "apikey: sb_publishable_0QeYqlwAKI0Eit1nTB5vFw_PK1fxCaB" -H "Content-Type: application/json" \
+            -d '{}' "https://upmymrrfpwnqmnaclpyt.supabase.co/rest/v1/rpc/pocket_ping"
