@@ -17,23 +17,28 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap">
-<link rel="stylesheet" href="app.css?v=5">
+<link rel="stylesheet" href="app.css?v=6">
 </head>
 <body>
 <main>
   <section id="lock" class="lock" hidden>
     <div id="lockPocket"></div>
-    <h1>Pocket</h1>
-    <p>Enter the 6-digit code from a device that's already set up. On your Mac: click the balance in the menubar, then <b>Pair a device</b>.</p>
+    <h1>Open your Pocket</h1>
+    <ol class="steps">
+      <li>On your Mac, click your balance in the menubar <span class="hint-inline">(the Pocket Sync app)</span>.</li>
+      <li>Click <b>Pair a device</b>. A 6-digit code appears.</li>
+      <li>Type that code here.</li>
+    </ol>
     <form id="pairForm" autocomplete="off">
       <div class="fields2">
         <input id="pairCode" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000000" aria-label="Pairing code" required>
         <button class="btn" type="submit">Pair</button>
       </div>
       <p id="lockMsg" class="form-msg" role="alert"></p>
+      <p class="fine-print">Each code works once and expires after 10 minutes. This device then stays signed in.</p>
     </form>
     <details class="alt">
-      <summary>Use a key instead</summary>
+      <summary>I have a key instead</summary>
       <form id="lockForm">
         <div class="fields2">
           <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Key" aria-label="Key" required>
@@ -227,6 +232,6 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastBtn" type="button"></button></div>
 
-<script src="app.js?v=4"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

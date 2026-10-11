@@ -1833,5 +1833,21 @@ window.addEventListener("online", () => load({ quiet: true }));
 motionQuery.addEventListener?.("change", scheduleBlink);
 scheduleBlink();
 
+// Browsers sometimes keep an old copy of this page. Ask for the current version (never cached)
+// and reload into it when it changed, so nobody gets stuck on an old release.
+const APP_VERSION = "6";
+async function checkForUpdate() {
+  try {
+    const res = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
+    const { version } = await res.json();
+    if (version && version !== APP_VERSION && sessionStorage.getItem("pocket.reloadedFor") !== version) {
+      sessionStorage.setItem("pocket.reloadedFor", version);
+      location.replace(`${location.pathname}?v=${encodeURIComponent(version)}${location.hash}`);
+    }
+  } catch { /* offline or blocked: keep running this copy */ }
+}
+checkForUpdate();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
+
 const saved = ls.get(KEY_STORE);
 if (saved) unlock(saved); else lock();

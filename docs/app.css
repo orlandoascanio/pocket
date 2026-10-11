@@ -378,7 +378,7 @@
   .tip span { display: block; color: var(--muted); }
 
   /* insights */
-  .scope { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .scope { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
   .month-nav { display: flex; align-items: center; gap: 2px; }
   .month-nav b { font: 650 17px/1 var(--display); min-width: 120px; text-align: center; }
   .month-nav .icon-btn:disabled { opacity: .3; cursor: default; background: none; }
@@ -491,3 +491,45 @@
   .dev-row .icon-btn { grid-column: 3; grid-row: 1 / span 2; }
   .dev-row .ico { grid-column: 1; grid-row: 1 / span 2; }
   .dev-row .dev-confirm { grid-row: 3; }
+
+  /* lock screen steps */
+  .steps { margin: 0 0 22px; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 12px; }
+  .steps li { counter-increment: step; display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; font-size: 17px; line-height: 1.4; }
+  .steps li::before {
+    content: counter(step); width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; font: 700 15px/1 var(--display);
+    background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent);
+  }
+  .steps .hint-inline { color: var(--muted); }
+  .fine-print { color: var(--muted); font-size: 13px; margin: 10px 2px 0; }
+
+  /* Desktop: keep entry controls beside the selected view. */
+  @media (min-width: 960px) {
+    main { max-width: 1160px; padding: 28px 32px 64px; }
+    .lock { max-width: 488px; margin: 0 auto; }
+    #home {
+      display: grid;
+      grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+      grid-template-areas:
+        "top top"
+        "hero hero"
+        "quick tabs"
+        "entry panel"
+        "hint hint";
+      column-gap: 36px;
+      align-items: start;
+    }
+    #home > * { min-width: 0; }
+    .top { grid-area: top; }
+    .hero { grid-area: hero; position: relative; padding: 32px 140px 28px 0; }
+    .hero-foot { display: block; margin-top: 14px; }
+    .hero-foot .pk-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+    .quick { grid-area: quick; flex-wrap: wrap; overflow: visible; margin: 0 0 16px; padding: 0; }
+    #txForm { grid-area: entry; }
+    .cats { flex-wrap: wrap; overflow: visible; margin: 10px 0 0; padding: 2px 0; }
+    .tabs { grid-area: tabs; position: relative; align-self: end; margin: 0 0 16px; padding: 0; }
+    .tab-ink { left: 0; width: calc(100% / 3); }
+    .panel { grid-area: panel; }
+    .panel .section:first-child, .panel > .section[hidden] + .section { margin-top: 0; }
+    .foot-hint { grid-area: hint; margin-top: 24px; }
+  }
