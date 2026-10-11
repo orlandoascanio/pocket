@@ -456,3 +456,38 @@
   .bar-track, .bar-fill { display: block; }
   .bar-track { background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 0 4px 4px 0; }
   .stat .v { font-size: clamp(15px, 4.4vw, 19px); }
+
+  /* ---------- loading + confirmation states ---------- */
+  .skel {
+    display: block; border-radius: 8px;
+    background: linear-gradient(90deg, var(--chip) 25%, color-mix(in srgb, var(--chip) 45%, var(--surface)) 37%, var(--chip) 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+  .skel-row { display: grid; grid-template-columns: 36px 1fr 64px; gap: 7px 12px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .skel-row:first-child { border-top: 0; }
+  .skel-row .c { width: 36px; height: 36px; border-radius: 50%; grid-row: span 2; }
+  .skel-row .l1 { height: 12px; width: 62%; }
+  .skel-row .l2 { height: 10px; width: 34%; }
+  .skel-row .a { height: 12px; grid-row: span 2; }
+  .balance .skel { height: .78em; width: 4.4em; border-radius: 16px; margin-top: .16em; }
+  .sub .skel { height: 12px; width: 180px; margin-top: 4px; }
+  .chart .skel { height: 176px; border-radius: 12px; }
+  .spin { width: 15px; height: 15px; flex: none; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .dev-row { transition: background-color 200ms ease; }
+  .dev-row.confirming { background: color-mix(in srgb, var(--neg) 7%, transparent); }
+  .dev-confirm { grid-column: 2 / -1; display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+  .dev-confirm p { margin: 0; font-size: 14px; color: var(--ink); }
+  .dev-confirm .acts { display: flex; gap: 8px; }
+  .dev-confirm .btn { min-height: 36px; padding: 6px 14px; font-size: 14px; }
+  .btn.danger-solid { background: var(--neg); color: #fff; }
+  .inline-err { color: var(--neg); font-size: 13px; }
+  .inline-err:empty { display: none; }
+  @media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+  .dev-row .what { grid-column: 2; grid-row: 1; }
+  .dev-row .note { grid-column: 2 / -1; grid-row: 2; }
+  .dev-row .icon-btn { grid-column: 3; grid-row: 1 / span 2; }
+  .dev-row .ico { grid-column: 1; grid-row: 1 / span 2; }
+  .dev-row .dev-confirm { grid-row: 3; }

@@ -476,6 +476,7 @@ async function load({ quiet = false } = {}) {
       const newest = txs.find((t) => fresh.tx.has(t.id));
       knownTx = new Set(txIds); knownRules = new Set(ruleIds);
       loaded = true;
+      $("home").removeAttribute("aria-busy");
       render();
       setBalance(txs.reduce((sum, t) => sum + Number(t.amount), 0), newest);
     }
@@ -1417,6 +1418,34 @@ function toast(msg, actionLabel, onAction, ms = 5200) {
 }
 function hideToast() { $("toast").classList.remove("show"); }
 
+// ---------- loading skeletons ----------
+function skelRows(n) {
+  const f = document.createDocumentFragment();
+  for (let i = 0; i < n; i++) {
+    const r = mk("div", "skel-row");
+    r.setAttribute("aria-hidden", "true");
+    r.append(mk("span", "skel c"), mk("span", "skel l1"), mk("span", "skel a"), mk("span", "skel l2"));
+    f.append(r);
+  }
+  return f;
+}
+
+// Shown until the first sync answers, so the page has its shape instead of looking empty.
+function renderSkeleton() {
+  $("home").setAttribute("aria-busy", "true");
+  $("balance").replaceChildren(mk("span", "skel"));
+  $("balance").setAttribute("aria-label", "Loading your balance");
+  $("sub").replaceChildren(mk("span", "skel"));
+  $("runway").hidden = true;
+  $("quick").textContent = "";
+  const rows = mk("div", "rows");
+  rows.append(skelRows(4));
+  $("list").replaceChildren(rows);
+  $("chart").replaceChildren(mk("span", "skel"));
+  $("bars").replaceChildren(skelRows(3));
+  $("stats").textContent = "";
+}
+
 // ---------- settings: devices, pairing, quick-add buttons ----------
 function deviceIcon(name) { return /iphone|android|phone|ipad/i.test(name) ? "phone" : "laptop"; }
 function ago(iso) {
@@ -1427,8 +1456,9 @@ function ago(iso) {
   return `${Math.round(s / 86400)} days ago`;
 }
 
-async function loadDevices() {
+async function loadDevices({ quiet = false } = {}) {
   const box = $("devices");
+  if (!quiet) box.replaceChildren(skelRows(2));
   try {
     const d = await rpc("pocket_devices");
     box.textContent = "";
@@ -1447,12 +1477,7 @@ async function loadDevices() {
       rm.type = "button";
       rm.innerHTML = icon("x");
       rm.setAttribute("aria-label", `Remove ${dev.name}`);
-      rm.addEventListener("click", async () => {
-        if (!confirm(`Remove ${dev.name}? It will be locked out right away.`)) return;
-        await rpc("pocket_device_remove", { p_id: dev.id });
-        if (dev.this) { $("settings").close(); lock(); return; }
-        loadDevices();
-      });
+      rm.addEventListener("click", () => confirmRemove(r, rm, dev));
       r.append(ico, name, rm, mk("span", "note", `Added ${shortFmt.format(new Date(dev.created_at))} · ${ago(dev.last_seen)}`));
       box.append(r);
     }
@@ -1467,9 +1492,12 @@ async function loadDevices() {
 async function startPairing() {
   const btn = $("pairStart");
   btn.disabled = true;
+  btn.replaceChildren(mk("span", "spin"), " Making a code…");
+  const restore = () => { btn.textContent = "Make a new code"; };
   try {
-    const before = await loadDevices();
+    const before = await loadDevices({ quiet: true });
     const { code, expires_at } = await rpc("pocket_pair_start");
+    restore();
     $("pairBox").hidden = false;
     $("pairShow").textContent = `${code.slice(0, 3)} ${code.slice(3)}`;
     const end = new Date(expires_at).getTime();
@@ -1490,7 +1518,7 @@ async function startPairing() {
     // Notice when the new device shows up.
     pairWatch = setInterval(async () => {
       if (!$("settings").open) { clearInterval(pairWatch); return; }
-      const n = await loadDevices();
+      const n = await loadDevices({ quiet: true });
       if (n != null && before != null && n > before) {
         clearInterval(pairTimer); clearInterval(pairWatch);
         $("pairShow").textContent = "Paired!";
@@ -1502,8 +1530,61 @@ async function startPairing() {
     }, 3000);
   } catch {
     btn.disabled = false;
-    toast("Couldn't make a code. Check your connection.");
+    restore();
+    $("pairBox").hidden = false;
+    $("pairShow").textContent = "";
+    $("pairNote").textContent = "Couldn't make a code. Check your connection and try again.";
   }
+}
+
+// Removing a device: ask in place, show progress, then say what happened.
+function confirmRemove(r, rmBtn, dev) {
+  if (r.querySelector(".dev-confirm")) return;
+  r.classList.add("confirming");
+  rmBtn.hidden = true;
+  const box = mk("div", "dev-confirm");
+  box.setAttribute("role", "group");
+  const msg = mk("p", null, dev.this
+    ? "Remove this device? It will lock right away, and you'll need a new pairing code to get back in."
+    : `Remove ${dev.name}? It will be locked out right away. You can pair it again later with a new code.`);
+  const acts = mk("div", "acts");
+  const cancel = mk("button", "btn ghost", "Cancel"); cancel.type = "button";
+  const go = mk("button", "btn danger-solid", "Remove"); go.type = "button";
+  const err = mk("span", "inline-err");
+  err.setAttribute("role", "alert");
+  acts.append(cancel, go);
+  box.append(msg, acts, err);
+  r.append(box);
+  go.focus();
+  cancel.addEventListener("click", () => {
+    box.remove();
+    r.classList.remove("confirming");
+    rmBtn.hidden = false;
+    rmBtn.focus();
+  });
+  go.addEventListener("click", async () => {
+    go.disabled = cancel.disabled = true;
+    go.replaceChildren(mk("span", "spin"), " Removing…");
+    err.textContent = "";
+    try {
+      await rpc("pocket_device_remove", { p_id: dev.id });
+      if (dev.this) {
+        $("settings").close();
+        lock("This device was removed. Pair it again with a new code to get back in.");
+        return;
+      }
+      await collapseRow(r);
+      r.remove();
+      toast(`${dev.name} was removed. It can't open Pocket anymore.`);
+      face("oof", 900);
+      say("Bye-bye, device");
+      loadDevices({ quiet: true });
+    } catch {
+      go.disabled = cancel.disabled = false;
+      go.textContent = "Try again";
+      err.textContent = "Couldn't remove it. Check your connection and try again.";
+    }
+  });
 }
 
 function renderPresetList() {
@@ -1544,6 +1625,7 @@ function renderPresetList() {
 function openSettings() {
   $("pairBox").hidden = true;
   $("pairStart").disabled = false;
+  $("pairStart").textContent = "Pair a new device";
   renderPresetList();
   loadDevices();
   $("settings").showModal();
@@ -1568,6 +1650,7 @@ function shake(el) { el.classList.remove("shake"); void el.offsetWidth; el.class
 
 function lock(msg = "") {
   key = null;
+  loaded = false; lastSig = ""; shownBalance = null; knownTx = null; knownRules = null;
   ls.del(KEY_STORE);
   clearInterval(pollTimer);
   $("home").hidden = true;
@@ -1586,6 +1669,7 @@ async function unlock(k) {
   $("home").hidden = false;
   setTab(tab);
   resetForm();
+  if (!loaded) renderSkeleton();
   await load();
   if (key) { ls.set(KEY_STORE, key); startPolling(); }
 }
@@ -1596,6 +1680,8 @@ async function onPair(e) {
   if (code.length !== 6) { $("lockMsg").textContent = "The code has 6 digits."; shake($("pairForm")); return; }
   const btn = $("pairForm").querySelector("button");
   btn.disabled = true;
+  btn.replaceChildren(mk("span", "spin"), " Pairing…");
+  $("lockMsg").textContent = "";
   try {
     const res = await rpc("pocket_pair_finish", { p_code: code, p_name: deviceName() }, { noKey: true });
     if (res?.token) { $("lockMsg").textContent = ""; await unlock(res.token); return; }
@@ -1611,6 +1697,7 @@ async function onPair(e) {
     $("lockMsg").textContent = "Couldn't reach the server. Check your connection.";
   } finally {
     btn.disabled = false;
+    btn.textContent = "Pair";
   }
 }
 
