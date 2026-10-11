@@ -50,40 +50,6 @@ enum Cadence: String, CaseIterable, Identifiable {
     }
 }
 
-// Menubar glyph: an outlined, stitched pocket with a coin tucked in off to one side.
-enum Glyph {
-    static let image: NSImage = {
-        let img = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
-            NSColor.black.set()
-            let pocket = NSBezierPath()
-            pocket.move(to: NSPoint(x: 2.75, y: 8.25))
-            pocket.line(to: NSPoint(x: 15.25, y: 8.25))
-            pocket.line(to: NSPoint(x: 15.25, y: 12.1))
-            pocket.line(to: NSPoint(x: 9, y: 15.6))
-            pocket.line(to: NSPoint(x: 2.75, y: 12.1))
-            pocket.close()
-            pocket.lineWidth = 1.5
-            pocket.lineJoinStyle = .round
-            pocket.stroke()
-            let stitch = NSBezierPath()
-            stitch.move(to: NSPoint(x: 5, y: 10.4))
-            stitch.line(to: NSPoint(x: 13, y: 10.4))
-            stitch.lineWidth = 1
-            stitch.setLineDash([1.3, 1.3], count: 2, phase: 0)
-            stitch.stroke()
-            // Only the part of the coin above the pocket's hem shows.
-            NSGraphicsContext.saveGraphicsState()
-            NSBezierPath(rect: NSRect(x: 0, y: 0, width: 18, height: 7.1)).addClip()
-            NSBezierPath(ovalIn: NSRect(x: 7.6, y: 1.6, width: 7.2, height: 7.2)).fill()
-            NSGraphicsContext.restoreGraphicsState()
-            return true
-        }
-        img.isTemplate = true
-        img.accessibilityDescription = "Pocket"
-        return img
-    }()
-}
-
 // Same colors as the web app: warm off-white / near-black, pocket green.
 enum Palette {
     private static func adaptive(light: NSColor, dark: NSColor) -> Color {
@@ -202,9 +168,9 @@ final class Store: ObservableObject {
     }
 
     var menuTitle: String {
-        guard let balance else { return "" }
+        guard let balance else { return "Pocket" }
         let warn = (state == .offline || state == .badKey) ? " ⚠︎" : ""
-        return " " + Fmt.money(balance) + warn
+        return Fmt.money(balance) + warn
     }
 
     init() {
@@ -657,10 +623,7 @@ struct PocketApp: App {
         MenuBarExtra {
             PopoverView().environmentObject(store)
         } label: {
-            HStack(spacing: 4) {
-                Image(nsImage: Glyph.image)
-                Text(store.menuTitle).monospacedDigit()
-            }
+            Text(store.menuTitle).monospacedDigit()
         }
         .menuBarExtraStyle(.window)
     }
