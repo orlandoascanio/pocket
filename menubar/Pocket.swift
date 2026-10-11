@@ -98,6 +98,37 @@ struct PocketState: Decodable {
     let upcoming: [Upcoming]
 }
 
+struct BalanceChange: Equatable {
+    let id = UUID()
+    let diff: Double
+    let outOfRed: Bool
+    let intoRed: Bool
+}
+
+/// The gold coin from the app icon, spun in 3D when money moves.
+struct CoinView: View {
+    var spin: Double
+    var hop: CGFloat
+
+    private let gold = Color(red: 0.92, green: 0.66, blue: 0.23)
+    private let ink = Color(red: 0.66, green: 0.42, blue: 0.09)
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(RadialGradient(
+                    colors: [Color(red: 1, green: 0.96, blue: 0.77), Color(red: 1, green: 0.85, blue: 0.4), gold],
+                    center: UnitPoint(x: 0.34, y: 0.28), startRadius: 1, endRadius: 24))
+            Circle().strokeBorder(ink.opacity(0.4), lineWidth: 2)
+            Text("$").font(.system(size: 21, weight: .heavy, design: .rounded)).foregroundStyle(ink)
+        }
+        .frame(width: 38, height: 38)
+        .rotation3DEffect(.degrees(spin), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+        .offset(y: hop)
+        .shadow(color: .black.opacity(0.18), radius: 4, y: 3)
+    }
+}
+
 struct APIError: Error {
     let badKey: Bool
     let message: String
@@ -115,6 +146,8 @@ final class Store: ObservableObject {
     @Published private(set) var balance: Double?
     @Published private(set) var state: SyncState = .idle
     @Published private(set) var syncing = false
+    /// Bumped on every balance change seen while running (diff, and whether it crossed zero).
+    @Published private(set) var change: BalanceChange?
 
     private let defaults = UserDefaults.standard
     private var timer: Timer?
@@ -176,6 +209,9 @@ final class Store: ObservableObject {
             rules = s.recurring
             upcoming = s.upcoming
             let total = (txs.reduce(0) { $0 + $1.amount } * 100).rounded() / 100
+            if let prev = balance, prev != total, state != .idle {
+                change = BalanceChange(diff: total - prev, outOfRed: prev < 0 && total >= 0, intoRed: prev >= 0 && total < 0)
+            }
             balance = total
             defaults.set(total, forKey: "lastBalance")
             state = .ok(Date())
@@ -243,6 +279,12 @@ struct PopoverView: View {
     @State private var times = ""
     @State private var label = ""
     @State private var saving = false
+    @State private var saved = 0
+    @State private var spin = 0.0
+    @State private var hop: CGFloat = 0
+    @State private var bubble: String?
+    @State private var bubbleTask: Task<Void, Never>?
+    @State private var pokes = 0
     @State private var formError: String?
     @State private var keyDraft = ""
     @State private var copied = false
@@ -280,10 +322,30 @@ struct PopoverView: View {
                 Spacer()
                 statusText.font(.caption).foregroundStyle(.secondary)
             }
-            Text(store.balance.map(Fmt.money) ?? "—")
-                .font(.system(size: 38, weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle((store.balance ?? 0) < 0 ? Color.red : Color.primary)
+            HStack(alignment: .center) {
+                Text(store.balance.map(Fmt.money) ?? "—")
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .contentTransition(.numericText(value: store.balance ?? 0))
+                    .foregroundStyle((store.balance ?? 0) < 0 ? Color.red : Color.primary)
+                    .animation(.snappy(duration: 0.6), value: store.balance)
+                Spacer()
+                ZStack(alignment: .bottomTrailing) {
+                    CoinView(spin: spin, hop: hop)
+                        .onTapGesture { poke() }
+                        .help("Poke your pocket")
+                    if let bubble {
+                        Text(bubble)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(.regularMaterial, in: Capsule())
+                            .fixedSize()
+                            .offset(x: 4, y: -40)
+                            .transition(.scale(scale: 0.6, anchor: .bottomTrailing).combined(with: .opacity))
+                    }
+                }
+            }
+            .onChange(of: store.change) { _, c in if let c { react(to: c) } }
             Text("Spent this month: \(Fmt.money(store.spentThisMonth))")
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             if let f = store.forecast {
@@ -341,6 +403,12 @@ struct PopoverView: View {
                     .labelsHidden()
                     .datePickerStyle(.field)
                 Spacer()
+                if saved > 0 {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .symbolEffect(.bounce, value: saved)
+                        .transition(.scale.combined(with: .opacity))
+                }
                 Button(buttonTitle, action: submit)
                     .keyboardShortcut(.defaultAction)
                     .disabled(saving)
@@ -392,7 +460,7 @@ struct PopoverView: View {
             if store.txs.isEmpty {
                 Text("Nothing yet").font(.callout).foregroundStyle(.secondary)
             }
-            ForEach(store.txs.prefix(5)) { t in
+            ForEach(Array(store.txs.prefix(5))) { t in
                 HStack(spacing: 4) {
                     Text(t.label).lineLimit(1)
                     if t.recurring_id != nil {
@@ -402,7 +470,9 @@ struct PopoverView: View {
                     amountText(t.amount)
                 }
                 .font(.callout)
+                .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
             }
+            .animation(.snappy, value: store.txs.map(\.id))
             Text("Edit, delete, or stop repeating entries in the web app.")
                 .font(.caption).foregroundStyle(.tertiary)
         }
@@ -453,6 +523,40 @@ struct PopoverView: View {
         }
     }
 
+    private func say(_ text: String) {
+        bubbleTask?.cancel()
+        withAnimation(.spring(duration: 0.35, bounce: 0.35)) { bubble = text }
+        bubbleTask = Task {
+            try? await Task.sleep(for: .seconds(1.8))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) { bubble = nil }
+        }
+    }
+
+    private func flip(by degrees: Double, hopHeight: CGFloat) {
+        withAnimation(.spring(duration: 0.9, bounce: 0.25)) { spin += degrees }
+        withAnimation(.easeOut(duration: 0.22)) { hop = -hopHeight }
+        Task {
+            try? await Task.sleep(for: .milliseconds(220))
+            withAnimation(.spring(duration: 0.45, bounce: 0.5)) { hop = 0 }
+        }
+    }
+
+    private func react(to c: BalanceChange) {
+        if c.diff > 0 { flip(by: 360, hopHeight: 8) } else { flip(by: -360, hopHeight: 14) }
+        if c.outOfRed { say("We're out of the red!") }
+        else if c.intoRed { say("Uh oh, we're in the red") }
+        else if c.diff > 0 { say(["Yum!", "Ooh, shiny!", "Thank you!"].randomElement()!) }
+        else { say(["Oof", "Bye-bye, coin", "There it goes"].randomElement()!) }
+    }
+
+    private func poke() {
+        pokes += 1
+        flip(by: 720, hopHeight: 16)
+        let lines = ["Hehe", "That tickles!", "Still here!", "Boop"]
+        say(lines[pokes % lines.count])
+    }
+
     private func saveKey() {
         let k = keyDraft
         keyDraft = ""
@@ -485,10 +589,17 @@ struct PopoverView: View {
         formError = nil
         Task {
             do {
+                let scheduled = cadence != .once || isFuture
                 try await store.add(amount: (n * 100).rounded() / 100, label: l, spent: spent,
                                      cadence: cadence, on: day, times: count)
                 amount = ""
                 times = ""
+                withAnimation(.snappy) { saved += 1 }
+                if scheduled { say(spent ? "I'll remember it" : "Can't wait!") }
+                Task {
+                    try? await Task.sleep(for: .seconds(1.4))
+                    withAnimation(.easeOut) { saved = 0 }
+                }
                 label = ""
                 spent = true
                 cadence = .once
