@@ -50,20 +50,50 @@ enum Cadence: String, CaseIterable, Identifiable {
     }
 }
 
-// Menubar glyph: the pocket-and-coin from the app icon, drawn as a template image.
+// Menubar glyph: an outlined, stitched pocket with a coin tucked in off to one side.
 enum Glyph {
     static let image: NSImage = {
-        let svg = """
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
-          <circle cx="10.4" cy="4.6" r="3.1" fill="black"/>
-          <path d="M2.5 8.4 H15.5 V12.3 Q15.5 12.9 15 13.2 L9.5 16.1 Q9 16.35 8.5 16.1 L3 13.2 Q2.5 12.9 2.5 12.3 Z" fill="black"/>
-        </svg>
-        """
-        let img = NSImage(data: Data(svg.utf8)) ?? NSImage(systemSymbolName: "dollarsign.circle", accessibilityDescription: "Pocket")!
-        img.size = NSSize(width: 18, height: 18)
+        let img = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+            NSColor.black.set()
+            let pocket = NSBezierPath()
+            pocket.move(to: NSPoint(x: 2.75, y: 8.25))
+            pocket.line(to: NSPoint(x: 15.25, y: 8.25))
+            pocket.line(to: NSPoint(x: 15.25, y: 12.1))
+            pocket.line(to: NSPoint(x: 9, y: 15.6))
+            pocket.line(to: NSPoint(x: 2.75, y: 12.1))
+            pocket.close()
+            pocket.lineWidth = 1.5
+            pocket.lineJoinStyle = .round
+            pocket.stroke()
+            let stitch = NSBezierPath()
+            stitch.move(to: NSPoint(x: 5, y: 10.4))
+            stitch.line(to: NSPoint(x: 13, y: 10.4))
+            stitch.lineWidth = 1
+            stitch.setLineDash([1.3, 1.3], count: 2, phase: 0)
+            stitch.stroke()
+            // Only the part of the coin above the pocket's hem shows.
+            NSGraphicsContext.saveGraphicsState()
+            NSBezierPath(rect: NSRect(x: 0, y: 0, width: 18, height: 7.1)).addClip()
+            NSBezierPath(ovalIn: NSRect(x: 7.6, y: 1.6, width: 7.2, height: 7.2)).fill()
+            NSGraphicsContext.restoreGraphicsState()
+            return true
+        }
         img.isTemplate = true
+        img.accessibilityDescription = "Pocket"
         return img
     }()
+}
+
+// Same colors as the web app: warm off-white / near-black, pocket green.
+enum Palette {
+    private static func adaptive(light: NSColor, dark: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light })
+    }
+    static let bg = adaptive(light: NSColor(red: 0.965, green: 0.961, blue: 0.949, alpha: 1),
+                             dark: NSColor(red: 0.11, green: 0.11, blue: 0.11, alpha: 1))
+    static let surface = adaptive(light: .white, dark: NSColor(red: 0.16, green: 0.16, blue: 0.16, alpha: 1))
+    static let accent = adaptive(light: NSColor(red: 0.114, green: 0.42, blue: 0.278, alpha: 1),
+                                 dark: NSColor(red: 0.298, green: 0.788, blue: 0.561, alpha: 1))
 }
 
 struct Tx: Decodable, Identifiable {
@@ -308,6 +338,8 @@ struct PopoverView: View {
         }
         .padding(16)
         .frame(width: 340)
+        .background(Palette.bg)
+        .tint(Palette.accent)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
             day = Date()
@@ -338,7 +370,9 @@ struct PopoverView: View {
                         Text(bubble)
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(.regularMaterial, in: Capsule())
+                            .background(Palette.surface, in: Capsule())
+                            .overlay(Capsule().strokeBorder(.primary.opacity(0.1)))
+                            .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
                             .fixedSize()
                             .offset(x: 4, y: -40)
                             .transition(.scale(scale: 0.6, anchor: .bottomTrailing).combined(with: .opacity))
@@ -410,6 +444,7 @@ struct PopoverView: View {
                         .transition(.scale.combined(with: .opacity))
                 }
                 Button(buttonTitle, action: submit)
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(saving)
             }
@@ -519,6 +554,7 @@ struct PopoverView: View {
                 Button("Quit") { NSApp.terminate(nil) }
             }
             .buttonStyle(.link)
+            .foregroundStyle(Palette.accent)
             .font(.callout)
         }
     }
