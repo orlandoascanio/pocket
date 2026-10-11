@@ -17,14 +17,53 @@ enum Fmt {
         f.locale = Locale(identifier: "en_US")
         return f
     }()
-    private static let day: DateFormatter = {
+    private static let iso: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
+    private static let short: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        f.locale = Locale(identifier: "en_US")
+        return f
+    }()
     static func money(_ v: Double) -> String { currency.string(from: NSNumber(value: v)) ?? "\(v)" }
-    static func today() -> String { day.string(from: Date()) }
+    static func signed(_ v: Double) -> String { (v > 0 ? "+" : "") + money(v) }
+    static func iso(_ d: Date) -> String { iso.string(from: d) }
+    static func today() -> String { iso(Date()) }
+    static func shortDay(_ isoDay: String) -> String { iso.date(from: isoDay).map(short.string) ?? isoDay }
+}
+
+enum Cadence: String, CaseIterable, Identifiable {
+    case once, weekly, biweekly, monthly, yearly
+    var id: String { rawValue }
+    var name: String {
+        switch self {
+        case .once: "Once"
+        case .weekly: "Weekly"
+        case .biweekly: "Every 2 weeks"
+        case .monthly: "Monthly"
+        case .yearly: "Yearly"
+        }
+    }
+}
+
+// Menubar glyph: the pocket-and-coin from the app icon, drawn as a template image.
+enum Glyph {
+    static let image: NSImage = {
+        let svg = """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+          <circle cx="10.4" cy="4.6" r="3.1" fill="black"/>
+          <path d="M2.5 8.4 H15.5 V12.3 Q15.5 12.9 15 13.2 L9.5 16.1 Q9 16.35 8.5 16.1 L3 13.2 Q2.5 12.9 2.5 12.3 Z" fill="black"/>
+        </svg>
+        """
+        let img = NSImage(data: Data(svg.utf8)) ?? NSImage(systemSymbolName: "dollarsign.circle", accessibilityDescription: "Pocket")!
+        img.size = NSSize(width: 18, height: 18)
+        img.isTemplate = true
+        return img
+    }()
 }
 
 struct Tx: Decodable, Identifiable {
@@ -32,6 +71,31 @@ struct Tx: Decodable, Identifiable {
     let amount: Double
     let label: String
     let occurred_on: String
+    let recurring_id: String?
+}
+
+struct Rule: Decodable, Identifiable {
+    let id: String
+    let amount: Double
+    let label: String
+    let cadence: String
+    let next_on: String
+    let remaining: Int?
+    let once: Bool?
+}
+
+struct Upcoming: Decodable, Identifiable {
+    let recurring_id: String
+    let label: String
+    let amount: Double
+    let due_on: String
+    var id: String { recurring_id + due_on }
+}
+
+struct PocketState: Decodable {
+    let transactions: [Tx]
+    let recurring: [Rule]
+    let upcoming: [Upcoming]
 }
 
 struct APIError: Error {
@@ -46,6 +110,8 @@ enum SyncState: Equatable {
 @MainActor
 final class Store: ObservableObject {
     @Published private(set) var txs: [Tx] = []
+    @Published private(set) var rules: [Rule] = []
+    @Published private(set) var upcoming: [Upcoming] = []
     @Published private(set) var balance: Double?
     @Published private(set) var state: SyncState = .idle
     @Published private(set) var syncing = false
@@ -66,10 +132,16 @@ final class Store: ObservableObject {
         return txs.filter { $0.occurred_on.hasPrefix(month) && $0.amount < 0 }.reduce(0) { $0 - $1.amount }
     }
 
+    /// Balance after everything scheduled in the next 30 days.
+    var forecast: Double? {
+        guard let balance, !upcoming.isEmpty else { return nil }
+        return balance + upcoming.reduce(0) { $0 + $1.amount }
+    }
+
     var menuTitle: String {
-        guard let balance else { return "Pocket" }
+        guard let balance else { return "" }
         let warn = (state == .offline || state == .badKey) ? " ⚠︎" : ""
-        return Fmt.money(balance) + warn
+        return " " + Fmt.money(balance) + warn
     }
 
     init() {
@@ -98,8 +170,11 @@ final class Store: ObservableObject {
         syncing = true
         defer { syncing = false }
         do {
-            let data = try await rpc("pocket_list")
-            txs = try JSONDecoder().decode([Tx].self, from: data)
+            let data = try await rpc("pocket_state", ["p_today": Fmt.today()])
+            let s = try JSONDecoder().decode(PocketState.self, from: data)
+            txs = s.transactions
+            rules = s.recurring
+            upcoming = s.upcoming
             let total = (txs.reduce(0) { $0 + $1.amount } * 100).rounded() / 100
             balance = total
             defaults.set(total, forKey: "lastBalance")
@@ -111,12 +186,24 @@ final class Store: ObservableObject {
         }
     }
 
-    func add(amount: Double, label: String, spent: Bool) async throws {
-        _ = try await rpc("pocket_add", [
-            "p_amount": spent ? -amount : amount,
-            "p_label": label,
-            "p_on": Fmt.today(),
-        ])
+    /// `times`: number of payments for repeating entries (nil = never ends).
+    /// A one-time entry dated in the future becomes a single scheduled payment,
+    /// so it only counts once its day arrives.
+    func add(amount: Double, label: String, spent: Bool, cadence: Cadence, on day: Date, times: Int?) async throws {
+        let signedAmount = spent ? -amount : amount
+        let start = Fmt.iso(day)
+        if cadence == .once && start <= Fmt.today() {
+            _ = try await rpc("pocket_add", ["p_amount": signedAmount, "p_label": label, "p_on": start])
+        } else {
+            let once = cadence == .once
+            var args: [String: Any] = [
+                "p_amount": signedAmount, "p_label": label,
+                "p_cadence": once ? Cadence.monthly.rawValue : cadence.rawValue,
+                "p_start": start, "p_today": Fmt.today(),
+            ]
+            if let n = once ? 1 : times { args["p_times"] = n }
+            _ = try await rpc("pocket_recurring_add", args)
+        }
         await refresh()
     }
 
@@ -150,7 +237,10 @@ struct PopoverView: View {
     @EnvironmentObject var store: Store
 
     @State private var spent = true
+    @State private var cadence: Cadence = .once
+    @State private var day = Date()
     @State private var amount = ""
+    @State private var times = ""
     @State private var label = ""
     @State private var saving = false
     @State private var formError: String?
@@ -168,15 +258,17 @@ struct PopoverView: View {
             } else {
                 header
                 addForm
+                if !store.upcoming.isEmpty { comingUp }
                 recent
             }
             Divider()
             footer
         }
         .padding(16)
-        .frame(width: 320)
+        .frame(width: 340)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
+            day = Date()
             Task { await store.refresh() }
         }
     }
@@ -194,6 +286,10 @@ struct PopoverView: View {
                 .foregroundStyle((store.balance ?? 0) < 0 ? Color.red : Color.primary)
             Text("Spent this month: \(Fmt.money(store.spentThisMonth))")
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            if let f = store.forecast {
+                Text("In 30 days: \(Text(Fmt.money(f)).bold().foregroundColor(f < 0 ? .red : .primary))")
+                    .font(.callout).monospacedDigit().padding(.top, 4)
+            }
         }
     }
 
@@ -207,27 +303,85 @@ struct PopoverView: View {
 
     private var addForm: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("", selection: $spent) {
-                Text("Spent").tag(true)
-                Text("Got money").tag(false)
+            HStack(spacing: 8) {
+                Picker("", selection: $spent) {
+                    Text("Spent").tag(true)
+                    Text("Got money").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Picker("", selection: $cadence) {
+                    ForEach(Cadence.allCases) { Text($0.name).tag($0) }
+                }
+                .labelsHidden()
+                .fixedSize()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
             HStack(spacing: 6) {
                 TextField("0.00", text: $amount)
                     .frame(width: 72)
                     .focused($focus, equals: .amount)
                     .onSubmit { focus = .label }
-                TextField("What was it?", text: $label)
+                TextField(placeholder, text: $label)
                     .focused($focus, equals: .label)
                     .onSubmit(submit)
-                Button("Add", action: submit)
+            }
+            .textFieldStyle(.roundedBorder)
+            if cadence != .once {
+                HStack(spacing: 6) {
+                    Text("Payments").font(.caption).foregroundStyle(.secondary)
+                    TextField("No end", text: $times)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 72)
+                    Text("Empty = keeps going").font(.caption).foregroundStyle(.tertiary)
+                }
+            }
+            HStack(spacing: 6) {
+                Text(dateCaption).font(.caption).foregroundStyle(.secondary)
+                DatePicker("", selection: $day, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.field)
+                Spacer()
+                Button(buttonTitle, action: submit)
                     .keyboardShortcut(.defaultAction)
                     .disabled(saving)
             }
-            .textFieldStyle(.roundedBorder)
             if let formError {
                 Text(formError).font(.caption).foregroundStyle(.red)
+            }
+        }
+    }
+
+    private var placeholder: String {
+        switch (cadence == .once, spent) {
+        case (true, true): "What was it?"
+        case (true, false): "Where's it from?"
+        case (false, true): "e.g. Netflix, rent"
+        case (false, false): "e.g. Paycheck"
+        }
+    }
+
+    private var isFuture: Bool { Fmt.iso(day) > Fmt.today() }
+
+    private var dateCaption: String {
+        cadence == .once ? (isFuture ? (spent ? "Planned for" : "Expected on") : "Date") : (spent ? "First payment" : "First payday")
+    }
+
+    private var buttonTitle: String {
+        if cadence != .once { return "Add repeating" }
+        return isFuture ? (spent ? "Add planned" : "Add expected") : "Add"
+    }
+
+    private var comingUp: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("COMING UP").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+            ForEach(store.upcoming.prefix(3)) { u in
+                HStack {
+                    Text(Fmt.shortDay(u.due_on)).foregroundStyle(.secondary).frame(width: 48, alignment: .leading)
+                    Text(u.label).lineLimit(1)
+                    Spacer()
+                    amountText(u.amount)
+                }
+                .font(.callout)
             }
         }
     }
@@ -238,19 +392,24 @@ struct PopoverView: View {
             if store.txs.isEmpty {
                 Text("Nothing yet").font(.callout).foregroundStyle(.secondary)
             }
-            ForEach(store.txs.prefix(6)) { t in
-                HStack {
+            ForEach(store.txs.prefix(5)) { t in
+                HStack(spacing: 4) {
                     Text(t.label).lineLimit(1)
+                    if t.recurring_id != nil {
+                        Image(systemName: "repeat").font(.caption2).foregroundStyle(.secondary)
+                    }
                     Spacer()
-                    Text((t.amount > 0 ? "+" : "") + Fmt.money(t.amount))
-                        .monospacedDigit()
-                        .foregroundStyle(t.amount > 0 ? Color.green : Color.primary)
+                    amountText(t.amount)
                 }
                 .font(.callout)
             }
-            Text("Edit or delete entries in the web app.")
+            Text("Edit, delete, or stop repeating entries in the web app.")
                 .font(.caption).foregroundStyle(.tertiary)
         }
+    }
+
+    private func amountText(_ v: Double) -> some View {
+        Text(Fmt.signed(v)).monospacedDigit().foregroundStyle(v > 0 ? Color.green : Color.primary)
     }
 
     private var keyEntry: some View {
@@ -316,14 +475,24 @@ struct PopoverView: View {
             focus = .label
             return
         }
+        let t = times.trimmingCharacters(in: .whitespaces)
+        let count = t.isEmpty ? nil : Int(t)
+        if cadence != .once && !t.isEmpty && (count ?? 0) < 1 {
+            formError = "Payments must be a whole number, like 3"
+            return
+        }
         saving = true
         formError = nil
         Task {
             do {
-                try await store.add(amount: (n * 100).rounded() / 100, label: l, spent: spent)
+                try await store.add(amount: (n * 100).rounded() / 100, label: l, spent: spent,
+                                     cadence: cadence, on: day, times: count)
                 amount = ""
+                times = ""
                 label = ""
                 spent = true
+                cadence = .once
+                day = Date()
                 focus = .amount
             } catch {
                 formError = "Couldn't save. Check your connection."
@@ -341,7 +510,10 @@ struct PocketApp: App {
         MenuBarExtra {
             PopoverView().environmentObject(store)
         } label: {
-            Text(store.menuTitle).monospacedDigit()
+            HStack(spacing: 4) {
+                Image(nsImage: Glyph.image)
+                Text(store.menuTitle).monospacedDigit()
+            }
         }
         .menuBarExtraStyle(.window)
     }

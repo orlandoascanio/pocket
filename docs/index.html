@@ -22,9 +22,10 @@
     --muted: #6d6b66;
     --line: #e4e2dc;
     --neg: #c2352b;
-    --pos: #22805a;
-    --accent: #1b1b1a;
+    --pos: #1f7a50;
+    --accent: #1d6b47;
     --accent-ink: #ffffff;
+    --chip: #ecebe6;
     --focus: #3a6ff0;
     color-scheme: light dark;
   }
@@ -37,8 +38,9 @@
       --line: #2c2c2b;
       --neg: #ff6b5e;
       --pos: #4cc98f;
-      --accent: #f1f0ec;
-      --accent-ink: #121212;
+      --accent: #4cc98f;
+      --accent-ink: #0d2a1c;
+      --chip: #262626;
       --focus: #7aa2ff;
     }
   }
@@ -56,58 +58,77 @@
   .num { font-variant-numeric: tabular-nums; }
 
   .top { display: flex; justify-content: space-between; align-items: center; height: 32px; }
-  .brand { font-weight: 650; letter-spacing: -0.01em; }
+  .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; letter-spacing: -0.01em; }
+  .brand img { width: 24px; height: 24px; border-radius: 6px; }
   .sync { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
   .sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--pos); }
   .sync.off::before { background: var(--neg); }
   .sync.busy::before { background: var(--muted); }
 
-  .hero { padding: 36px 0 28px; }
+  .hero { padding: 32px 0 24px; }
   .hero .label { color: var(--muted); font-size: 15px; }
   .balance { font-size: clamp(52px, 17vw, 76px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.05; margin-top: 4px; }
   .balance.neg { color: var(--neg); }
   .hero .sub { color: var(--muted); font-size: 14px; margin-top: 10px; }
+  .forecast { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }
+  .forecast b { font-weight: 650; }
+  .forecast .neg { color: var(--neg); }
+  .forecast .detail { color: var(--muted); font-size: 13px; }
 
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 10px 2px; }
   .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: 10px; padding: 3px; gap: 3px; }
   .seg button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 550; padding: 8px; border-radius: 8px; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chips button { appearance: none; flex: none; border: 1px solid transparent; background: var(--chip); color: var(--ink); font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
   .fields { display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin-top: 10px; }
-  .fields2 { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
+  .fields2 { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; align-items: end; }
+  .times { margin-top: 8px; }
+  .cap { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px 4px; }
   input {
     width: 100%; min-width: 0; font: inherit; font-size: 17px; color: var(--ink);
     background: var(--bg); border: 1px solid transparent; border-radius: 10px; padding: 11px 12px;
   }
   input:focus { outline: none; border-color: var(--focus); }
-  input[type="date"] { font-size: 16px; }
-  .btn { appearance: none; border: 0; font: inherit; font-weight: 600; font-size: 16px; border-radius: 10px; padding: 11px 18px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+  input[type="date"] { font-size: 16px; min-height: 46px; }
+  .btn { appearance: none; border: 0; font: inherit; font-weight: 600; font-size: 16px; border-radius: 10px; padding: 11px 18px; min-height: 46px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
   .btn:disabled { opacity: .5; cursor: default; }
   .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
   .btn.danger { background: transparent; color: var(--neg); border: 1px solid var(--line); }
   .edit-actions { display: flex; gap: 8px; margin-top: 8px; }
   .edit-actions .btn { flex: 1; }
-  .form-msg { color: var(--neg); font-size: 14px; margin: 8px 2px 0; min-height: 0; }
+  .hint { color: var(--muted); font-size: 13px; margin: 8px 2px 0; }
+  .form-msg { color: var(--neg); font-size: 14px; margin: 8px 2px 0; }
+  .form-msg:empty { display: none; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-  .list { margin-top: 28px; }
+  .section { margin-top: 28px; }
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 2px 6px; }
+  .section-head h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+  .section-head .meta { font-size: 13px; color: var(--muted); text-align: right; }
   .day { margin-top: 18px; }
-  .day h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px 2px; }
+  .day:first-of-type { margin-top: 0; }
   .rows { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
-  .tx { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; text-align: left; appearance: none; background: none; border: 0; border-top: 1px solid var(--line); padding: 11px 14px; font: inherit; color: inherit; cursor: pointer; }
+  .tx { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; text-align: left; appearance: none; background: none; border: 0; border-top: 1px solid var(--line); padding: 11px 14px; font: inherit; color: inherit; }
+  button.tx { cursor: pointer; }
   .tx:first-child { border-top: 0; }
-  .tx:hover { background: color-mix(in srgb, var(--bg) 60%, transparent); }
+  button.tx:hover { background: color-mix(in srgb, var(--bg) 60%, transparent); }
   .tx.editing { background: color-mix(in srgb, var(--focus) 12%, transparent); }
   .tx .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tx .amt { font-weight: 600; text-align: right; }
-  .tx .amt.pos { color: var(--pos); }
-  .tx .after { grid-column: 2; font-size: 12px; color: var(--muted); text-align: right; }
-  .tx .after.neg { color: var(--neg); }
-  .empty { color: var(--muted); text-align: center; padding: 32px 0; }
+  .tx .pos { color: var(--pos); }
+  .tx .note { font-size: 12px; color: var(--muted); }
+  .tx .note.right { text-align: right; }
+  .tx .note.neg { color: var(--neg); }
+  .badge { display: inline-block; font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; margin-left: 6px; vertical-align: 1px; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; font-size: 14px; }
 
-  .lock { padding-top: 18vh; }
+  .lock { padding-top: 16vh; }
+  .lock img { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 16px; }
   .lock h1 { font-size: 28px; letter-spacing: -0.02em; margin: 0 0 6px; }
   .lock p { color: var(--muted); margin: 0 0 18px; }
-  .lock .fields2 { grid-template-columns: 1fr auto; }
 
   .foot { margin-top: 36px; text-align: center; }
   .link { appearance: none; background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
@@ -116,6 +137,7 @@
 <body>
 <main>
   <section id="lock" class="lock" hidden>
+    <img src="apple-touch-icon.png" alt="">
     <h1>Pocket</h1>
     <p>Paste your key to unlock this device. In the Mac menubar app, use <b>Copy key for phone</b>.</p>
     <form id="lockForm">
@@ -129,7 +151,7 @@
 
   <section id="home" hidden>
     <header class="top">
-      <span class="brand">Pocket</span>
+      <span class="brand"><img src="icon.svg" alt="">Pocket</span>
       <span id="sync" class="sync busy">Syncing…</span>
     </header>
 
@@ -137,21 +159,38 @@
       <div class="label">Money left</div>
       <div id="balance" class="balance num">—</div>
       <div id="sub" class="sub num"></div>
+      <div id="forecast" class="forecast num" hidden></div>
     </div>
 
     <form id="txForm" class="card" autocomplete="off">
+      <p id="formTitle" class="card-title">New entry</p>
       <div class="seg" role="group" aria-label="Type">
         <button type="button" data-sign="-1" aria-pressed="true">Spent</button>
         <button type="button" data-sign="1" aria-pressed="false">Got money</button>
+      </div>
+      <div id="chips" class="chips" role="group" aria-label="How often">
+        <button type="button" data-cadence="once" aria-pressed="true">Once</button>
+        <button type="button" data-cadence="weekly" aria-pressed="false">Weekly</button>
+        <button type="button" data-cadence="biweekly" aria-pressed="false">2 weeks</button>
+        <button type="button" data-cadence="monthly" aria-pressed="false">Monthly</button>
+        <button type="button" data-cadence="yearly" aria-pressed="false">Yearly</button>
       </div>
       <div class="fields">
         <input id="amount" class="num" inputmode="decimal" placeholder="0.00" aria-label="Amount" required>
         <input id="label" placeholder="What was it?" aria-label="What was it" maxlength="120" required>
       </div>
+      <div id="timesRow" class="times" hidden>
+        <label id="timesCap" class="cap" for="times">How many payments?</label>
+        <input id="times" class="num" type="number" inputmode="numeric" min="1" step="1" placeholder="Leave empty if it never ends">
+      </div>
       <div class="fields2">
-        <input id="date" type="date" aria-label="Date" required>
+        <div>
+          <label id="dateCap" class="cap" for="date">Date</label>
+          <input id="date" type="date" required>
+        </div>
         <button id="submitBtn" class="btn" type="submit">Add</button>
       </div>
+      <p id="hint" class="hint" hidden></p>
       <div id="editActions" class="edit-actions" hidden>
         <button id="deleteBtn" class="btn danger" type="button">Delete</button>
         <button id="cancelBtn" class="btn ghost" type="button">Cancel</button>
@@ -159,7 +198,20 @@
       <p id="formMsg" class="form-msg" role="alert"></p>
     </form>
 
-    <section id="list" class="list" aria-live="polite"></section>
+    <section id="upcomingSec" class="section" hidden>
+      <div class="section-head"><h2>Coming up</h2><span class="meta">next 30 days</span></div>
+      <div id="upcoming" class="rows"></div>
+    </section>
+
+    <section id="rulesSec" class="section" hidden>
+      <div class="section-head"><h2>Repeating &amp; expected</h2><span id="rulesMeta" class="meta num"></span></div>
+      <div id="rules" class="rows"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>History</h2></div>
+      <div id="list" aria-live="polite"></div>
+    </section>
 
     <div class="foot"><button id="forget" class="link" type="button">Lock this device</button></div>
   </section>
@@ -171,15 +223,26 @@ const SUPABASE_KEY = "sb_publishable_0QeYqlwAKI0Eit1nTB5vFw_PK1fxCaB";
 const POLL_MS = 15000;
 const KEY_STORE = "pocket.key";
 
+const CADENCE = {
+  weekly:   { name: "Weekly",        perMonth: 52 / 12, unit: "week" },
+  biweekly: { name: "Every 2 weeks", perMonth: 26 / 12, unit: "2 weeks" },
+  monthly:  { name: "Monthly",       perMonth: 1,       unit: "month" },
+  yearly:   { name: "Yearly",        perMonth: 1 / 12,  unit: "year" },
+};
+
 const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const fmt = (n) => money.format(n);
+const signed = (n) => (n > 0 ? "+" : "") + fmt(n);
 const dayFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+const shortFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+const asDate = (iso) => new Date(iso + "T12:00:00");
 
 let key = null;
-let txs = [];
+let txs = [], rules = [], upcoming = [];
 let sign = -1;
-let editingId = null;
+let cadence = "once";
+let editing = null; // { kind: "tx" | "rule", id }
 let pollTimer = null;
 
 function store(op, v) {
@@ -221,7 +284,8 @@ async function load({ quiet = false } = {}) {
   if (!key) return;
   if (!quiet) setSync("busy", "Syncing…");
   try {
-    txs = await rpc("pocket_list");
+    const s = await rpc("pocket_state", { p_today: todayISO() });
+    txs = s.transactions; rules = s.recurring; upcoming = s.upcoming;
     render();
     const t = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     setSync("", `Synced ${t}`);
@@ -231,19 +295,96 @@ async function load({ quiet = false } = {}) {
   }
 }
 
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function row({ title, badge, amount, noteLeft, noteRight, noteRightNeg, onClick, active }) {
+  const r = el(onClick ? "button" : "div", "tx" + (active ? " editing" : ""));
+  if (onClick) { r.type = "button"; r.addEventListener("click", onClick); }
+  const what = el("span", "what", title);
+  if (badge) what.append(el("span", "badge", badge));
+  r.append(what, el("span", "amt num" + (amount > 0 ? " pos" : ""), signed(amount)));
+  if (noteLeft || noteRight) {
+    r.append(el("span", "note", noteLeft || ""));
+    r.append(el("span", "note right num" + (noteRightNeg ? " neg" : ""), noteRight || ""));
+  }
+  return r;
+}
+
 function render() {
   const total = txs.reduce((s, t) => s + Number(t.amount), 0);
   const bal = $("balance");
   bal.textContent = fmt(total);
-  bal.classList.toggle("neg", total < 0);
+  bal.classList.toggle("neg", total < -0.004);
   document.title = `${fmt(total)} · Pocket`;
 
   const month = todayISO().slice(0, 7);
-  const spentMonth = txs
-    .filter((t) => t.occurred_on.startsWith(month) && Number(t.amount) < 0)
-    .reduce((s, t) => s - Number(t.amount), 0);
-  $("sub").textContent = `Spent this month: ${fmt(spentMonth)}`;
+  const monthTx = txs.filter((t) => t.occurred_on.startsWith(month));
+  const spent = monthTx.filter((t) => t.amount < 0).reduce((s, t) => s - Number(t.amount), 0);
+  const got = monthTx.filter((t) => t.amount > 0).reduce((s, t) => s + Number(t.amount), 0);
+  $("sub").textContent = `This month: ${fmt(spent)} spent` + (got ? ` · ${fmt(got)} in` : "");
 
+  // Forecast: balance after everything scheduled in the next 30 days
+  const out = upcoming.filter((u) => u.amount < 0).reduce((s, u) => s - Number(u.amount), 0);
+  const inn = upcoming.filter((u) => u.amount > 0).reduce((s, u) => s + Number(u.amount), 0);
+  const fc = $("forecast");
+  fc.hidden = !upcoming.length;
+  if (upcoming.length) {
+    const after = total - out + inn;
+    fc.textContent = "";
+    fc.append("In 30 days: ", el("b", after < -0.004 ? "neg" : "", fmt(after)));
+    const parts = [];
+    if (out) parts.push(`${fmt(out)} in bills`);
+    if (inn) parts.push(`${fmt(inn)} coming in`);
+    fc.append(el("span", "detail", parts.join(" · ")));
+  }
+
+  renderUpcoming();
+  renderRules();
+  renderHistory();
+}
+
+function renderUpcoming() {
+  const box = $("upcoming");
+  box.textContent = "";
+  $("upcomingSec").hidden = !upcoming.length;
+  for (const u of upcoming.slice(0, 8)) {
+    box.append(row({ title: u.label, amount: Number(u.amount), noteLeft: dayFmt.format(asDate(u.due_on)) }));
+  }
+}
+
+function renderRules() {
+  const box = $("rules");
+  box.textContent = "";
+  $("rulesSec").hidden = !rules.length;
+  let outM = 0, inM = 0;
+  for (const r of rules) {
+    const amt = Number(r.amount);
+    const m = r.once ? 0 : Math.abs(amt) * CADENCE[r.cadence].perMonth;
+    if (amt < 0) outM += m; else inM += m;
+    box.append(row({
+      title: r.label,
+      amount: amt,
+      noteLeft: r.once
+        ? `One time · ${dayFmt.format(asDate(r.next_on))}`
+        : `${CADENCE[r.cadence].name} · next ${shortFmt.format(asDate(r.next_on))}` +
+          (r.remaining != null ? ` · ${r.remaining === 1 ? "last one" : r.remaining + " left"}` : ""),
+      noteRight: r.once ? "expected" : `per ${CADENCE[r.cadence].unit}`,
+      active: editing?.kind === "rule" && editing.id === r.id,
+      onClick: () => startEditRule(r),
+    }));
+  }
+  const parts = [];
+  if (outM) parts.push(`≈ ${fmt(outM)}/mo out`);
+  if (inM) parts.push(`≈ ${fmt(inM)}/mo in`);
+  $("rulesMeta").textContent = parts.join(" · ");
+}
+
+function renderHistory() {
   // txs arrive newest first; walk oldest -> newest to get the balance after each entry
   const after = new Map();
   let run = 0;
@@ -251,11 +392,10 @@ function render() {
     run += Number(txs[i].amount);
     after.set(txs[i].id, run);
   }
-
   const list = $("list");
   list.textContent = "";
   if (!txs.length) {
-    list.innerHTML = `<p class="empty">Nothing here yet. Add your first entry above.</p>`;
+    list.append(el("p", "empty", "Nothing here yet. Add your first entry above."));
     return;
   }
   const groups = new Map();
@@ -264,27 +404,23 @@ function render() {
     groups.get(t.occurred_on).push(t);
   }
   for (const [day, items] of groups) {
-    const sec = document.createElement("div");
-    sec.className = "day";
-    const h = document.createElement("h2");
-    h.textContent = day === todayISO() ? "Today" : dayFmt.format(new Date(day + "T12:00:00"));
-    const rows = document.createElement("div");
-    rows.className = "rows";
+    const sec = el("div", "day");
+    sec.append(el("div", "section-head", null));
+    sec.firstChild.append(el("h2", "", day === todayISO() ? "Today" : dayFmt.format(asDate(day))));
+    const rows = el("div", "rows");
     for (const t of items) {
-      const amt = Number(t.amount);
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "tx" + (t.id === editingId ? " editing" : "");
-      b.setAttribute("aria-label", `Edit ${t.label}, ${fmt(amt)}`);
-      const what = document.createElement("span"); what.className = "what"; what.textContent = t.label;
-      const a = document.createElement("span"); a.className = "amt num" + (amt > 0 ? " pos" : ""); a.textContent = (amt > 0 ? "+" : "") + fmt(amt);
-      const af = document.createElement("span"); const v = after.get(t.id);
-      af.className = "after num" + (v < 0 ? " neg" : ""); af.textContent = `left ${fmt(v)}`;
-      b.append(what, a, af);
-      b.addEventListener("click", () => startEdit(t));
-      rows.append(b);
+      const v = after.get(t.id);
+      rows.append(row({
+        title: t.label,
+        badge: t.recurring_id ? "repeats" : null,
+        amount: Number(t.amount),
+        noteRight: `left ${fmt(v)}`,
+        noteRightNeg: v < -0.004,
+        active: editing?.kind === "tx" && editing.id === t.id,
+        onClick: () => startEditTx(t),
+      }));
     }
-    sec.append(h, rows);
+    sec.append(rows);
     list.append(sec);
   }
 }
@@ -292,30 +428,91 @@ function render() {
 function setSign(s) {
   sign = s;
   document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.sign) === s)));
+  updateFormText();
 }
 
-function startEdit(t) {
-  editingId = t.id;
+function setCadence(c) {
+  cadence = c;
+  document.querySelectorAll("#chips button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.cadence === c)));
+  updateFormText();
+}
+
+function updateFormText() {
+  const repeating = cadence !== "once";
+  const editingRule = editing?.kind === "rule";
+  const future = !repeating && ($("date").value || todayISO()) > todayISO();
+  $("timesRow").hidden = !repeating || editing?.kind === "tx";
+  $("timesCap").textContent = editingRule ? "Payments left (including the next one)" : "How many payments?";
+  $("label").placeholder = repeating
+    ? (sign < 0 ? "e.g. Netflix, rent" : "e.g. Paycheck")
+    : (sign < 0 ? "What was it?" : "Where's it from?");
+  $("dateCap").textContent = editingRule ? (repeating ? "Next payment" : "Expected on") : repeating ? (sign < 0 ? "First payment" : "First payday") : "Date";
+  const hint = $("hint");
+  hint.hidden = editing?.kind === "tx" || (!repeating && !future);
+  if (repeating && !editing) {
+    hint.textContent = `Logged automatically every ${CADENCE[cadence].unit} from this date. Set how many payments if it ends (like 3 freelance payments), or leave it empty.`;
+  } else if (future) {
+    hint.textContent = `This is in the future. It counts on ${dayFmt.format(asDate($("date").value))}; until then it shows in Coming up and the 30-day forecast.`;
+  } else if (editingRule) {
+    hint.hidden = true;
+  }
+  if (!editing) {
+    $("formTitle").textContent = repeating
+      ? (sign < 0 ? "New subscription or bill" : "New repeating income")
+      : future ? (sign < 0 ? "Planned payment" : "Expected money") : "New entry";
+  }
+}
+
+function startEditTx(t) {
+  editing = { kind: "tx", id: t.id };
   const amt = Number(t.amount);
   setSign(amt < 0 ? -1 : 1);
+  setCadence("once");
+  $("chips").hidden = true;
   $("amount").value = Math.abs(amt).toFixed(2);
   $("label").value = t.label;
   $("date").value = t.occurred_on;
+  $("formTitle").textContent = "Edit entry";
   $("submitBtn").textContent = "Save";
+  $("deleteBtn").textContent = "Delete";
   $("editActions").hidden = false;
   $("formMsg").textContent = "";
+  updateFormText();
+  render();
+  $("txForm").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function startEditRule(r) {
+  editing = { kind: "rule", id: r.id };
+  const amt = Number(r.amount);
+  setSign(amt < 0 ? -1 : 1);
+  $("chips").hidden = false;
+  setCadence(r.once ? "once" : r.cadence);
+  $("times").value = r.once || r.remaining == null ? "" : r.remaining;
+  $("amount").value = Math.abs(amt).toFixed(2);
+  $("label").value = r.label;
+  $("date").value = r.next_on;
+  $("formTitle").textContent = r.once ? "Edit expected payment" : "Edit repeating";
+  $("submitBtn").textContent = "Save";
+  $("deleteBtn").textContent = r.once ? "Remove" : "Stop repeating";
+  $("editActions").hidden = false;
+  $("formMsg").textContent = "";
+  updateFormText();
   render();
   $("txForm").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function resetForm() {
-  editingId = null;
+  editing = null;
   $("txForm").reset();
+  $("chips").hidden = false;
   setSign(-1);
+  setCadence("once");
   $("date").value = todayISO();
   $("submitBtn").textContent = "Add";
   $("editActions").hidden = true;
   $("formMsg").textContent = "";
+  updateFormText();
   render();
 }
 
@@ -328,14 +525,30 @@ async function onSubmit(e) {
   e.preventDefault();
   const amount = parseAmount($("amount").value);
   const label = $("label").value.trim();
+  const date = $("date").value || todayISO();
   if (!amount) { $("formMsg").textContent = "Enter an amount, like 9.99"; $("amount").focus(); return; }
   if (!label) { $("formMsg").textContent = "Say what it was"; $("label").focus(); return; }
-  const args = { p_amount: sign * amount, p_label: label, p_on: $("date").value || todayISO() };
+  const timesRaw = $("times").value.trim();
+  const times = timesRaw === "" ? null : Number(timesRaw);
+  if (cadence !== "once" && times !== null && !(Number.isInteger(times) && times >= 1)) {
+    $("formMsg").textContent = "Payments must be a whole number, like 3"; $("times").focus(); return;
+  }
   const btn = $("submitBtn");
   btn.disabled = true;
   try {
-    if (editingId) await rpc("pocket_update", { p_id: editingId, ...args });
-    else await rpc("pocket_add", args);
+    const today = todayISO();
+    // A one-time entry dated in the future is stored as a rule with a single payment,
+    // so it only counts once its day arrives.
+    const once = cadence === "once";
+    if (editing?.kind === "rule") {
+      await rpc("pocket_recurring_update", { p_id: editing.id, p_amount: sign * amount, p_label: label, p_cadence: once ? "monthly" : cadence, p_next: date, p_active: true, p_today: today, p_left: once ? 1 : times });
+    } else if (editing?.kind === "tx") {
+      await rpc("pocket_update", { p_id: editing.id, p_amount: sign * amount, p_label: label, p_on: date });
+    } else if (!once || date > today) {
+      await rpc("pocket_recurring_add", { p_amount: sign * amount, p_label: label, p_cadence: once ? "monthly" : cadence, p_start: date, p_today: today, p_times: once ? 1 : times });
+    } else {
+      await rpc("pocket_add", { p_amount: sign * amount, p_label: label, p_on: date });
+    }
     resetForm();
     await load({ quiet: true });
     $("amount").focus();
@@ -348,15 +561,19 @@ async function onSubmit(e) {
 }
 
 async function onDelete() {
-  if (!editingId) return;
-  const t = txs.find((x) => x.id === editingId);
-  if (!confirm(`Delete “${t?.label}” (${fmt(Number(t?.amount))})?`)) return;
+  if (!editing) return;
+  const isRule = editing.kind === "rule";
+  const item = (isRule ? rules : txs).find((x) => x.id === editing.id);
+  const question = isRule
+    ? (item?.once ? `Remove expected “${item?.label}”?` : `Stop “${item?.label}”? Payments already logged stay in your history.`)
+    : `Delete “${item?.label}” (${fmt(Number(item?.amount))})?`;
+  if (!confirm(question)) return;
   try {
-    await rpc("pocket_delete", { p_id: editingId });
+    await rpc(isRule ? "pocket_recurring_delete" : "pocket_delete", { p_id: editing.id });
     resetForm();
     await load({ quiet: true });
   } catch {
-    $("formMsg").textContent = "Couldn't delete. Try again.";
+    $("formMsg").textContent = "Couldn't do that. Try again.";
   }
 }
 
@@ -395,6 +612,8 @@ $("deleteBtn").addEventListener("click", onDelete);
 $("cancelBtn").addEventListener("click", resetForm);
 $("forget").addEventListener("click", () => lock());
 document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setSign(Number(b.dataset.sign))));
+document.querySelectorAll("#chips button").forEach((b) => b.addEventListener("click", () => setCadence(b.dataset.cadence)));
+$("date").addEventListener("input", updateFormText);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load({ quiet: true }); });
 window.addEventListener("focus", () => load({ quiet: true }));
 

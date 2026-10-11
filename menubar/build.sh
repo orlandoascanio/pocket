@@ -36,14 +36,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-# App icon from the web icon PNG
-if [[ -f ../docs/apple-touch-icon.png ]]; then
-  ICONSET="$BUILD/AppIcon.iconset"; mkdir -p "$ICONSET"
-  for s in 16 32 128 256; do
-    sips -z $s $s ../docs/apple-touch-icon.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
-    sips -z $((s*2)) $((s*2)) ../docs/apple-touch-icon.png --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
-  done
-  iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+# App icon (generate the iconset with: swift design/make-icons.swift)
+if [[ -d AppIcon.iconset ]]; then
+  iconutil -c icns AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
 fi
 
 codesign --force --sign - "$APP"
