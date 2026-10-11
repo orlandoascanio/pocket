@@ -1,0 +1,253 @@
+import Charts
+import PocketCore
+import SwiftUI
+
+struct PlanView: View {
+    @EnvironmentObject var store: Store
+    var onEdit: (EditTarget) -> Void
+    @State private var showAll = false
+    @State private var pendingStop: Rule?
+
+    var body: some View {
+        let p = store.projection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                header(p)
+                Card {
+                    ForecastChart(projection: p, money: store.money)
+                        .frame(height: 240)
+                        .padding(14)
+                }
+                comingUp(p)
+                repeating
+            }
+            .frame(maxWidth: 760)
+            .padding(28)
+            .frame(maxWidth: .infinity)
+        }
+        .confirmationDialog("Stop “\(pendingStop?.label ?? "")”?", isPresented: Binding(
+            get: { pendingStop != nil }, set: { if !$0 { pendingStop = nil } }), presenting: pendingStop) { r in
+            Button(r.isOnce ? "Remove" : "Stop repeating", role: .destructive) { store.removeRule(r.id) }
+        } message: { _ in
+            Text("Payments already logged stay in your history.")
+        }
+    }
+
+    private func header(_ p: Projection) -> some View {
+        let t = p.runway.text(store.range)
+        let d = { (day: Day) in day.localDate.formatted(.dateTime.month(.abbreviated).day()) }
+        return HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(t.lead) \(t.strong)")
+                    .font(.display(28, .bold))
+                    .foregroundStyle(p.runway.warn ? Palette.negative : Color.primary)
+                Text("On \(d(p.end)): \(store.money.string(p.endBalance))"
+                     + (p.lowBalance < p.start ? " · lowest \(store.money.string(p.lowBalance)) on \(d(p.lowDay))" : ""))
+                    .foregroundStyle(.secondary).monospacedDigit()
+            }
+            Spacer()
+            Picker("Range", selection: $store.range) {
+                Text("1M").tag(30)
+                Text("3M").tag(91)
+                Text("6M").tag(182)
+                Text("1Y").tag(365)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 210)
+        }
+    }
+
+    @ViewBuilder
+    private func comingUp(_ p: Projection) -> some View {
+        let steps = p.steps.filter { !$0.occurrence.overdue }
+        if !steps.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionTitle(title: "Coming up", meta: "next \(rangeName(store.range))")
+                Card {
+                    ForEach(showAll ? steps : Array(steps.prefix(10))) { s in
+                        let o = s.occurrence
+                        HStack {
+                            MoneyRow(symbol: Categories.symbol(o.category, cents: o.cents), title: o.label,
+                                     note: o.day.localDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                     cents: o.cents, rightNote: "then \(store.money.string(s.after))", rightNegative: s.after < 0)
+                            if o.isNext { NextActions(occurrence: o) }
+                        }
+                    }
+                    if steps.count > 10 {
+                        Button(showAll ? "Show less" : "Show all \(steps.count)") { withAnimation(.snappy) { showAll.toggle() } }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(10)
+                    }
+                }
+            }
+        }
+    }
+
+    private var repeating: some View {
+        let rules = store.ledger.liveRules
+        var outM = 0.0, inM = 0.0
+        for r in rules where r.active && !r.isOnce {
+            let m = Double(abs(r.cents)) * r.cadence.perMonth
+            if r.cents < 0 { outM += m } else { inM += m }
+        }
+        var parts: [String] = []
+        if outM > 0 { parts.append("\(store.money.whole(Int(outM))) out") }
+        if inM > 0 { parts.append("\(store.money.whole(Int(inM))) in") }
+
+        return VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(title: "Repeating & expected", meta: parts.isEmpty ? nil : "≈ " + parts.joined(separator: " · ") + " a month")
+            if rules.isEmpty {
+                Text("Nothing planned yet. Add something with Weekly, Monthly or Yearly, or a date in the future.")
+                    .foregroundStyle(.secondary).padding(.vertical, 16)
+            } else {
+                Card {
+                    ForEach(rules) { r in
+                        let when = r.isOnce
+                            ? "One time · \(r.next.localDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))"
+                            : "\(r.cadence.name) · next \(r.next.localDate.formatted(.dateTime.month(.abbreviated).day()))"
+                                + (r.remaining.map { $0 == 1 ? " · last one" : " · \($0) left" } ?? "")
+                        MoneyRow(symbol: r.isOnce ? "clock" : "repeat", title: r.label,
+                                 tag: !r.active ? "paused" : !r.auto ? "you confirm" : nil,
+                                 note: when, cents: r.cents,
+                                 rightNote: r.isOnce ? "expected" : "per \(r.cadence.unit)", dimmed: !r.active)
+                            .onTapGesture { onEdit(EditTarget(kind: .rule(r))) }
+                            .contextMenu {
+                                Button("Edit…") { onEdit(EditTarget(kind: .rule(r))) }
+                                if !r.isOnce { Button(r.active ? "Pause" : "Resume") { store.setActive(r.id, !r.active) } }
+                                Button(r.isOnce ? "Remove…" : "Stop repeating…", role: .destructive) { pendingStop = r }
+                            }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// "Got it" (with the real amount and date) and "Skip" for the next payment of a rule.
+struct NextActions: View {
+    @EnvironmentObject var store: Store
+    let occurrence: Occurrence
+    @State private var open = false
+    @State private var amount = ""
+    @State private var date = Date()
+
+    var body: some View {
+        Button(occurrence.cents > 0 ? "Got it…" : "Paid…") { open = true }
+            .controlSize(.small)
+            .popover(isPresented: $open, arrowEdge: .trailing) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(occurrence.label).font(.headline)
+                    Text("Log it now with the real amount and date, or skip this one.")
+                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        TextField("Amount", text: $amount).textFieldStyle(.roundedBorder).frame(width: 100)
+                        DatePicker("", selection: $date, displayedComponents: .date).labelsHidden()
+                    }
+                    HStack {
+                        Button("Skip this one") { store.skip(occurrence); open = false }
+                        Spacer()
+                        Button(occurrence.cents > 0 ? "Got it" : "Paid") {
+                            let c = Money.parse(amount) ?? abs(occurrence.cents)
+                            store.settle(occurrence, cents: occurrence.cents < 0 ? -c : c, on: Day(date))
+                            open = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(.defaultAction)
+                    }
+                }
+                .padding(16)
+                .frame(width: 300)
+                .onAppear { amount = Money.edit(occurrence.cents); date = Date() }
+            }
+    }
+}
+
+/// The projected balance as a step chart: it only changes when a payment lands.
+struct ForecastChart: View {
+    let projection: Projection
+    let money: Money
+    @State private var selected: Date?
+
+    private struct Sample: Identifiable {
+        let index: Int
+        let date: Date
+        let value: Double
+        var id: Int { index }
+    }
+
+    /// The stepped line, drawn explicitly: each payment adds a vertical jump on its day.
+    private var samples: [Sample] {
+        var out: [Sample] = []
+        var last: Double?
+        for p in projection.points {
+            let v = Double(p.balance) / 100
+            // The old balance holds until just before the payment lands (distinct x keeps the order stable).
+            if let last { out.append(Sample(index: out.count, date: p.day.localDate.addingTimeInterval(-60), value: last)) }
+            out.append(Sample(index: out.count, date: p.day.localDate, value: v))
+            last = v
+        }
+        out.append(Sample(index: out.count, date: projection.end.localDate, value: Double(projection.endBalance) / 100))
+        return out
+    }
+
+    private var selectedPoint: Projection.Point? {
+        guard let selected else { return nil }
+        return projection.points.last { $0.day.localDate <= selected } ?? projection.points.first
+    }
+
+    var body: some View {
+        Chart {
+            ForEach(samples) { s in
+                AreaMark(x: .value("Day", s.date), y: .value("Balance", s.value), stacking: .unstacked)
+                    .foregroundStyle(Palette.accent.opacity(0.1))
+                LineMark(x: .value("Day", s.date), y: .value("Balance", s.value))
+                    .foregroundStyle(Palette.accent)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            }
+            ForEach(projection.points.dropFirst()) { p in
+                PointMark(x: .value("Day", p.day.localDate), y: .value("Balance", Double(p.balance) / 100))
+                    .foregroundStyle(p.balance < 0 ? Palette.negative : Palette.accent)
+                    .symbolSize(36)
+            }
+            RuleMark(y: .value("Zero", 0))
+                .foregroundStyle(Color.secondary.opacity(0.6))
+                .lineStyle(StrokeStyle(lineWidth: 1))
+            if let p = selectedPoint {
+                RuleMark(x: .value("Selected", p.day.localDate))
+                    .foregroundStyle(Color.secondary.opacity(0.5))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(money.string(p.balance)).font(.headline).monospacedDigit()
+                                .foregroundStyle(p.balance < 0 ? Palette.negative : Color.primary)
+                            Text(p.day == projection.today ? "Today" : p.day.localDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                                .font(.caption).foregroundStyle(.secondary)
+                            ForEach(p.events) { e in
+                                Text("\(e.label) \(money.string(e.cents, signed: true))").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(8)
+                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Palette.line))
+                    }
+            }
+        }
+        .chartXScale(domain: projection.today.localDate...projection.end.localDate)
+        .chartXSelection(value: $selected)
+        .chartYAxis {
+            AxisMarks(position: .leading) { v in
+                AxisGridLine().foregroundStyle(Palette.line)
+                AxisValueLabel { if let d = v.as(Double.self) { Text(money.compact(Int(d * 100))) } }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+            }
+        }
+        .animation(.snappy(duration: 0.5), value: projection.days)
+        .accessibilityLabel("Projected balance until \(projection.end.localDate.formatted(date: .abbreviated, time: .omitted)), ending at \(money.string(projection.endBalance))")
+    }
+}

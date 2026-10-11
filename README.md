@@ -4,6 +4,23 @@
 
 How much money is left, everywhere.
 
+## Pocket for Mac (public)
+
+`mac/` is the version anyone can download. Each person's money stays on their own Mac in one JSON file
+(`~/Library/Application Support/Pocket/ledger.json`, with 7 daily backups). There's no account and no server.
+
+- Menubar balance, plus a window with Overview, Plan (forecast chart), Insights and Settings.
+- Repeating money that can wait for confirmation, quick-add buttons (⌘1–⌘9), categories, reminders when money is due.
+- `swift test` runs the money-logic tests (`mac/Tests`).
+- `./mac/build.sh` builds a universal app signed with Developer ID; `NOTARY_PROFILE=<name> ./mac/build.sh --release`
+  also notarizes, staples and makes `dist/Pocket-<version>.dmg`.
+- Development only: `open mac/dist/Pocket.app --env POCKET_DATA_DIR=/tmp/demo --env POCKET_OPEN=main --env POCKET_SECTION=Plan`
+  runs against a separate data folder and opens a window at launch.
+
+## Pocket (personal, synced)
+
+The rest of this repo is the original synced version: a PWA plus a menubar app backed by Supabase.
+
 - `docs/`: the web app (GitHub Pages). Works on phone and any computer. Add it to your home screen.
 - `menubar/`: a native macOS menubar app that shows the balance all day. Build it with `./menubar/build.sh`.
 - `supabase/migrations/`: the database. Tables are locked; everything goes through key-gated `pocket_*` functions.
