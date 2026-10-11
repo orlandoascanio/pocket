@@ -1,0 +1,5 @@
+.secrets.env
+supabase/.temp/
+supabase/.branches/
+menubar/build/
+.DS_Store

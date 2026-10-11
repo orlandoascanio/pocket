@@ -1,0 +1,12 @@
+{
+  "name": "Pocket",
+  "short_name": "Pocket",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f5f2",
+  "theme_color": "#f6f5f2",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "apple-touch-icon.png", "sizes": "360x360", "type": "image/png" }
+  ]
+}

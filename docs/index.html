@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocket</title>
+<meta name="description" content="How much money is left.">
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pocket">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --ink: #1b1b1a;
+    --muted: #6d6b66;
+    --line: #e4e2dc;
+    --neg: #c2352b;
+    --pos: #22805a;
+    --accent: #1b1b1a;
+    --accent-ink: #ffffff;
+    --focus: #3a6ff0;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121212;
+      --surface: #1c1c1c;
+      --ink: #f1f0ec;
+      --muted: #9a9892;
+      --line: #2c2c2b;
+      --neg: #ff6b5e;
+      --pos: #4cc98f;
+      --accent: #f1f0ec;
+      --accent-ink: #121212;
+      --focus: #7aa2ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  main { max-width: 520px; margin: 0 auto; padding: 16px 16px 48px; }
+  [hidden] { display: none !important; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .top { display: flex; justify-content: space-between; align-items: center; height: 32px; }
+  .brand { font-weight: 650; letter-spacing: -0.01em; }
+  .sync { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  .sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--pos); }
+  .sync.off::before { background: var(--neg); }
+  .sync.busy::before { background: var(--muted); }
+
+  .hero { padding: 36px 0 28px; }
+  .hero .label { color: var(--muted); font-size: 15px; }
+  .balance { font-size: clamp(52px, 17vw, 76px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.05; margin-top: 4px; }
+  .balance.neg { color: var(--neg); }
+  .hero .sub { color: var(--muted); font-size: 14px; margin-top: 10px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: 10px; padding: 3px; gap: 3px; }
+  .seg button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 15px; font-weight: 550; padding: 8px; border-radius: 8px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+  .fields { display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin-top: 10px; }
+  .fields2 { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 8px; }
+  input {
+    width: 100%; min-width: 0; font: inherit; font-size: 17px; color: var(--ink);
+    background: var(--bg); border: 1px solid transparent; border-radius: 10px; padding: 11px 12px;
+  }
+  input:focus { outline: none; border-color: var(--focus); }
+  input[type="date"] { font-size: 16px; }
+  .btn { appearance: none; border: 0; font: inherit; font-weight: 600; font-size: 16px; border-radius: 10px; padding: 11px 18px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn.danger { background: transparent; color: var(--neg); border: 1px solid var(--line); }
+  .edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .edit-actions .btn { flex: 1; }
+  .form-msg { color: var(--neg); font-size: 14px; margin: 8px 2px 0; min-height: 0; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .list { margin-top: 28px; }
+  .day { margin-top: 18px; }
+  .day h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px 2px; }
+  .rows { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .tx { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; text-align: left; appearance: none; background: none; border: 0; border-top: 1px solid var(--line); padding: 11px 14px; font: inherit; color: inherit; cursor: pointer; }
+  .tx:first-child { border-top: 0; }
+  .tx:hover { background: color-mix(in srgb, var(--bg) 60%, transparent); }
+  .tx.editing { background: color-mix(in srgb, var(--focus) 12%, transparent); }
+  .tx .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx .amt { font-weight: 600; text-align: right; }
+  .tx .amt.pos { color: var(--pos); }
+  .tx .after { grid-column: 2; font-size: 12px; color: var(--muted); text-align: right; }
+  .tx .after.neg { color: var(--neg); }
+  .empty { color: var(--muted); text-align: center; padding: 32px 0; }
+
+  .lock { padding-top: 18vh; }
+  .lock h1 { font-size: 28px; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .lock p { color: var(--muted); margin: 0 0 18px; }
+  .lock .fields2 { grid-template-columns: 1fr auto; }
+
+  .foot { margin-top: 36px; text-align: center; }
+  .link { appearance: none; background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <section id="lock" class="lock" hidden>
+    <h1>Pocket</h1>
+    <p>Paste your key to unlock this device. In the Mac menubar app, use <b>Copy key for phone</b>.</p>
+    <form id="lockForm">
+      <div class="fields2">
+        <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Key" aria-label="Key" required>
+        <button class="btn" type="submit">Unlock</button>
+      </div>
+      <p id="lockMsg" class="form-msg" role="alert"></p>
+    </form>
+  </section>
+
+  <section id="home" hidden>
+    <header class="top">
+      <span class="brand">Pocket</span>
+      <span id="sync" class="sync busy">Syncing…</span>
+    </header>
+
+    <div class="hero">
+      <div class="label">Money left</div>
+      <div id="balance" class="balance num">—</div>
+      <div id="sub" class="sub num"></div>
+    </div>
+
+    <form id="txForm" class="card" autocomplete="off">
+      <div class="seg" role="group" aria-label="Type">
+        <button type="button" data-sign="-1" aria-pressed="true">Spent</button>
+        <button type="button" data-sign="1" aria-pressed="false">Got money</button>
+      </div>
+      <div class="fields">
+        <input id="amount" class="num" inputmode="decimal" placeholder="0.00" aria-label="Amount" required>
+        <input id="label" placeholder="What was it?" aria-label="What was it" maxlength="120" required>
+      </div>
+      <div class="fields2">
+        <input id="date" type="date" aria-label="Date" required>
+        <button id="submitBtn" class="btn" type="submit">Add</button>
+      </div>
+      <div id="editActions" class="edit-actions" hidden>
+        <button id="deleteBtn" class="btn danger" type="button">Delete</button>
+        <button id="cancelBtn" class="btn ghost" type="button">Cancel</button>
+      </div>
+      <p id="formMsg" class="form-msg" role="alert"></p>
+    </form>
+
+    <section id="list" class="list" aria-live="polite"></section>
+
+    <div class="foot"><button id="forget" class="link" type="button">Lock this device</button></div>
+  </section>
+</main>
+
+<script>
+const SUPABASE_URL = "https://upmymrrfpwnqmnaclpyt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0QeYqlwAKI0Eit1nTB5vFw_PK1fxCaB";
+const POLL_MS = 15000;
+const KEY_STORE = "pocket.key";
+
+const $ = (id) => document.getElementById(id);
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const fmt = (n) => money.format(n);
+const dayFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+let key = null;
+let txs = [];
+let sign = -1;
+let editingId = null;
+let pollTimer = null;
+
+function store(op, v) {
+  try {
+    if (op === "get") return localStorage.getItem(KEY_STORE);
+    if (op === "set") localStorage.setItem(KEY_STORE, v);
+    if (op === "del") localStorage.removeItem(KEY_STORE);
+  } catch { /* storage blocked: the key lives only in memory for this visit */ }
+  return null;
+}
+
+async function rpc(fn, args = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ k: key, ...args }),
+  });
+  const body = res.status === 204 ? null : await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(body?.message || `HTTP ${res.status}`);
+    err.badKey = body?.code === "28000";
+    throw err;
+  }
+  return body;
+}
+
+function todayISO() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function setSync(state, text) {
+  const el = $("sync");
+  el.className = "sync" + (state ? " " + state : "");
+  el.textContent = text;
+}
+
+async function load({ quiet = false } = {}) {
+  if (!key) return;
+  if (!quiet) setSync("busy", "Syncing…");
+  try {
+    txs = await rpc("pocket_list");
+    render();
+    const t = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    setSync("", `Synced ${t}`);
+  } catch (e) {
+    if (e.badKey) return lock("That key didn't work. Paste it again.");
+    setSync("off", "Offline, retrying");
+  }
+}
+
+function render() {
+  const total = txs.reduce((s, t) => s + Number(t.amount), 0);
+  const bal = $("balance");
+  bal.textContent = fmt(total);
+  bal.classList.toggle("neg", total < 0);
+  document.title = `${fmt(total)} · Pocket`;
+
+  const month = todayISO().slice(0, 7);
+  const spentMonth = txs
+    .filter((t) => t.occurred_on.startsWith(month) && Number(t.amount) < 0)
+    .reduce((s, t) => s - Number(t.amount), 0);
+  $("sub").textContent = `Spent this month: ${fmt(spentMonth)}`;
+
+  // txs arrive newest first; walk oldest -> newest to get the balance after each entry
+  const after = new Map();
+  let run = 0;
+  for (let i = txs.length - 1; i >= 0; i--) {
+    run += Number(txs[i].amount);
+    after.set(txs[i].id, run);
+  }
+
+  const list = $("list");
+  list.textContent = "";
+  if (!txs.length) {
+    list.innerHTML = `<p class="empty">Nothing here yet. Add your first entry above.</p>`;
+    return;
+  }
+  const groups = new Map();
+  for (const t of txs) {
+    if (!groups.has(t.occurred_on)) groups.set(t.occurred_on, []);
+    groups.get(t.occurred_on).push(t);
+  }
+  for (const [day, items] of groups) {
+    const sec = document.createElement("div");
+    sec.className = "day";
+    const h = document.createElement("h2");
+    h.textContent = day === todayISO() ? "Today" : dayFmt.format(new Date(day + "T12:00:00"));
+    const rows = document.createElement("div");
+    rows.className = "rows";
+    for (const t of items) {
+      const amt = Number(t.amount);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tx" + (t.id === editingId ? " editing" : "");
+      b.setAttribute("aria-label", `Edit ${t.label}, ${fmt(amt)}`);
+      const what = document.createElement("span"); what.className = "what"; what.textContent = t.label;
+      const a = document.createElement("span"); a.className = "amt num" + (amt > 0 ? " pos" : ""); a.textContent = (amt > 0 ? "+" : "") + fmt(amt);
+      const af = document.createElement("span"); const v = after.get(t.id);
+      af.className = "after num" + (v < 0 ? " neg" : ""); af.textContent = `left ${fmt(v)}`;
+      b.append(what, a, af);
+      b.addEventListener("click", () => startEdit(t));
+      rows.append(b);
+    }
+    sec.append(h, rows);
+    list.append(sec);
+  }
+}
+
+function setSign(s) {
+  sign = s;
+  document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.sign) === s)));
+}
+
+function startEdit(t) {
+  editingId = t.id;
+  const amt = Number(t.amount);
+  setSign(amt < 0 ? -1 : 1);
+  $("amount").value = Math.abs(amt).toFixed(2);
+  $("label").value = t.label;
+  $("date").value = t.occurred_on;
+  $("submitBtn").textContent = "Save";
+  $("editActions").hidden = false;
+  $("formMsg").textContent = "";
+  render();
+  $("txForm").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function resetForm() {
+  editingId = null;
+  $("txForm").reset();
+  setSign(-1);
+  $("date").value = todayISO();
+  $("submitBtn").textContent = "Add";
+  $("editActions").hidden = true;
+  $("formMsg").textContent = "";
+  render();
+}
+
+function parseAmount(raw) {
+  const n = Number(String(raw).replace(/[$\s]/g, "").replace(",", "."));
+  return Number.isFinite(n) && n !== 0 ? Math.round(Math.abs(n) * 100) / 100 : null;
+}
+
+async function onSubmit(e) {
+  e.preventDefault();
+  const amount = parseAmount($("amount").value);
+  const label = $("label").value.trim();
+  if (!amount) { $("formMsg").textContent = "Enter an amount, like 9.99"; $("amount").focus(); return; }
+  if (!label) { $("formMsg").textContent = "Say what it was"; $("label").focus(); return; }
+  const args = { p_amount: sign * amount, p_label: label, p_on: $("date").value || todayISO() };
+  const btn = $("submitBtn");
+  btn.disabled = true;
+  try {
+    if (editingId) await rpc("pocket_update", { p_id: editingId, ...args });
+    else await rpc("pocket_add", args);
+    resetForm();
+    await load({ quiet: true });
+    $("amount").focus();
+  } catch (err) {
+    if (err.badKey) return lock("That key didn't work. Paste it again.");
+    $("formMsg").textContent = "Couldn't save. Check your connection and try again.";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function onDelete() {
+  if (!editingId) return;
+  const t = txs.find((x) => x.id === editingId);
+  if (!confirm(`Delete “${t?.label}” (${fmt(Number(t?.amount))})?`)) return;
+  try {
+    await rpc("pocket_delete", { p_id: editingId });
+    resetForm();
+    await load({ quiet: true });
+  } catch {
+    $("formMsg").textContent = "Couldn't delete. Try again.";
+  }
+}
+
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => { if (!document.hidden) load({ quiet: true }); }, POLL_MS);
+}
+
+function lock(msg = "") {
+  key = null;
+  store("del");
+  clearInterval(pollTimer);
+  $("home").hidden = true;
+  $("lock").hidden = false;
+  $("lockMsg").textContent = msg;
+  $("keyInput").value = "";
+  $("keyInput").focus();
+}
+
+async function unlock(k) {
+  key = k;
+  $("lock").hidden = true;
+  $("home").hidden = false;
+  resetForm();
+  await load();
+  if (key) { store("set", key); startPolling(); }
+}
+
+$("lockForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const k = $("keyInput").value.trim();
+  if (k) unlock(k);
+});
+$("txForm").addEventListener("submit", onSubmit);
+$("deleteBtn").addEventListener("click", onDelete);
+$("cancelBtn").addEventListener("click", resetForm);
+$("forget").addEventListener("click", () => lock());
+document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => setSign(Number(b.dataset.sign))));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load({ quiet: true }); });
+window.addEventListener("focus", () => load({ quiet: true }));
+
+const saved = store("get");
+if (saved) unlock(saved); else lock();
+</script>
+</body>
+</html>
