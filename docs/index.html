@@ -14,10 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap">
-<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="app.css?v=7">
 </head>
 <body>
 <main>
@@ -25,9 +22,9 @@
     <div id="lockPocket"></div>
     <h1>Open your Pocket</h1>
     <ol class="steps">
-      <li>On your Mac, click your balance in the menubar <span class="hint-inline">(the Pocket Sync app)</span>.</li>
-      <li>Click <b>Pair a device</b>. A 6-digit code appears.</li>
-      <li>Type that code here.</li>
+      <li><span>On a device that's already connected, open <b>Settings</b>. <span class="hint-inline">(On a Mac: Pocket → Settings → Sync.)</span></span></li>
+      <li><span>Choose <b>Pair a new device</b>. A 6-digit code appears.</span></li>
+      <li><span>Type that code here.</span></li>
     </ol>
     <form id="pairForm" autocomplete="off">
       <div class="fields2">
@@ -37,6 +34,19 @@
       <p id="lockMsg" class="form-msg" role="alert"></p>
       <p class="fine-print">Each code works once and expires after 10 minutes. This device then stays signed in.</p>
     </form>
+    <details class="alt">
+      <summary>Use your own server</summary>
+      <form id="serverForm" autocomplete="off">
+        <p id="serverNow" class="fine-print"></p>
+        <input id="serverUrl" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://your-project.supabase.co" aria-label="Server address">
+        <div class="fields2">
+          <input id="serverKey" autocapitalize="off" spellcheck="false" placeholder="Publishable key" aria-label="Publishable key">
+          <button class="btn subtle" type="submit">Use</button>
+        </div>
+        <p id="serverMsg" class="form-msg" role="alert"></p>
+        <p class="fine-print">Run Pocket on your own free Supabase project. <a href="https://github.com/orlandoascanio/pocket/blob/main/SELF-HOSTING.md">How it works</a>. <button id="serverReset" class="link" type="button" hidden>Back to the Pocket server</button></p>
+      </form>
+    </details>
     <details class="alt">
       <summary>I have a key instead</summary>
       <form id="lockForm">
@@ -71,40 +81,51 @@
 
     <div id="quick" class="quick" role="group" aria-label="Quick add"></div>
 
-    <form id="txForm" class="card" autocomplete="off">
-      <p id="formTitle" class="card-title">New entry</p>
-      <div class="seg" data-sign="-1" role="group" aria-label="Type">
-        <button type="button" data-sign="-1" aria-pressed="true"></button>
-        <button type="button" data-sign="1" aria-pressed="false"></button>
-      </div>
-      <div id="chips" class="chips" role="group" aria-label="How often">
-        <button type="button" data-cadence="once" aria-pressed="true">Once</button>
-        <button type="button" data-cadence="weekly" aria-pressed="false">Weekly</button>
-        <button type="button" data-cadence="biweekly" aria-pressed="false">2 weeks</button>
-        <button type="button" data-cadence="monthly" aria-pressed="false">Monthly</button>
-        <button type="button" data-cadence="yearly" aria-pressed="false">Yearly</button>
-      </div>
-      <div class="fields">
-        <input id="amount" class="num" inputmode="decimal" placeholder="0.00" aria-label="Amount" required>
-        <input id="label" placeholder="What was it?" aria-label="What was it" maxlength="120" required>
-      </div>
-      <div id="cats" class="cats" role="group" aria-label="Category"></div>
-      <div id="timesRow" class="reveal" inert>
-        <div><div class="times">
-          <label id="timesCap" class="cap" for="times">How many payments?</label>
-          <input id="times" class="num" type="number" inputmode="numeric" min="1" step="1" placeholder="Leave empty if it never ends">
-        </div></div>
-      </div>
-      <div class="fields2">
-        <div>
-          <label id="dateCap" class="cap" for="date">Date</label>
-          <input id="date" type="date" required>
+    <form id="txForm" class="card composer" autocomplete="off">
+      <div class="composer-top">
+        <p id="formTitle" class="card-title">New entry</p>
+        <div class="seg" data-sign="-1" role="group" aria-label="Type">
+          <button type="button" data-sign="-1" aria-pressed="true"></button>
+          <button type="button" data-sign="1" aria-pressed="false"></button>
         </div>
+      </div>
+      <label class="amount-field">
+        <span class="cur" aria-hidden="true">$</span>
+        <input id="amount" class="num" inputmode="decimal" placeholder="0.00" aria-label="Amount" required>
+      </label>
+      <div class="fields2">
+        <input id="label" placeholder="What was it?" aria-label="What was it" maxlength="120" required>
         <button id="submitBtn" class="btn" type="submit">Add</button>
       </div>
-      <div class="checks">
-        <label id="confirmRow" class="check" hidden><input id="confirmBox" type="checkbox"> Wait for me to confirm each payment arrived</label>
-        <label id="presetRow" class="check"><input id="presetBox" type="checkbox"> Also save as a quick-add button</label>
+      <div id="cats" class="cats" role="group" aria-label="Category"></div>
+      <button id="detailsBtn" class="details-btn" type="button" aria-expanded="false" aria-controls="details">
+        <span>Date &amp; repeat</span>
+        <span id="detailsSummary" class="details-sum num">Today · Once</span>
+      </button>
+      <div id="details" class="reveal" inert>
+        <div><div class="details-in">
+          <div id="chips" class="chips" role="group" aria-label="How often">
+            <button type="button" data-cadence="once" aria-pressed="true">Once</button>
+            <button type="button" data-cadence="weekly" aria-pressed="false">Weekly</button>
+            <button type="button" data-cadence="biweekly" aria-pressed="false">2 weeks</button>
+            <button type="button" data-cadence="monthly" aria-pressed="false">Monthly</button>
+            <button type="button" data-cadence="yearly" aria-pressed="false">Yearly</button>
+          </div>
+          <div class="detail-fields">
+            <div>
+              <label id="dateCap" class="cap" for="date">Date</label>
+              <input id="date" type="date" required>
+            </div>
+            <div id="timesRow" class="times-col" hidden>
+              <label id="timesCap" class="cap" for="times">How many payments?</label>
+              <input id="times" class="num" type="number" inputmode="numeric" min="1" step="1" placeholder="No end">
+            </div>
+          </div>
+          <div class="checks">
+            <label id="confirmRow" class="check" hidden><input id="confirmBox" type="checkbox"> Wait for me to confirm each payment arrived</label>
+            <label id="presetRow" class="check"><input id="presetBox" type="checkbox"> Also save as a quick-add button</label>
+          </div>
+        </div></div>
       </div>
       <div id="hintWrap" class="reveal" inert><div><p id="hint" class="hint"></p></div></div>
       <div id="editActions" class="reveal" inert>
@@ -126,7 +147,7 @@
 
     <div id="panel-activity" class="panel" role="tabpanel" aria-labelledby="tab-activity">
       <section id="waitingSec" class="section" hidden>
-        <div class="section-head"><h2>Waiting for you</h2><span class="meta">did it arrive?</span></div>
+        <div class="section-head"><h2>Waiting for you</h2><span class="meta">Did it arrive?</span></div>
         <div id="waiting" class="rows"></div>
       </section>
       <section class="section">
@@ -180,7 +201,7 @@
         <p id="delta" class="delta"></p>
       </section>
       <section class="section">
-        <div class="section-head"><h2>Where it went</h2><span class="meta">tap one to see the purchases</span></div>
+        <div class="section-head"><h2>Where it went</h2><span class="meta">Tap one to see its purchases</span></div>
         <div id="bars" class="rows bars"></div>
       </section>
     </div>
@@ -207,6 +228,7 @@
     <p class="lead">Leave the amount empty for things that cost something different each time.</p>
     <div id="presetList" class="rows"></div>
     <h3>This device</h3>
+    <p class="lead">Server: <b id="serverName"></b></p>
     <button id="forget" class="btn wide ghost" type="button">Lock this device</button>
   </div>
 </dialog>
@@ -232,6 +254,6 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastBtn" type="button"></button></div>
 
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

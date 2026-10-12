@@ -1,6 +1,7 @@
 "use strict";
-const SUPABASE_URL = "https://upmymrrfpwnqmnaclpyt.supabase.co";
-const SUPABASE_KEY = "sb_publishable_0QeYqlwAKI0Eit1nTB5vFw_PK1fxCaB";
+// The original Pocket server. Anyone can point Pocket at their own (see SELF-HOSTING.md).
+const DEFAULT_SERVER = { url: "https://upmymrrfpwnqmnaclpyt.supabase.co", key: "sb_publishable_0QeYqlwAKI0Eit1nTB5vFw_PK1fxCaB" };
+const SERVER_STORE = "pocket.server";
 const POLL_MS = 15000;
 const KEY_STORE = "pocket.key";
 const QUEUE_STORE = "pocket.queue";
@@ -321,25 +322,27 @@ Object.assign(ICONS, {
 
 // ---------- categories ----------
 const CATS = {
-  games:         { name: "Games",         icon: "game" },
-  subscriptions: { name: "Subscriptions", icon: "repeat" },
-  bills:         { name: "Bills",         icon: "bolt" },
-  apps:          { name: "Apps",          icon: "apps" },
-  food:          { name: "Food",          icon: "food" },
-  shopping:      { name: "Shopping",      icon: "bag" },
-  fun:           { name: "Fun",           icon: "spark" },
-  transport:     { name: "Transport",     icon: "bus" },
-  other:         { name: "Other",         icon: "dots" },
-  pay:           { name: "Pay",           icon: "wallet" },
-  gift:          { name: "Gift",          icon: "gift" },
-  refund:        { name: "Refund",        icon: "undo" },
-  otherin:       { name: "Other",         icon: "in" },
-  start:         { name: "Starting balance", icon: "wallet" },
+  games:         { name: "Games",         icon: "game",   hue: "purple" },
+  subscriptions: { name: "Subscriptions", icon: "repeat", hue: "blue" },
+  bills:         { name: "Bills",         icon: "bolt",   hue: "orange" },
+  apps:          { name: "Apps",          icon: "apps",   hue: "indigo" },
+  food:          { name: "Food",          icon: "food",   hue: "brown" },
+  shopping:      { name: "Shopping",      icon: "bag",    hue: "pink" },
+  fun:           { name: "Fun",           icon: "spark",  hue: "orange" },
+  transport:     { name: "Transport",     icon: "bus",    hue: "teal" },
+  other:         { name: "Other",         icon: "dots",   hue: "gray" },
+  pay:           { name: "Pay",           icon: "wallet", hue: "green" },
+  gift:          { name: "Gift",          icon: "gift",   hue: "green" },
+  refund:        { name: "Refund",        icon: "undo",   hue: "green" },
+  otherin:       { name: "Other",         icon: "in",     hue: "green" },
+  start:         { name: "Starting balance", icon: "wallet", hue: "green" },
 };
 const SPEND_CATS = ["games", "subscriptions", "bills", "apps", "food", "shopping", "fun", "transport", "other"];
 const IN_CATS = ["pay", "gift", "refund", "otherin"];
 const catName = (c) => CATS[c]?.name || "Uncategorized";
 const catIcon = (c, amount) => CATS[c]?.icon || (amount > 0 ? "in" : "out");
+// Each category keeps one hue everywhere; red is saved for "below zero".
+const catHue = (c, amount) => CATS[c]?.hue || (amount > 0 ? "green" : "gray");
 
 // ---------- what the pocket says ----------
 // Pools by context; each is drawn like a shuffled deck, so lines don't repeat until it runs out.
@@ -408,11 +411,34 @@ let proj = null;
 let chartDirty = true;
 let pairTimer = 0, pairWatch = 0;
 
+// ---------- server ----------
+function cleanServer(url, key) {
+  let u = String(url || "").trim().replace(/\/+$/, "");
+  if (u && !/^https?:\/\//.test(u)) u = "https://" + u;
+  try { const p = new URL(u); if (!/^https?:$/.test(p.protocol) || !p.host) return null; u = p.origin; } catch { return null; }
+  key = String(key || "").trim();
+  return key.length >= 20 ? { url: u, key } : null;
+}
+function readServer() {
+  try { const s = JSON.parse(ls.get(SERVER_STORE) || "null"); return cleanServer(s?.url, s?.key) || DEFAULT_SERVER; }
+  catch { return DEFAULT_SERVER; }
+}
+let server = readServer();
+const isDefaultServer = () => server.url === DEFAULT_SERVER.url;
+// Switching servers signs this device out: its key and unsent entries belong to the old one.
+function setServer(next) {
+  next = next || DEFAULT_SERVER;
+  if (next.url === server.url && next.key === server.key) return;
+  server = next;
+  if (next.url === DEFAULT_SERVER.url) ls.del(SERVER_STORE); else ls.set(SERVER_STORE, JSON.stringify(next));
+  ls.del(KEY_STORE); ls.del(QUEUE_STORE);
+}
+
 // ---------- network ----------
 async function rpc(fn, args = {}, { noKey = false } = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+  const res = await fetch(`${server.url}/rest/v1/rpc/${fn}`, {
     method: "POST",
-    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    headers: { apikey: server.key, "Content-Type": "application/json" },
     body: JSON.stringify(noKey ? args : { k: key, ...args }),
   });
   const body = res.status === 204 ? null : await res.json().catch(() => null);
@@ -696,11 +722,12 @@ function renderChart({ animate = true } = {}) {
 }
 
 // ---------- rendering ----------
-function row({ id, title, iconName, tone, amount, noteLeft, noteRight, noteRightNeg, onClick, active, isFresh, tag, tagCls, cls }) {
+function row({ id, title, iconName, hue, amount, noteLeft, noteRight, noteRightNeg, onClick, active, isFresh, tag, tagCls, cls }) {
   const r = mk(onClick ? "button" : "div", "tx" + (active ? " editing" : "") + (isFresh ? " fresh" : "") + (cls ? " " + cls : ""));
   if (id) r.dataset.id = id;
   if (onClick) { r.type = "button"; r.addEventListener("click", onClick); }
-  const ico = mk("span", "ico" + (tone ? " " + tone : ""));
+  const ico = mk("span", "ico");
+  ico.dataset.hue = hue || "gray";
   ico.innerHTML = icon(iconName);
   const what = mk("span", "what", title);
   if (tag) what.append(mk("span", "tag" + (tagCls ? " " + tagCls : ""), tag));
@@ -745,6 +772,7 @@ function renderQuick() {
     const b = mk("button", "qchip" + (p.sign > 0 ? " in" : ""));
     b.type = "button";
     const qi = mk("span", "qi");
+    qi.dataset.hue = catHue(p.category, p.sign);
     qi.innerHTML = icon(catIcon(p.category, p.sign));
     b.append(qi, mk("span", null, p.label));
     if (p.amount != null) b.append(mk("span", "qa", (p.sign > 0 ? "+" : "") + fmt(p.amount)));
@@ -769,7 +797,7 @@ function occRow(u, { actionable, balanceAfter, startOpen = false }) {
   const rowEl = row({
     title: u.label,
     iconName: u.overdue ? "clock" : catIcon(u.category, amt),
-    tone: amt > 0 ? "in" : "",
+    hue: u.overdue ? "orange" : catHue(u.category, amt),
     amount: amt,
     tag: u.overdue ? "waiting" : null, tagCls: "due",
     noteLeft: u.overdue ? `Was due ${due}` : due,
@@ -886,7 +914,11 @@ function renderHistory() {
   }
   for (const [day, items] of groups) {
     const sec = mk("div", "day");
-    sec.append(mk("h3", "", day === todayISO() ? "Today" : dayFmt.format(asDate(day))));
+    const net = Math.round(items.reduce((s, t) => s + Number(t.amount), 0) * 100) / 100;
+    const head = mk("div", "day-head");
+    head.append(mk("h3", "", day === todayISO() ? "Today" : day === addDays(todayISO(), -1) ? "Yesterday" : dayFmt.format(asDate(day))),
+                mk("span", "day-net num" + (net > 0 ? " pos" : ""), signed(net)));
+    sec.append(head);
     const rows = mk("div", "rows");
     for (const t of items) {
       const amt = Number(t.amount), v = after.get(t.id);
@@ -894,7 +926,7 @@ function renderHistory() {
         id: t.id,
         title: t.label,
         iconName: catIcon(t.category, amt),
-        tone: amt > 0 ? "in" : "out",
+        hue: catHue(t.category, amt),
         amount: amt,
         noteLeft: (t.category ? catName(t.category) : "") + (t.recurring_id ? (t.category ? " · " : "") + "Automatic" : ""),
         noteRight: `left ${fmt(v)}`,
@@ -925,7 +957,7 @@ function renderPlan() {
   box.textContent = "";
   const future = p.ev.filter((e) => !e.overdue);
   $("upcomingSec").hidden = !future.length;
-  $("upcomingMeta").textContent = `next ${RANGE_NAME[range]}`;
+  $("upcomingMeta").textContent = `Next ${RANGE_NAME[range]}`;
   const firsts = new Set(upcoming.filter((u) => u.overdue).map((u) => u.recurring_id));
   const limit = showAllUpcoming ? future.length : 8;
   future.slice(0, limit).forEach((e) => {
@@ -957,7 +989,7 @@ function renderPlan() {
       id: r.id,
       title: r.label,
       iconName: r.once ? "clock" : catIcon(r.category, amt) === "in" || !r.category ? "repeat" : catIcon(r.category, amt),
-      tone: amt > 0 ? "in" : "",
+      hue: catHue(r.category, amt),
       amount: amt,
       tag: !r.active ? "paused" : !r.auto ? "you confirm" : null,
       cls: r.active ? "" : "paused",
@@ -1042,9 +1074,12 @@ function renderInsights() {
     const b = mk("button", "bar-row");
     b.type = "button";
     const name = mk("span", "bar-name");
-    name.innerHTML = icon(catIcon(c, -1));
-    name.append(catName(c));
+    const ico = mk("span", "ico");
+    ico.dataset.hue = catHue(c, -1);
+    ico.innerHTML = icon(catIcon(c, -1));
+    name.append(ico, catName(c));
     const track = mk("span", "bar-track");
+    track.dataset.hue = catHue(c, -1);
     const fill = mk("span", "bar-fill");
     fill.style.width = `${Math.max(1.5, (v.sum / max) * 100)}%`;
     fill.style.animationDelay = `${Math.min(i, 8) * 50}ms`;
@@ -1103,6 +1138,7 @@ function renderCats() {
     const b = mk("button", "cat");
     b.type = "button";
     b.setAttribute("aria-pressed", String(c === cat));
+    b.dataset.hue = CATS[c].hue;
     b.innerHTML = icon(CATS[c].icon);
     b.append(CATS[c].name);
     b.addEventListener("click", () => { cat = cat === c ? null : c; catTouched = true; renderCats(); });
@@ -1132,11 +1168,19 @@ function updatePreview() {
   if (p !== pk.preview) { pk.preview = p; applyFace(); }
 }
 
+function setDetails(open) {
+  setOpen($("details"), open);
+  $("detailsBtn").setAttribute("aria-expanded", String(open));
+}
+
 function updateFormText() {
   const repeating = cadence !== "once";
   const editingRule = editing?.kind === "rule";
-  const future = !repeating && ($("date").value || todayISO()) > todayISO();
-  setOpen($("timesRow"), repeating && editing?.kind !== "tx");
+  const date = $("date").value || todayISO();
+  const future = !repeating && date > todayISO();
+  $("timesRow").hidden = !(repeating && editing?.kind !== "tx");
+  const when = date === todayISO() ? "Today" : date === addDays(todayISO(), -1) ? "Yesterday" : shortFmt.format(asDate(date));
+  $("detailsSummary").textContent = `${when} · ${repeating ? CADENCE[cadence].name : "Once"}`;
   $("timesCap").textContent = editingRule ? "Payments left (including the next one)" : "How many payments?";
   $("label").placeholder = repeating
     ? (sign < 0 ? "e.g. Netflix, rent" : "e.g. Paycheck")
@@ -1151,11 +1195,11 @@ function updateFormText() {
   let hint = "";
   if (repeating && !editing) {
     hint = $("confirmBox").checked
-      ? `Each ${CADENCE[cadence].unit} it'll wait in Activity until you tap "Got it", so late or smaller payments are easy to log. Set how many payments if it ends, or leave it empty.`
-      : `Logged automatically every ${CADENCE[cadence].unit} from this date. Set how many payments if it ends (like 3 freelance payments), or leave it empty.`;
+      ? `Each ${CADENCE[cadence].unit} it waits in Activity until you tap “Got it”, so you can log the real amount.`
+      : `Counts automatically every ${CADENCE[cadence].unit}, starting on this date.`;
   } else if (future && editing?.kind !== "tx") {
-    hint = `This is in the future. It shows in Plan until ${dayFmt.format(asDate($("date").value))}` +
-      ($("confirmBox").checked ? `, then waits for you to confirm it arrived.` : `, then counts automatically.`);
+    hint = `Shows in Plan until ${dayFmt.format(asDate($("date").value))}` +
+      ($("confirmBox").checked ? `, then waits for you to confirm it.` : `, then counts automatically.`);
   }
   if (hint) $("hint").textContent = hint;
   setOpen($("hintWrap"), !!hint);
@@ -1169,6 +1213,7 @@ function updateFormText() {
 function enterEdit(title, deleteLabel) {
   $("formTitle").textContent = title;
   $("submitBtn").textContent = "Save";
+  setDetails(editing?.kind === "rule" || $("date").value !== todayISO());
   $("deleteBtn").textContent = deleteLabel;
   setOpen($("editActions"), true);
   $("txForm").classList.add("is-editing");
@@ -1225,6 +1270,7 @@ function resetForm() {
   $("date").value = todayISO();
   if (!$("submitBtn").dataset.busy) $("submitBtn").textContent = "Add";
   setOpen($("editActions"), false);
+  setDetails(false);
   $("formMsg").textContent = "";
   updateFormText();
   updatePreview();
@@ -1510,7 +1556,7 @@ async function startPairing() {
         btn.disabled = false;
         return;
       }
-      $("pairNote").textContent = `On the new device, open orlandoascanio.github.io/pocket and type this code. Expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}.`;
+      $("pairNote").textContent = `On the new device, open ${isDefaultServer() ? "orlandoascanio.github.io/pocket" : "Pocket with “Use your own server” set to " + new URL(server.url).host} and type this code. Expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}.`;
     };
     clearInterval(pairTimer); clearInterval(pairWatch);
     tick();
@@ -1623,6 +1669,7 @@ function renderPresetList() {
 }
 
 function openSettings() {
+  $("serverName").textContent = isDefaultServer() ? "Pocket" : new URL(server.url).host;
   $("pairBox").hidden = true;
   $("pairStart").disabled = false;
   $("pairStart").textContent = "Pair a new device";
@@ -1658,8 +1705,16 @@ function lock(msg = "") {
   $("lockMsg").textContent = msg;
   $("keyInput").value = "";
   $("pairCode").value = "";
+  showServer();
   $("pairCode").focus();
   if (msg) shake($("pairForm"));
+}
+
+function showServer() {
+  $("serverNow").textContent = isDefaultServer() ? "Using the Pocket server." : `Using ${new URL(server.url).host}.`;
+  $("serverUrl").value = isDefaultServer() ? "" : server.url;
+  $("serverKey").value = isDefaultServer() ? "" : server.key;
+  $("serverReset").hidden = isDefaultServer();
 }
 
 async function unlock(k) {
@@ -1778,6 +1833,17 @@ $("txForm").addEventListener("focusin", (e) => {
 $("txForm").addEventListener("focusout", () => { pk.focusLook = false; look(0, 0); });
 
 $("pairForm").addEventListener("submit", onPair);
+$("serverForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const next = cleanServer($("serverUrl").value, $("serverKey").value);
+  if (!next) { $("serverMsg").textContent = "Enter the server address and its publishable key."; return; }
+  $("serverMsg").textContent = "";
+  setServer(next);
+  showServer();
+  $("lockMsg").textContent = "";
+  $("pairCode").focus();
+});
+$("serverReset").addEventListener("click", () => { setServer(DEFAULT_SERVER); showServer(); });
 $("pairCode").addEventListener("input", () => {
   const d = $("pairCode").value.replace(/\D/g, "").slice(0, 6);
   $("pairCode").value = d.length > 3 ? `${d.slice(0, 3)} ${d.slice(3)}` : d;
@@ -1791,6 +1857,7 @@ $("txForm").addEventListener("submit", onSubmit);
 $("deleteBtn").addEventListener("click", onDelete);
 $("pauseBtn").addEventListener("click", onPause);
 $("cancelBtn").addEventListener("click", resetForm);
+$("detailsBtn").addEventListener("click", () => setDetails(!$("details").classList.contains("open")));
 $("forget").addEventListener("click", () => { $("settings").close(); lock(); });
 $("settingsBtn").addEventListener("click", openSettings);
 $("pairStart").addEventListener("click", startPairing);
@@ -1835,7 +1902,7 @@ scheduleBlink();
 
 // Browsers sometimes keep an old copy of this page. Ask for the current version (never cached)
 // and reload into it when it changed, so nobody gets stuck on an old release.
-const APP_VERSION = "6";
+const APP_VERSION = "7";
 async function checkForUpdate() {
   try {
     const res = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
@@ -1849,5 +1916,19 @@ async function checkForUpdate() {
 checkForUpdate();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
 
+// A link from Pocket for Mac can carry the server and a pairing code: #server=…&apikey=…&code=…
+const linked = new URLSearchParams(location.hash.slice(1));
+let linkedCode = null;
+if (linked.has("server") || linked.has("code")) {
+  const next = linked.has("server") ? cleanServer(linked.get("server"), linked.get("apikey")) : null;
+  if (next && (next.url !== server.url || next.key !== server.key)) setServer(next);
+  linkedCode = (linked.get("code") || "").replace(/\D/g, "").slice(0, 6) || null;
+  history.replaceState(null, "", location.pathname + location.search);
+}
+
 const saved = ls.get(KEY_STORE);
-if (saved) unlock(saved); else lock();
+if (saved && !linkedCode) unlock(saved);
+else {
+  lock();
+  if (linkedCode) { $("pairCode").value = `${linkedCode.slice(0, 3)} ${linkedCode.slice(3)}`; $("pairForm").querySelector("button").focus(); }
+}

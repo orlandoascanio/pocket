@@ -8,6 +8,13 @@ enum Frequency: String, CaseIterable, Identifiable {
     var name: String { self == .once ? "Once" : self == .biweekly ? "2 weeks" : cadence!.name }
 }
 
+struct EntryDraft: Equatable {
+    var spent: Bool
+    var amount: String
+    var label: String
+    var category: String?
+}
+
 /// Form state for adding or editing an entry or a repeating payment.
 @MainActor
 final class EditorState: ObservableObject {
@@ -43,6 +50,7 @@ final class EditorState: ObservableObject {
     @Published var error: String?
     @Published var saved = 0
     @Published var focusAmount = 0
+    @Published var showDetails = false
 
     weak var store: Store?
 
@@ -66,10 +74,12 @@ final class EditorState: ObservableObject {
         confirmTouched = false
         savePreset = false
         error = nil
+        showDetails = false
     }
 
     func load(_ e: Entry) {
         reset()
+        showDetails = true
         mode = .entry(e)
         spent = e.cents < 0
         amount = Money.edit(e.cents)
@@ -81,6 +91,7 @@ final class EditorState: ObservableObject {
 
     func load(_ r: Rule) {
         reset()
+        showDetails = true
         mode = .rule(r)
         spent = r.cents < 0
         frequency = r.isOnce ? .once : Frequency(rawValue: r.cadence.rawValue) ?? .monthly
@@ -104,6 +115,19 @@ final class EditorState: ObservableObject {
         focusAmount += 1
     }
 
+    var draft: EntryDraft { EntryDraft(spent: spent, amount: amount, label: label, category: category) }
+
+    func load(_ draft: EntryDraft) {
+        reset()
+        spent = draft.spent
+        amount = draft.amount
+        label = draft.label
+        category = draft.category
+        categoryTouched = draft.category != nil
+        showDetails = true
+        focusAmount += 1
+    }
+
     @discardableResult
     func save() -> Bool {
         guard let store else { return false }
@@ -117,27 +141,30 @@ final class EditorState: ObservableObject {
             return false
         }
         let signed = spent ? -cents : cents
+        let success: Bool
         switch mode {
         case .entry(var e):
             e.cents = signed
             e.label = l
             e.day = day
             e.category = category
-            store.updateEntry(e)
+            success = store.updateEntry(e)
         case .rule(let r):
-            store.updateRule(r.id, cents: signed, label: l, cadence: frequency.cadence ?? .monthly, next: day,
+            success = store.updateRule(r.id, cents: signed, label: l, cadence: frequency.cadence ?? .monthly, next: day,
                              left: frequency == .once ? 1 : count, category: category, auto: !confirm)
         case .new:
             if isPlanned {
                 // A one-time entry in the future is a rule with a single payment, so it counts on its day.
-                store.addRule(Rule(cents: signed, label: l, cadence: frequency.cadence ?? .monthly, anchor: day,
+                success = store.addRule(Rule(cents: signed, label: l, cadence: frequency.cadence ?? .monthly, anchor: day,
                                    total: frequency == .once ? 1 : count, auto: !confirm, category: category))
             } else {
-                store.addEntry(cents: signed, label: l, day: day, category: category)
-                if savePreset {
-                    store.savePreset(Preset(label: l, cents: cents, sign: spent ? -1 : 1, category: category))
-                }
+                let preset = savePreset ? Preset(label: l, cents: cents, sign: spent ? -1 : 1, category: category) : nil
+                success = store.addEntry(cents: signed, label: l, day: day, category: category, preset: preset) != nil
             }
+        }
+        guard success else {
+            error = "Couldn't save. Your entry is still here; try again."
+            return false
         }
         reset()
         saved += 1
@@ -146,7 +173,7 @@ final class EditorState: ObservableObject {
     }
 }
 
-/// The add / edit form.
+/// The full add / edit form, shown as a sheet: what, when, how often, and whether to confirm.
 struct EntryEditor: View {
     @EnvironmentObject var store: Store
     @ObservedObject var state: EditorState
@@ -159,133 +186,105 @@ struct EntryEditor: View {
     private var categories: [PocketCore.Category] { state.spent ? Categories.spending : Categories.income }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(title).font(.display(15, .semibold))
-                Spacer()
-                if state.mode != .new || onClose != nil {
-                    Button("Cancel") { state.reset(); onClose?() }
-                        .buttonStyle(.link)
-                        .keyboardShortcut(.cancelAction)
-                }
-            }
-
-            Picker("Type", selection: $state.spent) {
-                Label("Spent", systemImage: "minus").tag(true)
-                Label("Got money", systemImage: "plus").tag(false)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            if !state.editingEntry {
-                HStack(spacing: 6) {
-                    ForEach(Frequency.allCases) { f in
-                        Chip(title: f.name, on: state.frequency == f) { state.frequency = f }
+        VStack(spacing: 0) {
+            Text(title).font(.headline).padding(.top, 18)
+            Form {
+                Section {
+                    Picker("Type", selection: $state.spent) {
+                        Text("Spent").tag(true)
+                        Text("Got money").tag(false)
                     }
+                    .pickerStyle(.segmented)
+                    TextField("Amount", text: $state.amount, prompt: Text(store.money.placeholder))
+                        .monospacedDigit()
+                        .focused($focus, equals: .amount)
+                        .onSubmit { focus = .label }
+                    TextField("Description", text: $state.label, prompt: Text(placeholder))
+                        .focused($focus, equals: .label)
+                        .onSubmit { state.save() }
                 }
-            }
-
-            HStack(spacing: 8) {
-                TextField("0.00", text: $state.amount)
-                    .frame(width: 110)
-                    .focused($focus, equals: .amount)
-                    .onSubmit { focus = .label }
-                TextField(placeholder, text: $state.label)
-                    .focused($focus, equals: .label)
-                    .onSubmit { state.save() }
-            }
-            .textFieldStyle(.roundedBorder)
-            .controlSize(.large)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(categories) { c in
-                        Chip(title: c.name, symbol: c.symbol, on: state.category == c.id) {
-                            state.category = state.category == c.id ? nil : c.id
-                            state.categoryTouched = true
+                Section {
+                    DatePicker(dateCaption, selection: $state.date, displayedComponents: .date)
+                    Picker("Category", selection: Binding(get: { state.category }, set: {
+                        state.category = $0
+                        state.categoryTouched = true
+                    })) {
+                        Text("None").tag(String?.none)
+                        Divider()
+                        ForEach(categories) { Label($0.name, systemImage: $0.symbol).tag(Optional($0.id)) }
+                    }
+                    if !state.editingEntry {
+                        Picker("Repeat", selection: $state.frequency) {
+                            ForEach(Frequency.allCases) { Text($0 == .biweekly ? "Every 2 weeks" : $0.name).tag($0) }
+                        }
+                        if state.frequency != .once {
+                            TextField(state.editingRule != nil ? "Payments left" : "Number of payments", text: $state.times, prompt: Text("No end"))
+                                .monospacedDigit()
                         }
                     }
+                } footer: {
+                    if let hint { Text(hint).font(.caption).foregroundStyle(.secondary) }
                 }
-                .padding(.vertical, 1)
-            }
-
-            if state.frequency != .once && !state.editingEntry {
-                HStack(spacing: 8) {
-                    Text(state.editingRule != nil ? "Payments left (including the next one)" : "How many payments?")
-                        .font(.caption).foregroundStyle(.secondary)
-                    TextField("No end", text: $state.times)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                    Text("Leave empty if it never ends").font(.caption).foregroundStyle(.tertiary)
+                if state.isPlanned && !state.editingEntry {
+                    Section {
+                        Toggle(state.spent ? "Confirm each payment" : "Confirm when money arrives",
+                               isOn: Binding(get: { state.confirm }, set: { state.confirm = $0; state.confirmTouched = true }))
+                    } footer: {
+                        Text(state.confirm ? "Waits in Overview until you confirm the real amount and date." : "Counts automatically on its date.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                if state.mode == .new && !state.isPlanned {
+                    Section {
+                        Toggle("Save as a quick-add button", isOn: $state.savePreset)
+                    } footer: {
+                        Text("Quick-add buttons sit above the entry field. ⌘1 to ⌘9 use the first nine.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
-
+            .formStyle(.grouped)
+            .scrollDisabled(true)
+            if let error = state.error {
+                Text(error).font(.callout).foregroundStyle(Palette.negative)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+            }
             HStack(spacing: 8) {
-                Text(dateCaption).font(.caption).foregroundStyle(.secondary)
-                DatePicker("", selection: $state.date, displayedComponents: .date)
-                    .labelsHidden()
-                    .datePickerStyle(.field)
-                Spacer()
-                if state.saved > 0 {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Palette.accent)
-                        .symbolEffect(.bounce, value: state.saved)
-                }
-                Button(buttonTitle) { state.save() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .keyboardShortcut(.defaultAction)
-            }
-
-            if state.isPlanned && !state.editingEntry {
-                Toggle("Wait for me to confirm each payment arrived", isOn: Binding(
-                    get: { state.confirm }, set: { state.confirm = $0; state.confirmTouched = true }))
-                    .toggleStyle(.checkbox)
-            }
-            if state.mode == .new && !state.isPlanned {
-                Toggle("Also save as a quick-add button", isOn: $state.savePreset).toggleStyle(.checkbox)
-            }
-            if let hint {
-                Text(hint).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-
-            if state.mode != .new {
-                HStack(spacing: 8) {
-                    Button(role: .destructive) { confirmDelete = true } label: { Text(deleteTitle) }
-                    if let r = state.editingRule, !r.isOnce {
-                        Button(r.active ? "Pause" : "Resume") {
-                            store.setActive(r.id, !r.active)
+                if state.mode != .new {
+                    Button("\(deleteTitle)…", role: .destructive) { confirmDelete = true }
+                    if let rule = state.editingRule, !rule.isOnce {
+                        Button(rule.active ? "Pause" : "Resume") {
+                            guard store.setActive(rule.id, !rule.active) else { return }
                             state.reset()
                             onClose?()
                         }
                     }
                 }
-                .confirmationDialog(deleteQuestion, isPresented: $confirmDelete) {
-                    Button(deleteTitle, role: .destructive) { performDelete() }
-                } message: {
-                    Text(deleteMessage)
-                }
+                Spacer()
+                Button("Cancel") { state.reset(); onClose?() }.keyboardShortcut(.cancelAction)
+                Button(buttonTitle) { state.save() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(Money.parse(state.amount) == nil)
             }
-
-            if let e = state.error {
-                Text(e).font(.callout).foregroundStyle(Palette.negative)
-            }
+            .padding(.horizontal, 20).padding(.bottom, 18).padding(.top, 4)
         }
-        .animation(.snappy(duration: 0.25), value: state.frequency)
-        .animation(.snappy(duration: 0.25), value: state.isPlanned)
+        .confirmationDialog(deleteQuestion, isPresented: $confirmDelete) {
+            Button(deleteTitle, role: .destructive) { performDelete() }
+        } message: { Text(deleteMessage) }
         .onChange(of: state.focusAmount) { _, _ in focus = .amount }
-        .onAppear { state.store = store }
+        .onAppear { state.store = store; if state.mode == .new { focus = .amount } }
     }
 
     private var title: String {
         switch state.mode {
         case .new:
-            if state.frequency != .once { return state.spent ? "New subscription or bill" : "New repeating income" }
-            if state.isFuture { return state.spent ? "Planned payment" : "Expected money" }
-            return "New entry"
-        case .entry: return "Edit entry"
-        case .rule(let r): return r.isOnce ? "Edit expected payment" : "Edit repeating"
+            if state.frequency != .once { return state.spent ? "New Subscription or Bill" : "New Repeating Income" }
+            if state.isFuture { return state.spent ? "New Planned Payment" : "New Expected Money" }
+            return "New Entry"
+        case .entry: return "Edit Entry"
+        case .rule(let r): return r.isOnce ? "Edit Expected Payment" : "Edit Repeating Payment"
         }
     }
 
@@ -302,22 +301,14 @@ struct EntryEditor: View {
 
     private var buttonTitle: String {
         if state.mode != .new { return "Save" }
-        if state.frequency != .once { return "Add repeating" }
-        return state.isFuture ? (state.spent ? "Add planned" : "Add expected") : "Add"
+        if state.frequency != .once { return "Add Repeating" }
+        return state.isFuture ? (state.spent ? "Add Planned" : "Add Expected") : (state.spent ? "Add Spending" : "Add Money In")
     }
 
     private var hint: String? {
         guard state.mode == .new else { return nil }
-        if state.frequency != .once {
-            let unit = state.frequency.cadence!.unit
-            return state.confirm
-                ? "Each \(unit) it waits in Overview until you click “Got it”, so late or smaller payments are easy to log."
-                : "Logged automatically every \(unit) from this date."
-        }
-        if state.isFuture {
-            return "This is in the future. It shows in Plan until then"
-                + (state.confirm ? ", then waits for you to confirm it arrived." : ", then counts automatically.")
-        }
+        if state.frequency != .once { return "Leave the number of payments empty if it never ends." }
+        if state.isFuture { return "Shows in Plan until its date." }
         return nil
     }
 
@@ -346,8 +337,8 @@ struct EntryEditor: View {
 
     private func performDelete() {
         switch state.mode {
-        case .entry(let e): store.deleteEntry(e.id)
-        case .rule(let r): store.removeRule(r.id)
+        case .entry(let e): guard store.deleteEntry(e.id) else { return }
+        case .rule(let r): guard store.removeRule(r.id) else { return }
         case .new: break
         }
         state.reset()

@@ -22,7 +22,7 @@ BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/Pocket
 rm -rf dist
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Pocket"
-iconutil -c icns ../menubar/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
+iconutil -c icns AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

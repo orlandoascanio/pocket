@@ -11,8 +11,9 @@ struct PlanView: View {
     var body: some View {
         let p = store.projection
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 24) {
                 header(p)
+                SaveFailureView()
                 Card {
                     ForecastChart(projection: p, money: store.money)
                         .frame(height: 240)
@@ -22,7 +23,7 @@ struct PlanView: View {
                 repeating
             }
             .frame(maxWidth: 760)
-            .padding(28)
+            .padding(.horizontal, 32).padding(.vertical, 24)
             .frame(maxWidth: .infinity)
         }
         .confirmationDialog("Stop “\(pendingStop?.label ?? "")”?", isPresented: Binding(
@@ -39,7 +40,7 @@ struct PlanView: View {
         return HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(t.lead) \(t.strong)")
-                    .font(.display(28, .bold))
+                    .font(.display(26, .semibold)).tracking(-0.3)
                     .foregroundStyle(p.runway.warn ? Palette.negative : Color.primary)
                 Text("On \(d(p.end)): \(store.money.string(p.endBalance))"
                      + (p.lowBalance < p.start ? " · lowest \(store.money.string(p.lowBalance)) on \(d(p.lowDay))" : ""))
@@ -63,12 +64,12 @@ struct PlanView: View {
         let steps = p.steps.filter { !$0.occurrence.overdue }
         if !steps.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                SectionTitle(title: "Coming up", meta: "next \(rangeName(store.range))")
+                SectionTitle(title: "Coming up", meta: "Next \(rangeName(store.range))")
                 Card {
                     ForEach(showAll ? steps : Array(steps.prefix(10))) { s in
                         let o = s.occurrence
                         HStack {
-                            MoneyRow(symbol: Categories.symbol(o.category, cents: o.cents), title: o.label,
+                            MoneyRow(category: o.category, title: o.label,
                                      note: o.day.localDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
                                      cents: o.cents, rightNote: "then \(store.money.string(s.after))", rightNegative: s.after < 0)
                             if o.isNext { NextActions(occurrence: o) }
@@ -109,7 +110,7 @@ struct PlanView: View {
                             ? "One time · \(r.next.localDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))"
                             : "\(r.cadence.name) · next \(r.next.localDate.formatted(.dateTime.month(.abbreviated).day()))"
                                 + (r.remaining.map { $0 == 1 ? " · last one" : " · \($0) left" } ?? "")
-                        MoneyRow(symbol: r.isOnce ? "clock" : "repeat", title: r.label,
+                        MoneyRow(category: r.category, symbol: r.isOnce ? "clock" : (r.category == nil ? "repeat" : nil), title: r.label,
                                  tag: !r.active ? "paused" : !r.auto ? "you confirm" : nil,
                                  note: when, cents: r.cents,
                                  rightNote: r.isOnce ? "expected" : "per \(r.cadence.unit)", dimmed: !r.active)
@@ -133,6 +134,7 @@ struct NextActions: View {
     @State private var open = false
     @State private var amount = ""
     @State private var date = Date()
+    @State private var error: String?
 
     var body: some View {
         Button(occurrence.cents > 0 ? "Got it…" : "Paid…") { open = true }
@@ -144,23 +146,24 @@ struct NextActions: View {
                         .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     HStack {
                         TextField("Amount", text: $amount).textFieldStyle(.roundedBorder).frame(width: 100)
-                        DatePicker("", selection: $date, displayedComponents: .date).labelsHidden()
+                        DatePicker("Actual payment date", selection: $date, in: ...Date(), displayedComponents: .date).labelsHidden()
                     }
                     HStack {
-                        Button("Skip this one") { store.skip(occurrence); open = false }
+                        Button("Skip this one") { if store.skip(occurrence) { open = false } else { error = "Couldn't save. Try again." } }
                         Spacer()
                         Button(occurrence.cents > 0 ? "Got it" : "Paid") {
-                            let c = Money.parse(amount) ?? abs(occurrence.cents)
-                            store.settle(occurrence, cents: occurrence.cents < 0 ? -c : c, on: Day(date))
+                            guard let c = Money.parse(amount) else { error = "Enter the actual amount, like 9.99."; return }
+                            guard store.settle(occurrence, cents: occurrence.cents < 0 ? -c : c, on: Day(date)) else { error = "Couldn't save. Try again."; return }
                             open = false
                         }
                         .buttonStyle(.borderedProminent)
                         .keyboardShortcut(.defaultAction)
                     }
+                    if let error { Text(error).font(.caption).foregroundStyle(Palette.negative) }
                 }
                 .padding(16)
                 .frame(width: 300)
-                .onAppear { amount = Money.edit(occurrence.cents); date = Date() }
+                .onAppear { amount = Money.edit(occurrence.cents); date = Date(); error = nil }
             }
     }
 }

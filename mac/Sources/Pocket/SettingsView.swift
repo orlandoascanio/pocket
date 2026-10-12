@@ -19,6 +19,8 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            SyncSection()
+
             Section("Money") {
                 Picker("Currency", selection: Binding(get: { store.ledger.currency }, set: { store.setCurrency($0) })) {
                     ForEach(Self.currencies, id: \.self) { code in
@@ -29,26 +31,24 @@ struct SettingsView: View {
 
             Section {
                 ForEach(store.ledger.presets) { p in PresetRow(preset: p) }
-                    .onMove { store.movePresets(from: $0, to: $1) }
+                    .onMove(perform: store.connected ? nil : { store.movePresets(from: $0, to: $1) })
                 HStack {
-                    Button("Add a spending button") {
-                        store.savePreset(Preset(label: "New button", cents: nil, sign: -1, category: nil))
+                    Spacer()
+                    Menu("Add Button") {
+                        Button("Spending") { store.savePreset(Preset(label: "New button", cents: nil, sign: -1, category: nil)) }
+                        Button("Money In") { store.savePreset(Preset(label: "Got paid", cents: nil, sign: 1, category: "pay")) }
                     }
-                    Button("Add a money-in button") {
-                        store.savePreset(Preset(label: "Got paid", cents: nil, sign: 1, category: "pay"))
-                    }
+                    .fixedSize()
                 }
             } header: {
                 Text("Quick-add buttons")
             } footer: {
-                Text("⌘1 to ⌘9 use the first nine. Leave the amount empty for things that cost something different each time. Drag to reorder.")
+                Text("⌘1 to ⌘9 use the first nine. Leave the amount empty for things that cost something different each time."
+                     + (store.connected ? "" : " Drag to reorder."))
             }
 
-            Section("Reminders") {
-                Toggle("Remind me when money I'm waiting for is due", isOn: $store.reminders)
-            }
-
-            Section("App") {
+            Section("General") {
+                Toggle("Remind me when a payment I'm waiting for is due", isOn: $store.reminders)
                 Toggle("Open at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in
                         do {
@@ -60,19 +60,28 @@ struct SettingsView: View {
             }
 
             Section {
-                HStack {
-                    Button("Export…", action: export)
-                    Button("Import…", action: chooseImport)
+                LabeledContent("Backup") {
+                    HStack {
+                        Button("Export…", action: export)
+                        if !store.connected { Button("Import…", action: chooseImport) }
+                    }
+                }
+                LabeledContent("Data file") {
                     Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([store.fileURL]) }
-                    Spacer()
-                    Button("Erase everything…", role: .destructive) { confirmErase = true }
+                }
+                if !store.connected {
+                    LabeledContent("Start over") {
+                        Button("Erase Everything…", role: .destructive) { confirmErase = true }
+                    }
                 }
                 if let message { Text(message).foregroundStyle(.secondary) }
-                if let e = store.saveError { Text(e).foregroundStyle(Palette.negative) }
+                SaveFailureView()
             } header: {
                 Text("Your data")
             } footer: {
-                Text("Everything stays on this Mac in one file, with a daily backup for the last 7 days. Nothing is sent anywhere.")
+                Text(store.connected
+                     ? "Synced with your account. This Mac keeps its own copy, with a daily backup for the last 7 days."
+                     : "Everything stays on this Mac in one file, with a daily backup for the last 7 days. Nothing is sent anywhere.")
             }
 
             Section("About") {
@@ -85,7 +94,7 @@ struct SettingsView: View {
         .confirmationDialog("Erase everything?", isPresented: $confirmErase) {
             Button("Erase everything", role: .destructive) {
                 store.eraseEverything()
-                message = "Everything was erased."
+                message = store.saveError == nil ? "Everything was erased." : "Couldn't erase your data. Try again."
             }
         } message: {
             Text("All entries, repeating payments and buttons are deleted from this Mac. Export first if you want a copy.")
@@ -137,9 +146,7 @@ struct PresetRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: Categories.symbol(preset.category, cents: preset.sign))
-                .foregroundStyle(preset.sign > 0 ? Palette.accent : Color.secondary)
-                .frame(width: 18)
+            CategoryIcon(category: preset.category, cents: preset.sign, size: 24)
             TextField("", text: $label, prompt: Text("Name"))
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(save)

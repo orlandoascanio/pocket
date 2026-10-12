@@ -21,6 +21,12 @@ public struct Money: Sendable {
     /// Digits after the decimal point for this currency (2 for USD, 0 for JPY).
     public var fractionDigits: Int { formatter.maximumFractionDigits }
 
+    /// "$", "€", "¥": shown beside an amount while it's typed.
+    public var symbol: String { formatter.currencySymbol ?? currency }
+
+    /// What an empty amount field shows: "0.00", or "0" for currencies without cents.
+    public var placeholder: String { fractionDigits == 0 ? "0" : "0." + String(repeating: "0", count: fractionDigits) }
+
     public func string(_ cents: Cents, signed: Bool = false) -> String {
         let value = Double(cents) / 100
         let s = formatter.string(from: NSNumber(value: value)) ?? "\(value)"

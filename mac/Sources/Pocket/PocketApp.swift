@@ -65,6 +65,7 @@ struct Onboarding: View {
     @State private var amount = ""
     @State private var inTheRed = false
     @State private var openAtLogin = true
+    @State private var connecting = false
     @FocusState private var focused: Bool
 
     static func currencies(including current: String) -> [String] {
@@ -83,13 +84,15 @@ struct Onboarding: View {
             PocketStage(width: 150, fixedFace: face)
                 .padding(.top, 12)
                 .animation(.easeOut(duration: 0.2), value: face)
-            if step == 0 { first } else { done }
+            if step == 0 { first; SaveFailureView() } else { done }
         }
         .padding(36)
         .frame(width: 470)
         .background(Palette.bg)
         .tint(Palette.accent)
         .onAppear { focused = true }
+        .sheet(isPresented: $connecting) { ConnectSheet() }
+        .onChange(of: store.connected) { _, on in if on { withAnimation(.snappy) { step = 1 } } }
     }
 
     private var first: some View {
@@ -131,6 +134,10 @@ struct Onboarding: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
+            Button(AccountKeyStore.pocketSyncKey() != nil ? "Use your Pocket Sync account instead" : "Already use Pocket on your phone? Connect") {
+                connecting = true
+            }
+            .buttonStyle(.link).font(.callout)
         }
     }
 
@@ -156,7 +163,7 @@ struct Onboarding: View {
 
     private func start() {
         let cents = Money.parse(amount) ?? 0
-        store.start(currency: currency, cents: inTheRed ? -cents : cents, openAtLogin: openAtLogin)
+        guard store.start(currency: currency, cents: inTheRed ? -cents : cents, openAtLogin: openAtLogin) else { return }
         withAnimation(.snappy) { step = 1 }
     }
 }

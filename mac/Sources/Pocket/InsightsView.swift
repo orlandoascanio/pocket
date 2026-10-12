@@ -55,7 +55,7 @@ struct InsightsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    SectionTitle(title: "Where it went", meta: "click one to see the purchases")
+                    SectionTitle(title: "Where it went", meta: "Click one to see its purchases")
                     if s.byCategory.isEmpty {
                         Text(allTime ? "No spending yet." : "No spending this month.")
                             .foregroundStyle(.secondary).padding(.vertical, 16)
@@ -74,7 +74,7 @@ struct InsightsView: View {
                 }
             }
             .frame(maxWidth: 760)
-            .padding(28)
+            .padding(.horizontal, 32).padding(.vertical, 24)
             .frame(maxWidth: .infinity)
         }
         .onAppear { regrow() }
@@ -107,31 +107,33 @@ struct CategoryBar: View {
     let grown: Bool
     let delay: Double
     @State private var hovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Label(Categories.name(total.category), systemImage: Categories.symbol(total.category, cents: -1))
-                    .fontWeight(.semibold)
-                Spacer()
-                Text(store.money.string(total.cents)).fontWeight(.semibold).monospacedDigit()
-            }
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    UnevenRoundedRectangle(cornerRadii: .init(bottomTrailing: 4, topTrailing: 4))
-                        .fill(Palette.accent.opacity(0.08))
-                    UnevenRoundedRectangle(cornerRadii: .init(bottomTrailing: 4, topTrailing: 4))
-                        .fill(Palette.accent)
-                        .frame(width: max(3, g.size.width * share * (grown ? 1 : 0)))
-                        .animation(.easeOut(duration: 0.7).delay(delay), value: grown)
+        let tint = Categories.tint(total.category, cents: -1)
+        HStack(spacing: 12) {
+            CategoryIcon(category: total.category, cents: -1)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(Categories.name(total.category)).fontWeight(.medium)
+                    Text("\(percent)% · \(total.count) \(total.count == 1 ? "purchase" : "purchases")")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Text(store.money.string(total.cents)).fontWeight(.medium).monospacedDigit()
                 }
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(tint.opacity(0.12))
+                        Capsule().fill(tint)
+                            .frame(width: max(6, g.size.width * share * (grown ? 1 : 0)))
+                            .animation(reduceMotion ? nil : .spring(duration: 0.7, bounce: 0).delay(delay), value: grown)
+                    }
+                }
+                .frame(height: 6)
             }
-            .frame(height: 10)
-            Text("\(percent)% of spending · \(total.count) \(total.count == 1 ? "purchase" : "purchases")")
-                .font(.caption).foregroundStyle(.secondary)
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 10).fill(hovering ? Color.primary.opacity(0.05) : .clear))
+        .padding(.horizontal, 10).padding(.vertical, 9)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? Color.primary.opacity(0.05) : .clear))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .accessibilityLabel("\(Categories.name(total.category)): \(store.money.string(total.cents)), \(percent)% of spending")

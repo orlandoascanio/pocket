@@ -10,5 +10,6 @@ let package = Package(
         .target(name: "PocketCore"),
         .executableTarget(name: "Pocket", dependencies: ["PocketCore"]),
         .testTarget(name: "PocketCoreTests", dependencies: ["PocketCore"]),
+        .testTarget(name: "PocketAppTests", dependencies: ["Pocket"]),
     ]
 )

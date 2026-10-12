@@ -57,7 +57,7 @@ try? FileManager.default.removeItem(at: root.appendingPathComponent("docs/icon.s
 try! FileManager.default.copyItem(at: root.appendingPathComponent("design/icon.svg"),
                                   to: root.appendingPathComponent("docs/icon.svg"))
 
-let iconset = "menubar/AppIcon.iconset"
+let iconset = "mac/AppIcon.iconset"
 try? FileManager.default.removeItem(at: root.appendingPathComponent(iconset))
 for s in [16, 32, 128, 256, 512] {
     write(macIcon(s), "\(iconset)/icon_\(s)x\(s).png")

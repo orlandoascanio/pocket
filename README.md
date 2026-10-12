@@ -4,18 +4,25 @@
 
 How much money is left, everywhere.
 
-## Pocket for Mac (public)
+## Pocket for Mac
 
-`mac/` is the version anyone can download. Each person's money stays on their own Mac in one JSON file
-(`~/Library/Application Support/Pocket/ledger.json`, with 7 daily backups). There's no account and no server.
+`mac/` is the Mac app. By default your money stays on your Mac in one JSON file
+(`~/Library/Application Support/Pocket/ledger.json`, with 7 daily backups), with no account and no server.
+
+To use Pocket on a phone or another computer too, connect it to a server (Settings → Sync). Anyone can run
+their own: a free Supabase project with this repo's SQL. See **[SELF-HOSTING.md](SELF-HOSTING.md)**.
+While connected, the server is the main copy. The Mac keeps a full copy (`account-ledger.json`), works offline,
+and sends changes in order once it's back online (`account-sync.json` holds the outbox). Requests that time out
+wait for review instead of being sent again, so nothing posts twice. The access key lives in the Keychain.
 
 - Menubar balance, plus a window with Overview, Plan (forecast chart), Insights and Settings.
 - Repeating money that can wait for confirmation, quick-add buttons (⌘1–⌘9), categories, reminders when money is due.
-- `swift test` runs the money-logic tests (`mac/Tests`).
+- `swift test` (in `mac/`) runs the money-logic tests and the app tests, including sync against a mock server
+  (`Tests/PocketAppTests/AccountSyncTests.swift`). Set `POCKET_SNAPSHOT_DIR` to also render screen previews.
 - `./mac/build.sh` builds a universal app signed with Developer ID; `NOTARY_PROFILE=<name> ./mac/build.sh --release`
   also notarizes, staples and makes `dist/Pocket-<version>.dmg`.
 - Development only: `open mac/dist/Pocket.app --env POCKET_DATA_DIR=/tmp/demo --env POCKET_OPEN=main --env POCKET_SECTION=Plan`
-  runs against a separate data folder and opens a window at launch.
+  runs against a separate data folder (and an in-memory key) and opens a window at launch.
 
 ### Releasing a new version
 
@@ -42,13 +49,13 @@ Then, for each release:
 
 3. Check it: `https://github.com/orlandoascanio/pocket/releases/latest/download/Pocket.dmg` should download the new version.
 
-## Pocket (personal, synced)
+## Web app and server
 
-The rest of this repo is the original synced version: a PWA plus a menubar app backed by Supabase.
-
-- `docs/`: the web app (GitHub Pages). Works on phone and any computer. Add it to your home screen.
-- `menubar/`: a native macOS menubar app that shows the balance all day. Build it with `./menubar/build.sh`.
+- `docs/`: the web app (GitHub Pages). Works on a phone and any computer; add it to your home screen.
+  It talks to the original Pocket server unless you choose **Use your own server** (or open a pairing link from
+  the Mac, which fills in the server and code).
 - `supabase/migrations/`: the database. Tables are locked; everything goes through key-gated `pocket_*` functions.
+  `pocket_setup` claims an empty database once, for self-hosting.
 - `supabase/tests/`: database tests. Run `./supabase/tests/run.sh` (everything is rolled back).
 - `design/`: the icon source. `swift design/make-icons.swift` regenerates every icon.
 
@@ -60,6 +67,6 @@ What it does:
 - Quick-add buttons (keys 1–9 on the web, ⌘1–⌘9 on the Mac) and keyboard shortcuts (press ? on the web).
 - New entries made offline wait on the device and sync when it's back online.
 - Devices pair with a 6-digit code from one that's already set up, and can be removed from Settings.
-- A daily GitHub Action pings the database so the free Supabase project never pauses.
+- A daily GitHub Action pings the database so the free Supabase project never pauses (see SELF-HOSTING.md to do the same).
 
 The secret key is never stored in this repo.
