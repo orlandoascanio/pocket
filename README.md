@@ -51,9 +51,13 @@ Then, for each release:
 
 ## Web app and server
 
-- `docs/`: the web app (GitHub Pages). Works on a phone and any computer; add it to your home screen.
-  It talks to the original Pocket server unless you choose **Use your own server** (or open a pairing link from
-  the Mac, which fills in the server and code).
+- `web/`: the website at [pocketleft.app](https://pocketleft.app), a Next.js site hosted on Vercel (project Root Directory: `web`).
+  `/` is the Pocket for Mac download page. `npm run dev` in `web/` runs it locally.
+- `web/public/app/`: the web app, served as-is at [pocketleft.app/app](https://pocketleft.app/app/). Works on a phone and any
+  computer; add it to your home screen. It talks to the original Pocket server unless you choose **Use your own server**
+  (or open a pairing link from the Mac, which fills in the server and code).
+- `docs/`: redirects only. GitHub Pages still serves `orlandoascanio.github.io/pocket`, which Pocket for Mac 1.1.0 opens
+  for pairing; it forwards to pocketleft.app and keeps the pairing code.
 - `supabase/migrations/`: the database. Tables are locked; everything goes through key-gated `pocket_*` functions.
   `pocket_setup` claims an empty database once, for self-hosting.
 - `supabase/tests/`: database tests. Run `./supabase/tests/run.sh` (everything is rolled back).
