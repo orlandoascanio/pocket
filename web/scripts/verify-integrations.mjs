@@ -18,6 +18,15 @@ function load(file, globals = {}, dependencies = {}) {
 }
 
 const { sanitizeError, sentryOptions } = load("lib/sentry.ts");
+for (const runtime of ["server", "edge"]) {
+  const initializations = [];
+  load(`sentry.${runtime}.config.ts`, {}, {
+    "@sentry/nextjs": { init: (options) => initializations.push(options) },
+    "./lib/sentry": { sentryOptions },
+  });
+  assert.equal(initializations.length, 1);
+  assert.equal(initializations[0], sentryOptions, `${runtime} must retain the shared privacy controls`);
+}
 assert.equal(sentryOptions.enabled, false);
 assert.equal(sentryOptions.tracesSampleRate, 0);
 assert.equal(sentryOptions.maxBreadcrumbs, 0);

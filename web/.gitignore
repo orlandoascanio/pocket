@@ -6,3 +6,6 @@ next-env.d.ts
 *.tsbuildinfo
 .env*
 !.env.example
+
+# Sentry wizard build credentials (never commit auth tokens)
+.env.sentry-build-plugin
