@@ -57,6 +57,7 @@ const jsonLd = [
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
+    "@id": `${SITE_URL}/#software`,
     name: "Pocket for Mac",
     description: DESCRIPTION,
     url: `${SITE_URL}/`,
@@ -66,6 +67,8 @@ const jsonLd = [
     operatingSystem: "macOS 14 or later",
     applicationCategory: "FinanceApplication",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    isAccessibleForFree: true,
+    screenshot: [`${SITE_URL}/screenshot-overview.png`, `${SITE_URL}/screenshot-plan.png`],
   },
   {
     "@context": "https://schema.org",

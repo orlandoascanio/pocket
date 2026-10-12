@@ -4,7 +4,7 @@ import { Changelog } from "@/components/Changelog";
 import { DownloadDialog } from "@/components/DownloadDialog";
 import { PocketCharacter } from "@/components/PocketCharacter";
 import { SiteNav } from "@/components/SiteNav";
-import { ISSUES_URL, REPO_URL } from "@/lib/site";
+import { ISSUES_URL, REPO_URL, SITE_URL } from "@/lib/site";
 import "./changelog.css";
 
 export const metadata: Metadata = {
@@ -12,9 +12,12 @@ export const metadata: Metadata = {
   description: "What’s new in Pocket for Mac. Read the latest releases, improvements and changes.",
   alternates: { canonical: "/changelog/" },
   openGraph: {
+    type: "website",
+    siteName: "Pocket",
     title: "What’s new in Pocket",
     description: "The latest releases and improvements to Pocket for Mac.",
     url: "/changelog/",
+    images: [{ url: `${SITE_URL}/screenshot-overview.png`, width: 1600, height: 1283, alt: "Pocket for Mac" }],
   },
 };
 
