@@ -42,7 +42,7 @@ On the Mac, open **Settings → Sync → Pair…**. You get a 6-digit code and a
 it opens the Pocket web app already pointed at your server, with the code filled in. Tap **Pair**, then
 *Add to Home Screen* so it works like an app.
 
-Alternatively, open [orlandoascanio.github.io/pocket](https://orlandoascanio.github.io/pocket/) on any device,
+Alternatively, open [pocketleft.app/app](https://pocketleft.app/app/) on any device,
 choose **Use your own server**, enter the same URL and publishable key, and type a code.
 
 To host the web app yourself as well, publish the [`docs`](docs) folder anywhere that serves static files,

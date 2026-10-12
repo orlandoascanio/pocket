@@ -268,7 +268,7 @@ struct PairSheet: View {
             Text("On your phone or another computer, open this link, or open Pocket and enter the code.")
                 .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Link(store.server == .original ? "orlandoascanio.github.io/pocket" : "Open Pocket for this server",
+            Link(store.server == .original ? "pocketleft.app/app" : "Open Pocket for this server",
                  destination: store.server.webLink(code: pairing?.code)).font(.callout)
             if let p = pairing {
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in

@@ -269,10 +269,10 @@ extension AccountSyncTests {
         XCTAssertEqual(Server(url: " abc.supabase.co/ ", apiKey: "sb_publishable_1234567890")?.url.absoluteString, "https://abc.supabase.co")
         XCTAssertNil(Server(url: "not a url", apiKey: "sb_publishable_1234567890"))
         XCTAssertNil(Server(url: "abc.supabase.co", apiKey: "short"))
-        XCTAssertEqual(Server.original.webLink(code: "123456").absoluteString, "https://orlandoascanio.github.io/pocket/#code=123456")
+        XCTAssertEqual(Server.original.webLink(code: "123456").absoluteString, "https://pocketleft.app/app/#code=123456")
         let own = try XCTUnwrap(Server(url: "abc.supabase.co", apiKey: "sb_publishable_1234567890"))
         XCTAssertEqual(own.webLink(code: nil).absoluteString,
-                       "https://orlandoascanio.github.io/pocket/#server=https://abc.supabase.co&apikey=sb_publishable_1234567890")
+                       "https://pocketleft.app/app/#server=https://abc.supabase.co&apikey=sb_publishable_1234567890")
     }
 }
 

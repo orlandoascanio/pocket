@@ -7,7 +7,7 @@ import Security
 // keeps a full copy on disk: changes show instantly, wait here while offline, and go out in order.
 
 enum AccountConfig {
-    static let webURL = URL(string: "https://orlandoascanio.github.io/pocket/")!
+    static let webURL = URL(string: "https://pocketleft.app/app/")!
     static let selfHostGuide = URL(string: "https://github.com/orlandoascanio/pocket/blob/main/SELF-HOSTING.md")!
     static let deviceName = "Mac · Pocket"
     static let syncEvery: TimeInterval = 30
