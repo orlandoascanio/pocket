@@ -22,7 +22,7 @@ const FAQ: { q: string; a: string; link?: { href: string; label: string } }[] = 
   { q: "Is Pocket free?", a: "Yes. Every feature, with no account and no trial. The source code is on GitHub." },
   {
     q: "Does Pocket connect to my bank?",
-    a: "No. You add what comes in and what goes out, and Pocket keeps the balance you've recorded. Quick-add buttons (⌘1 to ⌘9) and repeating payments keep that to a few seconds a day.",
+    a: "No. You add what comes in and what goes out, and Pocket keeps the balance you've recorded. Repeating payments log themselves on their day, and quick-add buttons (⌘1 to ⌘9) add the things you buy often in one keystroke.",
   },
   {
     q: "Where is my money data stored?",
@@ -235,7 +235,7 @@ export default function Home() {
               <p>How Pocket works out of the box. Nothing to sign up for.</p>
               <ul className="checks">
                 <Check>Everything in one file on your Mac</Check>
-                <Check>No account, no server, no tracking</Check>
+                <Check>Nothing is sent anywhere</Check>
                 <Check>Seven daily backups</Check>
                 <Check>Export, import or erase any time</Check>
               </ul>
@@ -284,7 +284,7 @@ export default function Home() {
         <section className="closing wrap">
           <PocketCharacter id="closing" mood="happy" bubble="Cha-ching!" style={{ width: "min(220px, 56vw)" }} />
           <h2>Ready to know what&apos;s left?</h2>
-          <p>Your balance in the menu bar, and how long it will last. Free, and your money stays on your Mac.</p>
+          <p>Free for macOS 14 or later, on Apple Silicon and Intel.</p>
           <div className="cta">
             <DownloadButton />
             <a className="pill pill-soft" href={REPO_URL}>
