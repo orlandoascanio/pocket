@@ -301,6 +301,7 @@ export default function Home() {
             <a href="#faq">Questions</a>
             <a href={SELF_HOSTING_URL}>Self-hosting</a>
             <a href={ISSUES_URL}>Report a bug</a>
+            <a href="/privacy/">Website privacy</a>
           </nav>
           <nav className="foot-col" aria-label="Project">
             <h3>Project</h3>

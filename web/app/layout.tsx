@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import { DESCRIPTION, SITE_URL } from "@/lib/site";
+import { WebsiteAnalytics } from "@/components/WebsiteAnalytics";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -39,7 +40,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={display.variable}>
-      <body>{children}</body>
+      <body>{children}<WebsiteAnalytics /></body>
     </html>
   );
 }

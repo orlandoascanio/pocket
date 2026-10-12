@@ -1,0 +1,7 @@
+.website-preferences { display: flex; justify-content: center; flex-wrap: wrap; gap: 18px; padding: 18px 24px; font-size: 12px; color: var(--muted); }
+.website-preferences button, .website-consent-cancel { border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.website-consent { position: fixed; z-index: 60; bottom: 20px; right: 20px; width: min(420px, calc(100vw - 40px)); padding: 22px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 8px 32px rgb(0 0 0 / .12); }
+.website-consent p { margin: 0 0 8px; font-weight: 650; }
+.website-consent > span { display: block; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.website-consent > div { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.website-consent .pill { height: 40px; padding: 0 16px; font-size: 13px; }
