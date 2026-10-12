@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Bento } from "@/components/Bento";
 import { DownloadDialog } from "@/components/DownloadDialog";
+import { Faq } from "@/components/Faq";
 import { PocketCharacter } from "@/components/PocketCharacter";
 import { SiteNav } from "@/components/SiteNav";
 import { Tour } from "@/components/Tour";
@@ -260,25 +261,7 @@ export default function Home() {
         <section className="section wrap" id="faq">
           <Eyebrow n="03">Questions</Eyebrow>
           <h2>Straight answers.</h2>
-          <div className="faq">
-            {FAQ.map(({ q, a, link }) => (
-              <details key={q}>
-                <summary>
-                  {q}
-                  <span className="faq-icon" aria-hidden="true" />
-                </summary>
-                <p>
-                  {a}
-                  {link && (
-                    <>
-                      {" "}
-                      <a href={link.href}>{link.label}</a>.
-                    </>
-                  )}
-                </p>
-              </details>
-            ))}
-          </div>
+          <Faq items={FAQ} />
         </section>
 
         <section className="closing wrap">

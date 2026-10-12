@@ -330,14 +330,19 @@ h2 { font: 750 clamp(32px, 4.4vw, 52px)/1.04 var(--display); letter-spacing: -0.
 /* faq */
 .faq { margin-top: 28px; border-top: 1px solid var(--line); }
 .faq details { border-bottom: 1px solid var(--line); }
-.faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 24px 0; font-size: 20px; transition: color 160ms; }
+.faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 24px 0; font-size: 20px; transition: color 160ms; -webkit-tap-highlight-color: transparent; }
 .faq summary::-webkit-details-marker { display: none; }
 .faq summary:hover { color: var(--accent); }
-.faq-icon { position: relative; width: 18px; height: 18px; flex: none; }
-.faq-icon::before, .faq-icon::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1.5px; margin-top: -.75px; background: currentColor; opacity: .55; transition: transform 240ms cubic-bezier(.16, 1, .3, 1), opacity 240ms; }
+.faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.faq-icon { position: relative; width: 36px; height: 36px; margin: -9px 0; flex: none; border-radius: 50%; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-strong); transition: transform 520ms cubic-bezier(.16, 1, .3, 1), scale 160ms, background-color 220ms, box-shadow 220ms, color 220ms; }
+.faq-icon::before, .faq-icon::after { content: ""; position: absolute; left: 11px; right: 11px; top: 50%; height: 1.5px; margin-top: -.75px; border-radius: 1px; background: currentColor; transition: transform 520ms cubic-bezier(.16, 1, .3, 1); }
 .faq-icon::after { transform: rotate(90deg); }
-.faq details[open] .faq-icon::after { transform: rotate(0); opacity: 0; }
-.faq details p { color: var(--muted); margin: -6px 0 26px; max-width: 64ch; }
+.faq summary:hover .faq-icon { color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.faq summary:active .faq-icon { scale: .9; }
+.faq details[open]:not([data-closing]) .faq-icon { transform: rotate(180deg); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.faq details[open]:not([data-closing]) .faq-icon::after { transform: rotate(0); }
+.faq-body { overflow: hidden; }
+.faq-body p { color: var(--muted); margin: 0; padding: 0 56px 28px 0; max-width: 64ch; }
 
 /* closing */
 .closing { text-align: center; padding: 140px 24px 130px; }
@@ -431,5 +436,5 @@ h2 { font: 750 clamp(32px, 4.4vw, 52px)/1.04 var(--display); letter-spacing: -0.
 @media (prefers-reduced-motion: reduce) {
   .stage .coin, .stage .bubble, .typed-caret, .live-dot,
   .bento-demo *, .tour-shot, .tour-menu, .dl[open] { animation: none !important; }
-  .pill, .bento-card, .nav-cta { transition: none; }
+  .pill, .bento-card, .nav-cta, .faq-icon, .faq-icon::before, .faq-icon::after { transition: none; }
 }
