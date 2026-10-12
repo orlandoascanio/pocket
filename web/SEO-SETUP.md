@@ -1,0 +1,90 @@
+# Pocket website: SEO, GA4, and Sentry
+
+Audit date: October 12, 2026 (America/Caracas). Website: https://pocketleft.app.
+Search Console ownership already exists, as confirmed by the owner. Its private reports were not accessed in this audit.
+
+## What was checked on the deployed site
+
+| Check | Observed result |
+| --- | --- |
+| Homepage and changelog | HTTP 200; separate titles and self-referencing canonical URLs |
+| Server-rendered content | Descriptions, headings, links, and JSON-LD present; schema also confirmed in a rendered browser |
+| robots.txt | Allows crawling and points to the sitemap |
+| sitemap.xml | Contains homepage and changelog, excludes the paired web app |
+| Paired web app | HTTP 200 with `X-Robots-Tag: noindex` |
+| Redirects | HTTP and www redirect to HTTPS non-www; `/mac/` redirects to `/` |
+| Missing page | Real HTTP 404 |
+| Layout | No horizontal overflow at desktop or 390px mobile viewport |
+| Download | Old GitHub repo name redirects to pocketleft, then to the v1.1.0 asset; transfer completion was not tested |
+| Measurement | No GA4 or Sentry integration in the existing website source |
+
+These checks establish public accessibility, not Google's indexed status, rankings, Core Web Vitals, or dashboard ingestion.
+
+## Changes prepared in code
+
+- Clearer homepage title and description for “free Mac menu bar money tracker,” with accurate optional sync wording.
+- Direct GitHub repository/download links using `pocketleft`; richer app schema using real screenshots, version, OS, and free price.
+- Complete changelog Open Graph metadata, including the screenshot previously lost when that page overrode the layout's Open Graph object.
+- A `/privacy/` page, linked from the homepage and included in the sitemap.
+- Opt-in GA4 for public website pages. No Google script loads before acceptance. Preferences can be changed, including withdrawing consent and clearing this site's GA cookies. If storage or analytics is blocked, links still work.
+- Sentry client, server, edge, and App Router error capture. Request headers, cookies, bodies, user identity, and query parameters are excluded; breadcrumbs, replay, logs, and tracing are disabled.
+- The standalone paired `/app/` stays outside both integrations and outside the sitemap. Keep its `noindex` header and let crawlers fetch it: disallowing it in robots.txt would prevent Google seeing `noindex`.
+- Optional build-time Sentry source map uploads. The upload token is a private build variable.
+
+The existing FAQ markup remains valid descriptive schema, but [Google removed FAQ rich results in May 2026](https://developers.google.com/search/updates). Do not expect FAQ enhancements in Search Console. Google's [software app rich result](https://developers.google.com/search/docs/appearance/structured-data/software-app) requires a real rating or review. Pocket currently has neither in its source. A missing-rating error in Rich Results Test is a limitation of that enhanced display, not a blocker for ordinary indexing. Never fabricate ratings to satisfy it.
+
+## Your manual steps: Search Console
+
+1. Select your existing Pocket property. Confirm it covers `https://pocketleft.app/`; a Domain property covers all variants.
+2. Open **Sitemaps** and submit `https://pocketleft.app/sitemap.xml` if it is not already submitted. Check for **Success**. After this code is deployed, the sitemap will also include `/privacy/`.
+3. In **URL Inspection**, inspect `https://pocketleft.app/` and `https://pocketleft.app/changelog/`. Run **Test live URL**. Confirm crawling/indexing are allowed and inspect the rendered page. In the indexed result, compare user-declared and Google-selected canonical; each should be its own URL. Request indexing if a public page is missing or after a meaningful update. Inspect `/privacy/` after deployment too.
+4. In **Page indexing**, investigate exclusions for those public pages: server errors, unexpected `noindex`, duplicate/canonical issues, or “Crawled/Discovered — currently not indexed.” `/app/` being excluded by `noindex` and redirect URLs being excluded are expected.
+5. Check **Manual actions** and **Security issues**. There should be no active issues.
+6. In **Performance → Search results**, enable clicks, impressions, CTR, and average position. Review Queries and Pages over 28 days, with device/country filters as needed. Start with branded searches and terms such as “Mac menu bar money tracker” and “Mac balance tracker”; these are positioning candidates, not measured keyword-volume findings.
+7. Check **Core Web Vitals** when enough field data exists. Run [PageSpeed Insights](https://pagespeed.web.dev/) on mobile and desktop to get lab diagnostics now. No field-data result on a new site is not a failing score. No Lighthouse or PageSpeed score was measured in this audit.
+
+Use Google's [URL Inspection guide](https://support.google.com/webmasters/answer/9012289), [indexing report guide](https://support.google.com/webmasters/answer/7440203), and [reports overview](https://support.google.com/webmasters/answer/9133276). Sitemap submission and indexing requests do not guarantee inclusion or ranking.
+
+Pocket is an ordinary software download website. The AMP report in the supplied resources does not apply to its current implementation; there is no AMP site to configure. No special news, retail, or scholarly submission is needed for the current pages.
+
+## Your manual steps: Google Analytics
+
+1. [Create a GA4 property](https://support.google.com/analytics/answer/9304153) named **Pocket website**. Choose **America/Caracas** for the reporting timezone if that is how you want to read daily reports.
+2. In **Admin → Data streams**, add a **Web** stream for `https://pocketleft.app`. Copy its `G-…` Measurement ID.
+3. Set `NEXT_PUBLIC_GA_MEASUREMENT_ID` in the Pocket Vercel project's **Production** environment. Keep Preview/Development unset unless explicitly testing. Redeploy: public variables are embedded at build time.
+4. In the Web stream's **Enhanced measurement** settings, turn off automatic enhanced events, including history-based page views, outbound clicks, file downloads, and form/search tracking. The code owns the event contract below and cleans URLs; extra automatic events would create additional measurements and may include unsanitized URLs. Do not install a second gtag/GTM snippet.
+5. Keep Google Signals and ads personalization off unless you later make a deliberate product decision to enable them. Select the shortest retention that meets your reporting needs in **Admin → Data retention**.
+6. Open the deployed website in a fresh browser session. Choose **No thanks**: there should be no Google Analytics script or collection request. Change **Analytics preferences → Allow analytics**. Confirm `page_view` in **Realtime**, then click a download and confirm `download_clicked`. The click must still work with an ad blocker.
+7. In **Admin → Data display → Events**, [mark `download_clicked` as a key event](https://support.google.com/analytics/answer/13128484). Count once per session if you want a visitor/session-oriented funnel. Do not create a second derived download event; the code already sends it.
+8. Add an event-scoped custom dimension for parameter `location` if you want hero/navigation/footer comparisons in reports. For debugging only, set `NEXT_PUBLIC_GA_DEBUG=true` in a test deployment and use **DebugView**; keep it false in normal production.
+9. In **Admin → Product links → Search Console links**, link the existing Pocket Search Console property to this web stream. You need the appropriate permissions in both accounts. See [Google's linking guide](https://support.google.com/analytics/answer/10737381).
+
+| Event | Trigger | Parameters |
+| --- | --- | --- |
+| `page_view` | Accepted analytics, public page loaded or route changed | `page_title`, clean `page_location` |
+| `download_clicked` | Download anchor clicked, including the install-dialog fallback | `location`, `download_target=latest` |
+| `self_hosting_opened` | Self-hosting guide clicked | `location` |
+| `web_app_opened` | Public website link to `/app/` clicked | `location` |
+| `source_opened` | Repository link clicked | `location` |
+
+`location` is `hero`, `navigation`, `footer`, `install_dialog`, or `content`. Events measure consenting visitors only. Downloads are click intent, not verified file transfers or installations. Arbitrary query strings, fragments, and referrer paths are omitted; campaign parameters are not explicitly forwarded. GA4's built-in session and engagement events may also appear.
+
+## Your manual steps: Sentry
+
+1. Create or select a Sentry organization. Create a **Next.js** project named **pocket-web**; keep the native Mac app in a separate project if you add native reporting later.
+2. In **Project Settings → Client Keys (DSN)**, copy the DSN. Set `NEXT_PUBLIC_SENTRY_DSN` in Vercel Production and `NEXT_PUBLIC_SENTRY_ENVIRONMENT=production`. The DSN is a public routing identifier, not an authentication token.
+3. For readable source-mapped errors, copy your organization and project **slugs** into `SENTRY_ORG` and `SENTRY_PROJECT`. Create a Sentry auth token with the source-map/release upload permissions required for that organization. Save it as `SENTRY_AUTH_TOKEN` in Vercel. Never give it a `NEXT_PUBLIC_` prefix or commit it.
+4. Redeploy. Check the build log for successful source map upload. Without the token, error capture can still work, but readable source-mapped stacks are not established.
+5. In a test deployment, trigger a browser error after the page has loaded, for example using DevTools: `setTimeout(() => { throw new Error("Pocket website setup test"); }, 0)`. Find it in Sentry Issues and confirm the environment and absence of query strings, cookies, headers, and user data. This verifies ingestion; verify source mapping separately on an error originating from app source. Resolve the test issue afterwards.
+6. Configure an alert for a new production issue and another for a recurring error spike. Use your preferred notification destination. Enable IP-address scrubbing in the project's security/privacy settings: providers still receive network information when processing requests.
+7. Keep Session Replay and performance tracing off for this initial setup. They are not enabled by this implementation. Sentry is debugging infrastructure; installing it does not improve rankings by itself.
+
+Implementation follows [Sentry's Next.js manual setup](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/) and [data collection options](https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection).
+
+## Deployment and validation
+
+See `.env.example` for the exact variables. Both integrations are disabled without their public IDs. `npm run check` checks TypeScript and the consent/failure-tolerance/Sentry-redaction helpers. `npm run build` verifies production compilation. Local browser tests can prove consent and event construction; only your account dashboards can prove real ingestion, Google-selected canonicals, and indexing.
+
+Validation completed locally: production builds passed both without IDs and with synthetic GA4/Sentry IDs; TypeScript and helper checks passed. At 390px, browser checks confirmed no Google tag before consent or after rejection, one page view after acceptance, one download event per tested click, working install instructions, sanitized query/hash values, withdrawal unloading the tag, correct changelog/website-privacy canonicals, and no horizontal overflow. The Google script was deliberately blocked during synthetic-ID testing; no real GA4 or Sentry account delivery or source map upload was verified. `/app/` still returned `noindex` and its HTML contained neither integration.
+
+Code changes must reach the Vercel production deployment before they affect the public site. After deployment, verify the title, `/privacy/`, sitemap, download target, and `noindex` on `/app/` again. Add a link to pocketleft.app from the repository's website/About field and your portfolio if missing; useful links help discovery. No public posts or external account settings were changed in this audit.

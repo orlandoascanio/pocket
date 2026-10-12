@@ -53,6 +53,7 @@ Then, for each release:
 
 - `web/`: the website at [pocketleft.app](https://pocketleft.app), a Next.js site hosted on Vercel (project Root Directory: `web`).
   `/` is the Pocket for Mac download page. `npm run dev` in `web/` runs it locally.
+  See [web/SEO-SETUP.md](web/SEO-SETUP.md) for the SEO audit and Google Search Console, GA4, and Sentry setup.
 - `web/public/app/`: the web app, served as-is at [pocketleft.app/app](https://pocketleft.app/app/). Works on a phone and any
   computer; add it to your home screen. It talks to the original Pocket server unless you choose **Use your own server**
   (or open a pairing link from the Mac, which fills in the server and code).
