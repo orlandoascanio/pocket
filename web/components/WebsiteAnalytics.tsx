@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ANALYTICS_CONFIGURED, ANALYTICS_PREFERENCE, MEASUREMENT_ID, pageLocation, removeAnalyticsCookies, trackWebsiteEvent } from "@/lib/analytics";
+import { ANALYTICS_CONFIGURED, ANALYTICS_PREFERENCE, MEASUREMENT_ID, analyticsEnabledForHost, pageLocation, removeAnalyticsCookies, trackWebsiteEvent } from "@/lib/analytics";
 import { DOWNLOAD_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/site";
 import "./website-analytics.css";
 
@@ -18,7 +18,7 @@ export function WebsiteAnalytics() {
 
   useEffect(() => {
     try { setPreference(localStorage.getItem(ANALYTICS_PREFERENCE)); } catch { /* Default to no analytics. */ }
-    setReady(true);
+    setReady(analyticsEnabledForHost(window.location.hostname));
     function onStorage(event: StorageEvent) {
       if (event.key !== ANALYTICS_PREFERENCE) return;
       if (initialized.current && event.newValue !== "accepted") window.location.reload();
@@ -29,7 +29,7 @@ export function WebsiteAnalytics() {
   }, []);
 
   useEffect(() => {
-    if (!ANALYTICS_CONFIGURED || !marketing || preference !== "accepted") return;
+    if (!ready || !ANALYTICS_CONFIGURED || !marketing || preference !== "accepted") return;
     if (!initialized.current) {
       initialized.current = true;
       window.dataLayer = window.dataLayer || [];
@@ -68,7 +68,7 @@ export function WebsiteAnalytics() {
     }
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, [pathname, preference, marketing]);
+  }, [pathname, preference, marketing, ready]);
 
   function choose(value: "accepted" | "rejected") {
     try { localStorage.setItem(ANALYTICS_PREFERENCE, value); } catch { /* The choice still dismisses the prompt; tracking stays disabled. */ }

@@ -44,12 +44,23 @@ assert.equal(sanitizeError({ request: { url: "invalid" } }).request, undefined);
 
 let preference = null;
 const events = [];
+const siteDependency = { "./site": { SITE_URL: "https://pocketleft.app" } };
+const defaultAnalytics = load("lib/analytics.ts", {}, siteDependency);
+assert.equal(defaultAnalytics.MEASUREMENT_ID, "G-6LLJJ52MDL");
+assert.equal(defaultAnalytics.analyticsEnabledForHost("pocketleft.app"), true);
+assert.equal(defaultAnalytics.analyticsEnabledForHost("localhost"), false);
+assert.equal(defaultAnalytics.analyticsEnabledForHost("pocket-preview.vercel.app"), false);
+const disabledAnalytics = load("lib/analytics.ts", {
+  process: { env: { NEXT_PUBLIC_GA_MEASUREMENT_ID: "" } },
+}, siteDependency);
+assert.equal(disabledAnalytics.analyticsEnabledForHost("pocketleft.app"), false);
 const globals = {
   process: { env: { NEXT_PUBLIC_GA_MEASUREMENT_ID: "G-TEST123" } },
   localStorage: { getItem: () => preference },
   window: { location: { pathname: "/", hostname: "pocketleft.app" }, gtag: (...args) => events.push(args) },
 };
 const analytics = load("lib/analytics.ts", globals, { "./site": { SITE_URL: "https://pocketleft.app" } });
+assert.equal(analytics.analyticsEnabledForHost("localhost"), true);
 analytics.trackWebsiteEvent("download_clicked", { location: "hero" });
 assert.equal(events.length, 0);
 preference = "rejected";

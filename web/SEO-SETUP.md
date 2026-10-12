@@ -49,9 +49,9 @@ Pocket is an ordinary software download website. The AMP report in the supplied 
 
 ## Your manual steps: Google Analytics
 
-1. [Create a GA4 property](https://support.google.com/analytics/answer/9304153) named **Pocket website**. Choose **America/Caracas** for the reporting timezone if that is how you want to read daily reports.
-2. In **Admin → Data streams**, add a **Web** stream for `https://pocketleft.app`. Copy its `G-…` Measurement ID.
-3. Set `NEXT_PUBLIC_GA_MEASUREMENT_ID` in the Pocket Vercel project's **Production** environment. Keep Preview/Development unset unless explicitly testing. Redeploy: public variables are embedded at build time.
+1. Open the existing GA4 property containing the supplied stream **G-6LLJJ52MDL**. Choose **America/Caracas** for the reporting timezone if that is how you want to read daily reports. Google's [property setup guide](https://support.google.com/analytics/answer/9304153) describes these settings.
+2. In **Admin → Data streams**, select that **Web** stream and confirm its website URL is `https://pocketleft.app`.
+3. The code defaults to **G-6LLJJ52MDL** on `pocketleft.app`; no Vercel variable is required for that default. `NEXT_PUBLIC_GA_MEASUREMENT_ID` overrides it: a blank value disables analytics, while a nonblank ID explicitly enables it on other hosts too. If Production already has an empty variable, remove it or set it to `G-6LLJJ52MDL`. Keep Preview/Development unset unless explicitly testing. Redeploy: public variables are embedded at build time.
 4. In the Web stream's **Enhanced measurement** settings, turn off automatic enhanced events, including history-based page views, outbound clicks, file downloads, and form/search tracking. The code owns the event contract below and cleans URLs; extra automatic events would create additional measurements and may include unsanitized URLs. Do not install a second gtag/GTM snippet.
 5. Keep Google Signals and ads personalization off unless you later make a deliberate product decision to enable them. Select the shortest retention that meets your reporting needs in **Admin → Data retention**.
 6. Open the deployed website in a fresh browser session. Choose **No thanks**: there should be no Google Analytics script or collection request. Change **Analytics preferences → Allow analytics**. Confirm `page_view` in **Realtime**, then click a download and confirm `download_clicked`. The click must still work with an ad blocker.
@@ -83,7 +83,7 @@ Implementation follows [Sentry's Next.js manual setup](https://docs.sentry.io/pl
 
 ## Deployment and validation
 
-See `.env.example` for the exact variables. Both integrations are disabled without their public IDs. `npm run check` checks TypeScript and the consent/failure-tolerance/Sentry-redaction helpers. `npm run build` verifies production compilation. Local browser tests can prove consent and event construction; only your account dashboards can prove real ingestion, Google-selected canonicals, and indexing.
+See `.env.example` for the exact variables. GA4 defaults to the owner's supplied stream only on `pocketleft.app`, still requiring consent. Sentry stays disabled without its DSN. `npm run check` checks TypeScript and the consent/failure-tolerance/Sentry-redaction helpers. `npm run build` verifies production compilation. Local browser tests can prove consent and event construction; only your account dashboards can prove real ingestion, Google-selected canonicals, and indexing.
 
 Validation completed locally: production builds passed both without IDs and with synthetic GA4/Sentry IDs; TypeScript and helper checks passed. At 390px, browser checks confirmed no Google tag before consent or after rejection, one page view after acceptance, one download event per tested click, working install instructions, sanitized query/hash values, withdrawal unloading the tag, correct changelog/website-privacy canonicals, and no horizontal overflow. The Google script was deliberately blocked during synthetic-ID testing; no real GA4 or Sentry account delivery or source map upload was verified. `/app/` still returned `noindex` and its HTML contained neither integration.
 
