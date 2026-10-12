@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { Bento } from "@/components/Bento";
+import { ButtonFx } from "@/components/ButtonFx";
 import { DownloadDialog } from "@/components/DownloadDialog";
 import { Faq } from "@/components/Faq";
 import { PocketCharacter } from "@/components/PocketCharacter";
-import { SiteNav } from "@/components/SiteNav";
+import { DownloadIcon, SiteNav } from "@/components/SiteNav";
 import { Tour } from "@/components/Tour";
 import { TypedWord } from "@/components/TypedWord";
 import {
@@ -76,9 +77,7 @@ const jsonLd = [
 function DownloadButton({ label = "Download for Mac", wide }: { label?: string; wide?: boolean }) {
   return (
     <a className={wide ? "pill pill-dark pill-wide" : "pill pill-dark"} href={DOWNLOAD_URL} data-download>
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
-      </svg>
+      <DownloadIcon />
       {label}
     </a>
   );
@@ -329,6 +328,7 @@ export default function Home() {
       </footer>
 
       <DownloadDialog />
+      <ButtonFx />
     </>
   );
 }
