@@ -6,13 +6,13 @@ import { Faq } from "@/components/Faq";
 import { PocketCharacter } from "@/components/PocketCharacter";
 import { DownloadIcon, SiteNav } from "@/components/SiteNav";
 import { Tour } from "@/components/Tour";
-import { TypedWord } from "@/components/TypedWord";
+import { HeroScene } from "@/components/HeroScene";
+import "./home.css";
 import {
   DESCRIPTION,
   DOWNLOAD_URL,
   ISSUES_URL,
   RELEASES_URL,
-  RELEASE_URL,
   REPO_URL,
   SELF_HOSTING_URL,
   SITE_URL,
@@ -83,14 +83,6 @@ function DownloadButton({ label = "Download for Mac", wide }: { label?: string; 
   );
 }
 
-function Eyebrow({ n, children }: { n: string; children: ReactNode }) {
-  return (
-    <p className="eyebrow">
-      {n} · {children}
-    </p>
-  );
-}
-
 function Check({ children }: { children: ReactNode }) {
   return (
     <li>
@@ -116,50 +108,51 @@ export default function Home() {
       <SiteNav />
 
       <main>
-        <section className="hero wrap">
-          <a className="announce" href={RELEASE_URL}>
-            <span className="announce-tag">New</span>
-            <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
-            <span className="announce-text">Your balance on your phone too</span>
-            <span className="announce-arrow" aria-hidden="true">
-              ↗
-            </span>
-          </a>
-          <h1>
-            <span className="sr-only">Know what&apos;s left before you spend it.</span>
-            <span aria-hidden="true">
-              Know what&apos;s left
-              <br />
-              before <TypedWord words={["rent is due", "the weekend", "payday", "you say yes"]} />.
-            </span>
-          </h1>
-          <p className="lead">{DESCRIPTION}</p>
-          <div className="cta" id="hero-cta">
-            <DownloadButton />
-            <a className="pill pill-soft" href="#tour">
-              See how it works
+        <section className="hero hero-dimensional wrap">
+          <div className="hero-copy">
+            <a className="announce" href="/changelog/">
+              <span className="announce-tag">New</span>
+              <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
+              <span className="announce-text">Your balance on your phone too</span>
+              <span className="announce-arrow" aria-hidden="true">
+                ↗
+              </span>
             </a>
-          </div>
-          <ul className="meta">
-            <li>Free</li>
-            <li>No account</li>
-            <li>macOS 14+</li>
-            <li>Apple Silicon &amp; Intel</li>
-            <li>Signed by Apple</li>
-            <li>
-              <a href={RELEASE_URL}>
-                v{VERSION} <span className="live-dot" aria-hidden="true" />
+            <h1>Know what&apos;s<br />left. <span>Before<br />you spend it.</span></h1>
+            <p className="lead">{DESCRIPTION}</p>
+            <div className="cta" id="hero-cta">
+              <DownloadButton />
+              <a className="pill pill-soft" href="#tour">
+                See how it works
               </a>
-            </li>
-          </ul>
+            </div>
+            <ul className="meta">
+              <li>Free</li>
+              <li>No account</li>
+              <li>macOS 14+</li>
+              <li>Apple Silicon &amp; Intel</li>
+              <li>Signed by Apple</li>
+              <li>
+                <a href="/changelog/">
+                  v{VERSION} <span className="live-dot" aria-hidden="true" />
+                </a>
+              </li>
+            </ul>
+          </div>
+          <HeroScene />
         </section>
 
-        <div className="wrap wrap-wide">
+        <div className="home-proof wrap" aria-label="Pocket at a glance">
+          <span>Small app. A clearer picture.</span>
+          <p>In your menu bar. On your Mac. Always within reach.</p>
+          <a href="#tour">Take a closer look <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div className="wrap wrap-wide home-demos">
           <Bento />
         </div>
 
         <section className="section wrap" id="tour">
-          <Eyebrow n="00">See it</Eyebrow>
           <h2>One balance, everywhere you look.</h2>
           <p className="section-lead">
             A number in your menu bar, a window for the details, and a plan for the months ahead.
@@ -168,7 +161,6 @@ export default function Home() {
         </section>
 
         <section className="section wrap" id="plan">
-          <Eyebrow n="01">Features</Eyebrow>
           <div className="feature">
             <div className="copy">
               <h2>Know when it runs out.</h2>
@@ -223,7 +215,6 @@ export default function Home() {
         </section>
 
         <section className="section wrap" id="private">
-          <Eyebrow n="02">Price &amp; privacy</Eyebrow>
           <h2 className="two-tone">
             Free. <span>Every feature in it.</span>
             <br />
@@ -258,13 +249,12 @@ export default function Home() {
         </section>
 
         <section className="section wrap" id="faq">
-          <Eyebrow n="03">Questions</Eyebrow>
           <h2>Straight answers.</h2>
           <Faq items={FAQ} />
         </section>
 
-        <section className="closing wrap">
-          <PocketCharacter id="closing" mood="happy" bubble="Cha-ching!" style={{ width: "min(220px, 56vw)" }} />
+        <section className="closing wrap home-closing">
+          <img className="closing-sculpture" src="/pocket-sculpture.webp" alt="" width={200} height={200} loading="lazy" />
           <h2>Ready to know what&apos;s left?</h2>
           <p>Free for macOS 14 or later, on Apple Silicon and Intel.</p>
           <div className="cta">
@@ -284,7 +274,7 @@ export default function Home() {
               Pocket
             </a>
             <p>Your balance in the menu bar, and how long it will last.</p>
-            <a className="foot-ver" href={RELEASE_URL}>
+            <a className="foot-ver" href="/changelog/">
               v{VERSION} · Release notes <span className="live-dot" aria-hidden="true" />
             </a>
             <span className="foot-badge">
@@ -312,7 +302,7 @@ export default function Home() {
           <nav className="foot-col" aria-label="Project">
             <h3>Project</h3>
             <a href={REPO_URL}>Source code</a>
-            <a href={RELEASE_URL}>Release notes</a>
+            <a href="/changelog/">Changelog</a>
             <a href={RELEASES_URL}>All releases</a>
           </nav>
         </div>
