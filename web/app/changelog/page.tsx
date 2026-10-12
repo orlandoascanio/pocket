@@ -4,6 +4,7 @@ import { Changelog } from "@/components/Changelog";
 import { DownloadDialog } from "@/components/DownloadDialog";
 import { PocketCharacter } from "@/components/PocketCharacter";
 import { SiteNav } from "@/components/SiteNav";
+import { AnalyticsPreferences } from "@/components/WebsiteAnalytics";
 import { ISSUES_URL, REPO_URL, SITE_URL } from "@/lib/site";
 import "./changelog.css";
 
@@ -44,7 +45,10 @@ export default function ChangelogPage() {
       </main>
       <footer className="changes-footer wrap">
         <a className="brand" href="/"><img src="/apple-touch-icon.png" alt="" width={28} height={28} />Pocket</a>
-        <span>Your balance, a little closer.</span>
+        <nav className="foot-legal" aria-label="Website preferences">
+          <a href="/privacy/">Website privacy</a>
+          <AnalyticsPreferences />
+        </nav>
         <a href={REPO_URL}>View the source <span aria-hidden="true">↗</span></a>
       </footer>
       <DownloadDialog />

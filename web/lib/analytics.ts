@@ -1,6 +1,41 @@
 import { SITE_URL } from "./site";
 
 export const ANALYTICS_PREFERENCE = "pocket-website-analytics";
+export const ANALYTICS_CONSENT_DURATION = 180 * 24 * 60 * 60 * 1000;
+export type AnalyticsChoice = "accepted" | "rejected";
+export type AnalyticsConsent = { choice: AnalyticsChoice; expiresAt: number };
+let sessionConsent: AnalyticsConsent | null = null;
+
+export function saveAnalyticsConsent(choice: AnalyticsChoice, now = Date.now()): AnalyticsConsent {
+  const consent = { choice, expiresAt: now + ANALYTICS_CONSENT_DURATION };
+  sessionConsent = consent;
+  try { localStorage.setItem(ANALYTICS_PREFERENCE, JSON.stringify(consent)); } catch { /* Keep the choice for this page when storage is unavailable. */ }
+  return consent;
+}
+
+export function readAnalyticsConsent(now = Date.now()): AnalyticsConsent | null {
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(ANALYTICS_PREFERENCE);
+  } catch {
+    return sessionConsent && sessionConsent.expiresAt > now ? sessionConsent : null;
+  }
+  // Migrate existing choices once, without asking returning visitors again.
+  if (raw === "accepted" || raw === "rejected") return saveAnalyticsConsent(raw, now);
+  if (raw) {
+    try {
+      const saved = JSON.parse(raw);
+      if (saved && (saved.choice === "accepted" || saved.choice === "rejected") &&
+          typeof saved.expiresAt === "number" && Number.isFinite(saved.expiresAt) && saved.expiresAt > now) {
+        sessionConsent = saved;
+        return saved;
+      }
+    } catch { /* Malformed data is not consent. */ }
+    try { localStorage.removeItem(ANALYTICS_PREFERENCE); } catch { /* Storage may be read-only. */ }
+  }
+  sessionConsent = null;
+  return null;
+}
 // The Measurement ID is public. An explicit env value overrides it; blank disables tracking.
 export const MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "G-6LLJJ52MDL";
 export const ANALYTICS_CONFIGURED = /^G-[A-Z0-9]+$/.test(MEASUREMENT_ID);
@@ -27,7 +62,7 @@ export function pageLocation(pathname: string) {
 
 export function trackWebsiteEvent(name: string, properties: Record<string, string>) {
   try {
-    if (!analyticsEnabledForHost(window.location.hostname) || localStorage.getItem(ANALYTICS_PREFERENCE) !== "accepted") return;
+    if (!analyticsEnabledForHost(window.location.hostname) || readAnalyticsConsent()?.choice !== "accepted") return;
     window.gtag?.("event", name, {
       ...properties,
       page_location: pageLocation(window.location.pathname),

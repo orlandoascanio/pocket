@@ -87,7 +87,6 @@
 .changes-close p { color: var(--muted); margin: 0; font-size: 15px; }
 .changes-close .pill { height: 44px; font-size: 14px; flex: none; }
 .changes-footer { display: flex; align-items: center; gap: 24px; padding-top: 28px; padding-bottom: 36px; border-top: 1px solid var(--line); }
-.changes-footer > span { font-size: 13px; color: var(--muted); }
 .changes-footer > a:last-child { margin-left: auto; font-size: 13px; color: var(--muted); text-decoration: none; }
 @media (prefers-color-scheme: dark) {
   .release-visual { background: #223229; color: #e1ecdf; }
@@ -126,7 +125,6 @@
   .changes-close { margin-top: 52px; align-items: flex-start; flex-direction: column; padding: 32px 0; }
   .changes-close h2 { font-size: 26px; }
   .changes-footer { flex-wrap: wrap; gap: 18px; }
-  .changes-footer > span { display: none; }
 }
 @media (max-width: 480px) {
   .changes-character { display: none; }

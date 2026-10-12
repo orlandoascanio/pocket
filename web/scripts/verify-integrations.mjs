@@ -56,11 +56,33 @@ const disabledAnalytics = load("lib/analytics.ts", {
 assert.equal(disabledAnalytics.analyticsEnabledForHost("pocketleft.app"), false);
 const globals = {
   process: { env: { NEXT_PUBLIC_GA_MEASUREMENT_ID: "G-TEST123" } },
-  localStorage: { getItem: () => preference },
+  localStorage: {
+    getItem: () => preference,
+    setItem: (_, value) => { preference = value; },
+    removeItem: () => { preference = null; },
+  },
   window: { location: { pathname: "/", hostname: "pocketleft.app" }, gtag: (...args) => events.push(args) },
 };
 const analytics = load("lib/analytics.ts", globals, { "./site": { SITE_URL: "https://pocketleft.app" } });
 assert.equal(analytics.analyticsEnabledForHost("localhost"), true);
+const lifetime = 180 * 24 * 60 * 60 * 1000;
+for (const choice of ["accepted", "rejected"]) {
+  const saved = analytics.saveAnalyticsConsent(choice, 1000);
+  assert.equal(saved.expiresAt, 1000 + lifetime);
+  assert.equal(analytics.readAnalyticsConsent(1001).choice, choice);
+  const returningVisit = load("lib/analytics.ts", globals, siteDependency);
+  assert.equal(returningVisit.readAnalyticsConsent(1002).choice, choice);
+  assert.equal(returningVisit.readAnalyticsConsent(1002).expiresAt, saved.expiresAt);
+  assert.equal(analytics.readAnalyticsConsent(saved.expiresAt), null);
+}
+preference = "accepted";
+assert.equal(analytics.readAnalyticsConsent(1000).expiresAt, 1000 + lifetime);
+assert.equal(analytics.readAnalyticsConsent(2000).expiresAt, 1000 + lifetime);
+preference = "malformed";
+assert.equal(analytics.readAnalyticsConsent(3000), null);
+preference = JSON.stringify({ choice: "accepted", expiresAt: "forever" });
+assert.equal(analytics.readAnalyticsConsent(3000), null);
+preference = null;
 analytics.trackWebsiteEvent("download_clicked", { location: "hero" });
 assert.equal(events.length, 0);
 preference = "rejected";
@@ -74,4 +96,4 @@ globals.window.gtag = () => { throw new Error("Tag blocked"); };
 assert.doesNotThrow(() => analytics.trackWebsiteEvent("download_clicked", { location: "hero" }));
 globals.localStorage.getItem = () => { throw new Error("Storage blocked"); };
 assert.doesNotThrow(() => analytics.trackWebsiteEvent("download_clicked", { location: "hero" }));
-console.log("Passed: Sentry privacy and app exclusion; analytics consent and failure tolerance.");
+console.log("Passed: Sentry privacy and app exclusion; consent persistence, migration, expiry, and failure tolerance.");

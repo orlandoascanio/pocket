@@ -7,6 +7,7 @@ import { PocketCharacter } from "@/components/PocketCharacter";
 import { DownloadIcon, SiteNav } from "@/components/SiteNav";
 import { Tour } from "@/components/Tour";
 import { HeroScene } from "@/components/HeroScene";
+import { AnalyticsPreferences } from "@/components/WebsiteAnalytics";
 import "./home.css";
 import {
   DESCRIPTION,
@@ -301,7 +302,6 @@ export default function Home() {
             <a href="#faq">Questions</a>
             <a href={SELF_HOSTING_URL}>Self-hosting</a>
             <a href={ISSUES_URL}>Report a bug</a>
-            <a href="/privacy/">Website privacy</a>
           </nav>
           <nav className="foot-col" aria-label="Project">
             <h3>Project</h3>
@@ -314,7 +314,10 @@ export default function Home() {
           <span>
             Download Pocket only from <b>pocketleft.app</b> or its GitHub page.
           </span>
-          <i>Your money stays on your Mac.</i>
+          <nav className="foot-legal" aria-label="Website preferences">
+            <a href="/privacy/">Website privacy</a>
+            <AnalyticsPreferences />
+          </nav>
         </div>
         <div className="foot-word" aria-hidden="true">
           Pocket

@@ -2,31 +2,85 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ANALYTICS_CONFIGURED, ANALYTICS_PREFERENCE, MEASUREMENT_ID, analyticsEnabledForHost, pageLocation, removeAnalyticsCookies, trackWebsiteEvent } from "@/lib/analytics";
+import { ANALYTICS_CONFIGURED, ANALYTICS_PREFERENCE, MEASUREMENT_ID, analyticsEnabledForHost, pageLocation, readAnalyticsConsent, saveAnalyticsConsent, removeAnalyticsCookies, trackWebsiteEvent, type AnalyticsConsent, type AnalyticsChoice } from "@/lib/analytics";
 import { DOWNLOAD_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/site";
 import "./website-analytics.css";
+
+const OPEN_PREFERENCES = "pocket:analytics-preferences";
+
+export function AnalyticsPreferences() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => { setEnabled(analyticsEnabledForHost(window.location.hostname)); }, []);
+  if (!enabled) return null;
+  return <button className="analytics-preferences" type="button" aria-controls="website-consent"
+    onClick={(event) => window.dispatchEvent(new CustomEvent(OPEN_PREFERENCES, { detail: event.currentTarget }))}>
+    Analytics preferences
+  </button>;
+}
 
 export function WebsiteAnalytics() {
   const route = usePathname();
   const pathname = route === "/" ? "/" : `${route.replace(/\/$/, "")}/`;
-  const [preference, setPreference] = useState<string | null>(null);
+  const [consent, setConsent] = useState<AnalyticsConsent | null>(null);
+  const preference = consent?.choice;
   const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState(false);
   const initialized = useRef(false);
   const lastPage = useRef("");
+  const opener = useRef<HTMLElement | null>(null);
+  const firstChoice = useRef<HTMLButtonElement>(null);
   const marketing = pathname === "/" || pathname === "/changelog/" || pathname === "/privacy/";
 
   useEffect(() => {
-    try { setPreference(localStorage.getItem(ANALYTICS_PREFERENCE)); } catch { /* Default to no analytics. */ }
+    function refresh() {
+      const saved = readAnalyticsConsent();
+      if (initialized.current && saved?.choice !== "accepted") {
+        removeAnalyticsCookies();
+        window.location.reload();
+      } else setConsent(saved);
+    }
+    refresh();
     setReady(analyticsEnabledForHost(window.location.hostname));
     function onStorage(event: StorageEvent) {
-      if (event.key !== ANALYTICS_PREFERENCE) return;
-      if (initialized.current && event.newValue !== "accepted") window.location.reload();
-      else setPreference(event.newValue);
+      if (event.key !== ANALYTICS_PREFERENCE && event.key !== null) return;
+      refresh();
+    }
+    function open(event: Event) {
+      opener.current = (event as CustomEvent<HTMLElement>).detail;
+      setEditing(true);
     }
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("focus", refresh);
+    window.addEventListener(OPEN_PREFERENCES, open);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(OPEN_PREFERENCES, open);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!consent) return;
+    // Browser timeouts are limited to about 25 days; recheck long-lived tabs in chunks.
+    const timer = window.setTimeout(() => {
+      const saved = readAnalyticsConsent();
+      if (initialized.current && saved?.choice !== "accepted") {
+        removeAnalyticsCookies();
+        window.location.reload();
+      } else setConsent(saved);
+    }, Math.min(Math.max(0, consent.expiresAt - Date.now()), 2_147_483_647));
+    return () => window.clearTimeout(timer);
+  }, [consent]);
+
+  useEffect(() => {
+    if (!editing) return;
+    firstChoice.current?.focus();
+    function close(event: KeyboardEvent) {
+      if (event.key === "Escape") dismiss();
+    }
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [editing]);
 
   useEffect(() => {
     if (!ready || !ANALYTICS_CONFIGURED || !marketing || preference !== "accepted") return;
@@ -70,10 +124,14 @@ export function WebsiteAnalytics() {
     return () => document.removeEventListener("click", onClick);
   }, [pathname, preference, marketing, ready]);
 
-  function choose(value: "accepted" | "rejected") {
-    try { localStorage.setItem(ANALYTICS_PREFERENCE, value); } catch { /* The choice still dismisses the prompt; tracking stays disabled. */ }
-    setPreference(value);
+  function dismiss() {
     setEditing(false);
+    opener.current?.focus();
+  }
+
+  function choose(value: AnalyticsChoice) {
+    setConsent(saveAnalyticsConsent(value));
+    dismiss();
     if (value === "rejected") {
       window.gtag?.("consent", "update", { analytics_storage: "denied" });
       removeAnalyticsCookies();
@@ -86,17 +144,14 @@ export function WebsiteAnalytics() {
   const prompt = (preference !== "accepted" && preference !== "rejected") || editing;
 
   return <>
-    <div className="website-preferences">
-      <a href="/privacy/">Website privacy</a>
-      <button type="button" onClick={() => setEditing(true)}>Analytics preferences</button>
-    </div>
-    {prompt && <aside className="website-consent" aria-label="Website analytics preferences">
-      <p>Allow website analytics?</p>
+    {prompt && <aside id="website-consent" className="website-consent" aria-labelledby="website-consent-title">
+      <p id="website-consent-title">Allow website analytics?</p>
       <span>Help us understand visits and download clicks. Your Pocket balances and entries aren’t collected. <a href="/privacy/">Details</a></span>
+      <small>We’ll remember your choice for 180 days.</small>
       <div>
-        <button className="pill pill-line" type="button" onClick={() => choose("rejected")}>No thanks</button>
+        <button ref={firstChoice} className="pill pill-line" type="button" onClick={() => choose("rejected")}>No thanks</button>
         <button className="pill pill-line" type="button" onClick={() => choose("accepted")}>Allow analytics</button>
-        {editing && <button className="website-consent-cancel" type="button" onClick={() => setEditing(false)}>Cancel</button>}
+        {editing && <button className="website-consent-cancel" type="button" onClick={dismiss}>Cancel</button>}
       </div>
     </aside>}
   </>;
