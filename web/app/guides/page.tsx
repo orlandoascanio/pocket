@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { GuideCards } from "@/components/GuideCards";
-import { GuideFooter } from "@/components/GuideFooter";
+import { SiteFooter } from "@/components/SiteFooter";
 import { DownloadDialog } from "@/components/DownloadDialog";
 import { DownloadIcon, SiteNav } from "@/components/SiteNav";
 import { DOWNLOAD_URL, SITE_URL } from "@/lib/site";
 import { GUIDES, guideUrl } from "@/lib/guides";
 import "./guides.css";
 
-const description = "Practical Pocket for Mac guides: set your balance, record spending with keyboard shortcuts, track expected income and back up your data.";
+const description = "Practical Pocket for Mac guides: keep your balance in the menu bar, record spending with keyboard shortcuts, plan around freelance income, compare manual tracking with bank sync and back up your data.";
 export const metadata: Metadata = {
   title: "Guides · Pocket for Mac",
   description,
@@ -46,7 +46,7 @@ export default function GuidesPage() {
         <a className="pill pill-dark" href={DOWNLOAD_URL} data-download><DownloadIcon />Download for Mac</a>
       </section>
     </main>
-    <GuideFooter />
+    <SiteFooter />
     <DownloadDialog />
   </>;
 }
