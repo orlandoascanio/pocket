@@ -39,7 +39,7 @@ struct MenuPanel: View {
             if !store.ledger.presets.isEmpty {
                 QuickBar(onAsk: { quick.start(from: $0) }).padding(.horizontal, 10).padding(.top, 12)
             }
-            Composer(state: quick, onMore: openOptions).padding(.horizontal, 10).padding(.top, 10)
+            Composer(state: quick, showSaveTitle: !store.hasRecordedEntries, onMore: openOptions).padding(.horizontal, 10).padding(.top, 10)
                 .disabled(store.loadError != nil)
             if let error = quick.error {
                 Text(error).font(.caption).foregroundStyle(Palette.negative)
@@ -60,6 +60,7 @@ struct MenuPanel: View {
         96 + (store.runway == nil ? 0 : 24)
             + (store.ledger.presets.isEmpty ? 0 : 44)
             + 92
+            + (store.hasRecordedEntries ? 0 : 36)
             + (quick.error == nil ? 0 : 22)
             + (store.receipt == nil ? 0 : 30)
             + (store.saveError == nil ? 0 : 110)
@@ -81,8 +82,9 @@ struct MenuPanel: View {
     private var setup: some View {
         VStack(spacing: 12) {
             PocketStage(width: 96, fixedFace: .sleep)
-            Text("Pocket isn't set up yet").font(.headline)
-            Button("Set Up Pocket") { open("welcome") }.buttonStyle(.borderedProminent).controlSize(.large)
+            Text("See how much you have left").font(.headline)
+            Text("Start with your current balance.").foregroundStyle(.secondary)
+            Button("Set My Balance") { open("welcome") }.buttonStyle(.borderedProminent).controlSize(.large)
         }.frame(maxWidth: .infinity)
     }
 
@@ -146,7 +148,7 @@ struct MenuPanel: View {
             }
             .padding(.horizontal, 16).padding(.bottom, 4)
             if entries.isEmpty {
-                Text("Your entries will appear here.").font(.callout).foregroundStyle(.secondary)
+                Text("Add an expense above to keep your balance up to date.").font(.callout).foregroundStyle(.secondary)
                     .padding(.horizontal, 16).padding(.vertical, 6)
             }
             ForEach(entries) { entry in
