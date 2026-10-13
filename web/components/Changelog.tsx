@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
+import Image from "next/image";
 import { DownloadIcon } from "@/components/SiteNav";
 import { DOWNLOAD_URL, SELF_HOSTING_URL } from "@/lib/site";
 import { RELEASES, releaseDate, releaseId } from "@/lib/releases";
@@ -95,8 +96,8 @@ export function Changelog() {
         <h2 id={`${releaseId(release.version)}-title`}>{release.title}</h2>
         <p className="release-summary">{release.summary}</p>
         {release.theme === "sync" && <figure className="release-visual">
-          <div className="release-visual-copy"><span className="release-visual-mark"><img src="/apple-touch-icon.png" alt="" width={32} height={32} />Pocket 1.1</span><p>Your Mac.<br />Your phone.<br /><span>Your server.</span></p><span className="release-visual-note">Sync is optional. You’re in control.</span></div>
-          <div className="release-visual-screen"><img src="/screenshot-overview.png" alt="Pocket for Mac’s Overview window with balance, history and quick-add buttons" width={1600} height={1283} /></div>
+          <div className="release-visual-copy"><span className="release-visual-mark"><img src="/pocket-icon.webp" alt="" width={32} height={32} />Pocket 1.1</span><p>Your Mac.<br />Your phone.<br /><span>Your server.</span></p><span className="release-visual-note">Sync is optional. You’re in control.</span></div>
+          <div className="release-visual-screen"><Image src="/screenshot-overview.png" alt="Pocket for Mac’s Overview window with balance, history and quick-add buttons" width={1600} height={1283} sizes="(max-width: 700px) 80vw, 440px" /></div>
         </figure>}
         <ul className="release-highlights">{release.highlights.map(item => <li key={item.title}><span className="release-bullet" aria-hidden="true" /><div><h3>{item.title}</h3><p>{item.description}</p></div></li>)}</ul>
         <ReleaseDetails title={release.detailsTitle} items={release.details} />
