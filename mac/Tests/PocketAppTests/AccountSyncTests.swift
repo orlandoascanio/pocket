@@ -224,6 +224,47 @@ final class AccountSyncTests: XCTestCase {
         let disk = try JSONDecoder.iso.decode(Ledger.self, from: Data(contentsOf: store.fileURL))
         XCTAssertEqual(disk.balance, -6908)
     }
+
+    func testFailedAccountSaveDoesNotReportSyncedOrChangeBalance() async throws {
+        MockAccount.reset(balance: 100)
+        let store = try makeStore()
+        try await store.connect(key: MockAccount.key)
+        let lastSync = store.journal.lastSync
+        let file = try Data(contentsOf: store.fileURL)
+        try FileManager.default.removeItem(at: store.fileURL)
+        try FileManager.default.createDirectory(at: store.fileURL, withIntermediateDirectories: false)
+        MockAccount.txs[0]["amount"] = 200.0
+        await store.syncNow()
+        XCTAssertEqual(store.syncState, .offline)
+        XCTAssertEqual(store.journal.lastSync, lastSync)
+        XCTAssertEqual(store.balance, 10000)
+        XCTAssertNotNil(store.saveError)
+        try FileManager.default.removeItem(at: store.fileURL)
+        try file.write(to: store.fileURL)
+        await store.syncNow()
+        XCTAssertEqual(store.balance, 20000)
+        XCTAssertNil(store.saveError)
+    }
+
+    func testFailedDisconnectKeepsKeyAndAccountCopy() async throws {
+        MockAccount.reset(balance: 100)
+        let keys = AccountKeyStore.memory()
+        let store = try makeStore(keys)
+        try await store.connect(key: MockAccount.key)
+        let local = store.fileURL.deletingLastPathComponent().appendingPathComponent("ledger.json")
+        try FileManager.default.createDirectory(at: local, withIntermediateDirectories: false)
+        XCTAssertFalse(store.disconnect())
+        XCTAssertTrue(store.connected)
+        XCTAssertEqual(keys.load(), MockAccount.key)
+        XCTAssertEqual(store.balance, 10000)
+        XCTAssertEqual(store.fileURL.lastPathComponent, "account-ledger.json")
+        XCTAssertNotNil(store.saveError)
+        try FileManager.default.removeItem(at: local)
+        XCTAssertTrue(store.disconnect())
+        XCTAssertFalse(store.connected)
+        XCTAssertNil(keys.load())
+        XCTAssertEqual(try JSONDecoder.iso.decode(Ledger.self, from: Data(contentsOf: local)).balance, 10000)
+    }
 }
 
 extension AccountSyncTests {
