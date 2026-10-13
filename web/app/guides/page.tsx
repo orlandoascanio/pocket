@@ -42,7 +42,7 @@ export default function GuidesPage() {
         <GuideCards />
       </section>
       <section className="guide-download">
-        <div><h2>Put your balance in the menu bar.</h2><p>Pocket is free for macOS 14 or later, on Apple Silicon and Intel.</p></div>
+        <div><h2>Put your balance in the menu bar.</h2><p>Pocket is free for macOS, on Apple Silicon and Intel.</p></div>
         <a className="pill pill-dark" href={DOWNLOAD_URL} data-download><DownloadIcon />Download for Mac</a>
       </section>
     </main>
