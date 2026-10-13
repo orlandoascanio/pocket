@@ -2,15 +2,21 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { GuideCards } from "@/components/GuideCards";
-import { GuideFooter } from "@/components/GuideFooter";
+import { SiteFooter } from "@/components/SiteFooter";
 import { DownloadDialog } from "@/components/DownloadDialog";
 import { DownloadIcon, SiteNav } from "@/components/SiteNav";
-import { GUIDES, guideUrl } from "@/lib/guides";
-import { DOWNLOAD_URL, SELF_HOSTING_URL, SITE_URL } from "@/lib/site";
+import { GUIDES, guideUrl, textParts } from "@/lib/guides";
+import { releaseDate } from "@/lib/releases";
+import { AUTHOR, PUBLISHER } from "@/lib/schema";
+import { DOWNLOAD_URL, SITE_URL } from "@/lib/site";
 import "../guides.css";
 
 export const dynamicParams = false;
 export function generateStaticParams() { return GUIDES.map(({ slug }) => ({ slug })); }
+
+function Text({ children }: { children: string }) {
+  return textParts(children).map((part, index) => part.href ? <a href={part.href} key={index}>{part.text}</a> : part.text);
+}
 
 function findGuide(slug: string) { return GUIDES.find((guide) => guide.slug === slug) ?? notFound(); }
 
@@ -28,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function GuidePage({ params }: { params: Promise<{ slug: string }> }) {
   const guide = findGuide((await params).slug);
   const schema = [
-    { "@context": "https://schema.org", "@type": "Article", headline: guide.title, description: guide.description, dateModified: guide.updated, image: `${SITE_URL}${guide.image}`, mainEntityOfPage: `${SITE_URL}${guideUrl(guide.slug)}` },
+    { "@context": "https://schema.org", "@type": "Article", headline: guide.title, description: guide.description, datePublished: guide.published, dateModified: guide.updated, inLanguage: "en", image: `${SITE_URL}${guide.image}`, mainEntityOfPage: `${SITE_URL}${guideUrl(guide.slug)}`, author: AUTHOR, publisher: PUBLISHER, about: { "@id": `${SITE_URL}/#software` } },
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
       { "@type": "ListItem", position: 1, name: "Pocket", item: `${SITE_URL}/` },
       { "@type": "ListItem", position: 2, name: "Guides", item: `${SITE_URL}/guides/` },
@@ -39,13 +45,13 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
     <SiteNav />
     <main className="wrap guide-page">
-      <nav className="guide-breadcrumb" aria-label="Breadcrumb"><a href="/">Pocket</a><span aria-hidden="true">/</span><a href="/guides/">Guides</a><span aria-hidden="true">/</span><span aria-current="page">{guide.category}</span></nav>
+      <nav className="guide-breadcrumb" aria-label="Breadcrumb"><a href="/">Pocket</a><span aria-hidden="true">/</span><a href="/guides/">Guides</a><span aria-hidden="true">/</span><span aria-current="page">{guide.title}</span></nav>
       <article>
         <header className="guide-header">
           <p className="guide-eyebrow">{guide.category} · {guide.minutes} min read</p>
           <h1>{guide.title}</h1>
           <p className="guide-lead">{guide.description}</p>
-          <p className="guide-date">Updated <time dateTime={guide.updated}>October 13, 2026</time></p>
+          <p className="guide-date">Updated <time dateTime={guide.updated}>{releaseDate(guide.updated)}</time></p>
         </header>
         <div className="guide-reading-layout">
           <nav className="guide-toc" aria-label="On this page"><p>On this page</p>{guide.sections.map((section) => <a href={`#${section.id}`} key={section.id}>{section.title}</a>)}</nav>
@@ -58,14 +64,13 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             </figure>
             {guide.sections.map((section) => <section id={section.id} key={section.id}>
               <h2>{section.title}</h2>
-              {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-              {section.steps && <ol>{section.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
+              {section.paragraphs.map((paragraph) => <p key={paragraph}><Text>{paragraph}</Text></p>)}
+              {section.steps && <ol>{section.steps.map((step) => <li key={step}><Text>{step}</Text></li>)}</ol>}
               {section.table && <div className="guide-table-wrap" tabIndex={0} role="region" aria-label={section.table.label}>
                 <table><caption className="sr-only">{section.table.label}</caption><thead><tr>{section.table.headings.map((heading) => <th scope="col" key={heading}>{heading}</th>)}</tr></thead><tbody>{section.table.rows.map((row) => <tr key={row[0]}>{row.map((cell, index) => index === 0 ? <th scope="row" key={index}>{cell}</th> : <td key={index}>{cell}</td>)}</tr>)}</tbody></table>
               </div>}
-              {section.note && <aside className="guide-note">{section.note}</aside>}
+              {section.note && <aside className="guide-note"><Text>{section.note}</Text></aside>}
             </section>)}
-            {guide.slug === "back-up-your-data" && <p><a href={SELF_HOSTING_URL}>Read the self-hosting and device-pairing instructions</a></p>}
           </div>
         </div>
       </article>
@@ -75,7 +80,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
         <a className="pill pill-dark" href={DOWNLOAD_URL} data-download><DownloadIcon />Download for Mac</a>
       </section>
     </main>
-    <GuideFooter />
+    <SiteFooter />
     <DownloadDialog />
   </>;
 }
