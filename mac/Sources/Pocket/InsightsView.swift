@@ -7,6 +7,7 @@ struct InsightsView: View {
     @State private var allTime = false
     @State private var month = Day.today.yearMonth
     @State private var grown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let first = store.ledger.firstMonth
@@ -19,12 +20,14 @@ struct InsightsView: View {
                     HStack(spacing: 4) {
                         Button { month = month.adding(-1); regrow() } label: { Image(systemName: "chevron.left") }
                             .disabled(allTime || month <= first)
+                            .accessibilityLabel("Previous month")
                         Text(allTime ? "Since \(first.first.localDate.formatted(.dateTime.month(.wide).year()))"
                                      : month.first.localDate.formatted(.dateTime.month(.wide).year()))
                             .font(.display(20, .semibold))
                             .frame(minWidth: 180)
                         Button { month = month.adding(1); regrow() } label: { Image(systemName: "chevron.right") }
                             .disabled(allTime || month >= last)
+                            .accessibilityLabel("Next month")
                     }
                     .buttonStyle(.borderless)
                     Spacer()
@@ -81,6 +84,7 @@ struct InsightsView: View {
     }
 
     private func regrow() {
+        if reduceMotion { grown = true; return }
         grown = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { grown = true }
     }
