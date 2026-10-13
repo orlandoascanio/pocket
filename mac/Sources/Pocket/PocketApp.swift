@@ -1,9 +1,36 @@
 import AppKit
 import PocketCore
 import SwiftUI
+@preconcurrency import UserNotifications
+
+extension Notification.Name {
+    static let pocketReminderOpened = Notification.Name("PocketReminderOpened")
+}
+
+final class PocketNotificationDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        let id = response.notification.request.identifier
+        if response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+           id.hasPrefix("pocket.") || id == PaymentReminders.testIdentifier {
+            DispatchQueue.main.async { NotificationCenter.default.post(name: .pocketReminderOpened, object: nil) }
+        }
+        completionHandler()
+    }
+}
 
 @main
 struct PocketApp: App {
+    @NSApplicationDelegateAdaptor(PocketNotificationDelegate.self) private var notificationDelegate
     @StateObject private var store = Store()
 
     var body: some Scene {
@@ -37,6 +64,11 @@ struct MenuLabel: View {
     var body: some View {
         Text(store.menuTitle)
             .monospacedDigit()
+            .onReceive(NotificationCenter.default.publisher(for: .pocketReminderOpened)) { _ in
+                store.windowRequest = .waiting
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
+            }
             .task {
                 try? await Task.sleep(for: .milliseconds(400))
                 // POCKET_OPEN / POCKET_SECTION (development only) open a window at launch, for screenshots.
@@ -66,6 +98,7 @@ struct Onboarding: View {
     @State private var inTheRed = false
     @State private var openAtLogin = true
     @State private var connecting = false
+    @State private var amountError: String?
     @FocusState private var focused: Bool
 
     static func currencies(including current: String) -> [String] {
@@ -99,7 +132,7 @@ struct Onboarding: View {
         VStack(spacing: 16) {
             VStack(spacing: 6) {
                 Text("Hi! I'm your Pocket").font(.display(28, .heavy))
-                Text("I keep an eye on how much money you have left. Everything stays on this Mac. There's no account and nothing is sent anywhere.")
+                Text("I keep your recorded balance in the menu bar. Your data stays on this Mac unless you choose to connect an account.")
                     .multilineTextAlignment(.center).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -112,12 +145,13 @@ struct Onboarding: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 HStack {
-                    TextField("0.00", text: $amount)
+                    TextField("Starting balance", text: $amount, prompt: Text(store.money.placeholder))
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .focused($focused)
                         .onSubmit(start)
-                    Picker("", selection: $currency) {
+                        .onChange(of: amount) { _, _ in amountError = nil }
+                    Picker("Currency", selection: $currency) {
                         ForEach(Self.currencies(including: currency), id: \.self) { Text($0).tag($0) }
                     }
                     .labelsHidden()
@@ -125,6 +159,8 @@ struct Onboarding: View {
                 }
                 Text("You can add bills, subscriptions and paychecks right after.")
                     .font(.caption).foregroundStyle(.secondary)
+                Text("Leave the amount empty to start at zero.").font(.caption).foregroundStyle(.secondary)
+                if let amountError { Text(amountError).font(.caption).foregroundStyle(Palette.negative) }
             }
             Toggle("Open Pocket when I log in, so my balance is always in the menubar", isOn: $openAtLogin)
                 .toggleStyle(.checkbox)
@@ -162,7 +198,11 @@ struct Onboarding: View {
     }
 
     private func start() {
-        let cents = Money.parse(amount) ?? 0
+        guard let cents = amount.trimmed.isEmpty ? 0 : Money.parse(amount, allowZero: true) else {
+            amountError = "Enter a valid amount, like 125.50, or leave it empty for zero."
+            focused = true
+            return
+        }
         guard store.start(currency: currency, cents: inTheRed ? -cents : cents, openAtLogin: openAtLogin) else { return }
         withAnimation(.snappy) { step = 1 }
     }
