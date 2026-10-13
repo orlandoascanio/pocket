@@ -1,3 +1,4 @@
+import AppKit
 import PocketCore
 import SwiftUI
 
@@ -28,12 +29,23 @@ final class EditorState: ObservableObject {
     @Published var spent = true {
         didSet {
             let allowed = (spent ? Categories.spending : Categories.income).map(\.id)
-            if let c = category, !allowed.contains(c) { category = nil }
+            if let c = category, c != Categories.start, !allowed.contains(c) { category = nil }
             if mode == .new && !confirmTouched { confirm = !spent }
         }
     }
     @Published var frequency: Frequency = .once
-    @Published var amount = ""
+    @Published var amount = "" {
+        didSet {
+            if let sign = amount.first, sign == "+" || sign == "-" {
+                let rest = String(amount.dropFirst())
+                if !rest.hasPrefix("+") && !rest.hasPrefix("-") {
+                    amount = rest
+                    spent = sign == "-"
+                }
+            }
+            if error != nil { error = nil }
+        }
+    }
     @Published var label = "" {
         didSet {
             guard !categoryTouched, mode == .new, let store else { return }
@@ -84,7 +96,7 @@ final class EditorState: ObservableObject {
         spent = e.cents < 0
         amount = Money.edit(e.cents)
         label = e.label
-        category = e.category == Categories.start ? nil : e.category
+        category = e.category
         categoryTouched = true
         date = e.day.localDate
     }
@@ -131,13 +143,14 @@ final class EditorState: ObservableObject {
     @discardableResult
     func save() -> Bool {
         guard let store else { return false }
-        guard let cents = Money.parse(amount) else { error = "Enter an amount, like 9.99"; return false }
+        let startingBalance = editingEntry && category == Categories.start
+        guard let cents = Money.parse(amount, allowZero: startingBalance) else { error = "Enter an amount, like 9.99"; return false }
         let l = label.trimmed
         guard !l.isEmpty else { error = "Say what it was"; return false }
         let t = times.trimmed
         let count = t.isEmpty ? nil : Int(t)
-        if frequency != .once && !t.isEmpty && (count ?? 0) < 1 {
-            error = "Payments must be a whole number, like 3"
+        if frequency != .once && !t.isEmpty && !(1...1_000_000).contains(count ?? 0) {
+            error = "Enter between 1 and 1,000,000 payments, or leave it empty."
             return false
         }
         let signed = spent ? -cents : cents
@@ -173,7 +186,12 @@ final class EditorState: ObservableObject {
     }
 }
 
-/// The full add / edit form, shown as a sheet: what, when, how often, and whether to confirm.
+private struct EntryBodyHeight: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// A compact entry sheet with native fields and room for scheduling when needed.
 struct EntryEditor: View {
     @EnvironmentObject var store: Store
     @ObservedObject var state: EditorState
@@ -181,76 +199,38 @@ struct EntryEditor: View {
 
     @FocusState private var focus: Field?
     @State private var confirmDelete = false
+    @State private var bodyHeight: CGFloat = 300
     enum Field { case amount, label }
 
     private var categories: [PocketCore.Category] { state.spent ? Categories.spending : Categories.income }
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(title).font(.headline).padding(.top, 18)
-            Form {
-                Section {
-                    Picker("Type", selection: $state.spent) {
-                        Text("Spent").tag(true)
-                        Text("Got money").tag(false)
-                    }
-                    .pickerStyle(.segmented)
-                    TextField("Amount", text: $state.amount, prompt: Text(store.money.placeholder))
-                        .monospacedDigit()
-                        .focused($focus, equals: .amount)
-                        .onSubmit { focus = .label }
-                    TextField("Description", text: $state.label, prompt: Text(placeholder))
-                        .focused($focus, equals: .label)
-                        .onSubmit { state.save() }
+            HStack(spacing: 16) {
+                Text(title).font(.system(size: 20, weight: .semibold))
+                Spacer(minLength: 8)
+                Picker("Type", selection: $state.spent) {
+                    Text("Spent").tag(true)
+                    Text("Got money").tag(false)
                 }
-                Section {
-                    DatePicker(dateCaption, selection: $state.date, displayedComponents: .date)
-                    Picker("Category", selection: Binding(get: { state.category }, set: {
-                        state.category = $0
-                        state.categoryTouched = true
-                    })) {
-                        Text("None").tag(String?.none)
-                        Divider()
-                        ForEach(categories) { Label($0.name, systemImage: $0.symbol).tag(Optional($0.id)) }
-                    }
-                    if !state.editingEntry {
-                        Picker("Repeat", selection: $state.frequency) {
-                            ForEach(Frequency.allCases) { Text($0 == .biweekly ? "Every 2 weeks" : $0.name).tag($0) }
-                        }
-                        if state.frequency != .once {
-                            TextField(state.editingRule != nil ? "Payments left" : "Number of payments", text: $state.times, prompt: Text("No end"))
-                                .monospacedDigit()
-                        }
-                    }
-                } footer: {
-                    if let hint { Text(hint).font(.caption).foregroundStyle(.secondary) }
-                }
-                if state.isPlanned && !state.editingEntry {
-                    Section {
-                        Toggle(state.spent ? "Confirm each payment" : "Confirm when money arrives",
-                               isOn: Binding(get: { state.confirm }, set: { state.confirm = $0; state.confirmTouched = true }))
-                    } footer: {
-                        Text(state.confirm ? "Waits in Overview until you confirm the real amount and date." : "Counts automatically on its date.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                if state.mode == .new && !state.isPlanned {
-                    Section {
-                        Toggle("Save as a quick-add button", isOn: $state.savePreset)
-                    } footer: {
-                        Text("Quick-add buttons sit above the entry field. ⌘1 to ⌘9 use the first nine.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 204)
             }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
-            if let error = state.error {
-                Text(error).font(.callout).foregroundStyle(Palette.negative)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 20)
+            .padding(.horizontal, 24).padding(.top, 22).padding(.bottom, 20)
+
+            ScrollView {
+                fields
+                    .padding(.horizontal, 24).padding(.bottom, 20)
+                    .background(GeometryReader { proxy in
+                        Color.clear.preference(key: EntryBodyHeight.self, value: proxy.size.height)
+                    })
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: min(bodyHeight, maximumBodyHeight))
+            .onPreferenceChange(EntryBodyHeight.self) { if $0 > 0 { bodyHeight = $0 } }
+
+            Divider()
             HStack(spacing: 8) {
                 if state.mode != .new {
                     Button("\(deleteTitle)…", role: .destructive) { confirmDelete = true }
@@ -265,11 +245,14 @@ struct EntryEditor: View {
                 Spacer()
                 Button("Cancel") { state.reset(); onClose?() }.keyboardShortcut(.cancelAction)
                 Button(buttonTitle) { state.save() }
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
-                    .disabled(Money.parse(state.amount) == nil)
+                    .disabled(Money.parse(state.amount, allowZero: state.editingEntry && state.category == Categories.start) == nil)
             }
-            .padding(.horizontal, 20).padding(.bottom, 18).padding(.top, 4)
+            .controlSize(.large)
+            .padding(.horizontal, 24).padding(.vertical, 16)
         }
+        .background(Palette.bg)
         .confirmationDialog(deleteQuestion, isPresented: $confirmDelete) {
             Button(deleteTitle, role: .destructive) { performDelete() }
         } message: { Text(deleteMessage) }
@@ -277,14 +260,118 @@ struct EntryEditor: View {
         .onAppear { state.store = store; if state.mode == .new { focus = .amount } }
     }
 
+    private var maximumBodyHeight: CGFloat {
+        max(240, min(480, (NSScreen.main?.visibleFrame.height ?? 780) - 200))
+    }
+
+    private var fields: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                fieldLabel("Amount")
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(store.money.symbol).foregroundStyle(.secondary)
+                    TextField("Amount", text: $state.amount, prompt: Text(store.money.placeholder))
+                        .textFieldStyle(.plain)
+                        .monospacedDigit()
+                        .foregroundStyle(state.spent ? Color.primary : Palette.accent)
+                        .focused($focus, equals: .amount)
+                        .onSubmit { focus = .label }
+                    Text(store.ledger.currency).font(.caption).foregroundStyle(.secondary)
+                }
+                .font(.system(size: 36, weight: .semibold, design: .rounded))
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(focus == .amount ? Palette.accent : Palette.line))
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                fieldLabel("Description")
+                TextField("Description", text: $state.label, prompt: Text(placeholder))
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    .focused($focus, equals: .label)
+                    .onSubmit { state.save() }
+            }
+
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 6) {
+                    fieldLabel(dateCaption)
+                    DatePicker(dateCaption, selection: $state.date, displayedComponents: .date)
+                        .labelsHidden().controlSize(.large)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 6) {
+                    fieldLabel("Category")
+                    Picker("Category", selection: Binding(get: { state.category }, set: {
+                        state.category = $0
+                        state.categoryTouched = true
+                    })) {
+                        if state.category == Categories.start { Text("Starting balance").tag(Optional(Categories.start)) }
+                        Text("None").tag(String?.none)
+                        Divider()
+                        ForEach(categories) { Label($0.name, systemImage: $0.symbol).tag(Optional($0.id)) }
+                    }
+                    .labelsHidden().pickerStyle(.menu).controlSize(.large)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if !state.editingEntry {
+                HStack(alignment: .top, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        fieldLabel("Repeat")
+                        Picker("Repeat", selection: $state.frequency) {
+                            ForEach(Frequency.allCases) { Text($0 == .biweekly ? "Every 2 weeks" : $0.name).tag($0) }
+                        }
+                        .labelsHidden().pickerStyle(.menu).controlSize(.large)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if state.frequency != .once {
+                        VStack(alignment: .leading, spacing: 6) {
+                            fieldLabel(state.editingRule != nil ? "Payments left" : "Number of payments")
+                            TextField(state.editingRule != nil ? "Payments left" : "Number of payments", text: $state.times, prompt: Text("No end"))
+                                .textFieldStyle(.roundedBorder).controlSize(.large).monospacedDigit()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+
+            if state.isPlanned && !state.editingEntry {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(state.spent ? "Confirm each payment" : "Confirm when money arrives",
+                           isOn: Binding(get: { state.confirm }, set: { state.confirm = $0; state.confirmTouched = true }))
+                        .toggleStyle(.checkbox)
+                    Text(state.confirm ? "Waits in Overview until you confirm the real amount and date." : "Counts automatically on its date.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if state.mode == .new && !state.isPlanned {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle("Save as a quick-add button", isOn: $state.savePreset).toggleStyle(.checkbox)
+                    Text("Use ⌘1 to ⌘9 for the first nine buttons.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if let error = state.error {
+                Text(error).font(.callout).foregroundStyle(Palette.negative)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel("Couldn't save. \(error)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func fieldLabel(_ text: String) -> some View {
+        Text(text).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+    }
+
     private var title: String {
         switch state.mode {
-        case .new:
-            if state.frequency != .once { return state.spent ? "New Subscription or Bill" : "New Repeating Income" }
-            if state.isFuture { return state.spent ? "New Planned Payment" : "New Expected Money" }
-            return "New Entry"
-        case .entry: return "Edit Entry"
-        case .rule(let r): return r.isOnce ? "Edit Expected Payment" : "Edit Repeating Payment"
+        case .new: return state.isPlanned ? "New payment" : "New entry"
+        case .entry: return "Edit entry"
+        case .rule: return "Edit payment"
         }
     }
 
