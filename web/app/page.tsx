@@ -44,7 +44,7 @@ const FAQ: { q: string; a: string; link?: { href: string; label: string } }[] = 
   },
   {
     q: "Which Macs does it run on?",
-    a: "macOS 14 Sonoma or later, on Apple Silicon and Intel. The app is signed and notarized by Apple.",
+    a: "macOS 14 Sonoma or later, on Apple Silicon and Intel. The app is signed and notarized by Apple. To update, choose Check for Updates… from the Pocket menu or Settings → About.",
   },
   {
     q: "How do I move Pocket to a new Mac?",

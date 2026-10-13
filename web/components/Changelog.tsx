@@ -95,7 +95,7 @@ export function Changelog() {
         <div className="release-meta"><a className="release-version" href={`#${releaseId(release.version)}`}>v{release.version}</a>{i === 0 && <span className="release-latest"><span aria-hidden="true" />Latest release</span>}<time dateTime={release.date}>{releaseDate(release.date)}</time><Permalink id={releaseId(release.version)} version={release.version} /></div>
         <h2 id={`${releaseId(release.version)}-title`}>{release.title}</h2>
         <p className="release-summary">{release.summary}</p>
-        {release.theme !== "launch" && <figure className="release-visual">
+        {(release.theme === "sync" || release.theme === "findable") && <figure className="release-visual">
           {release.theme === "sync"
             ? <div className="release-visual-copy"><span className="release-visual-mark"><img src="/pocket-icon.webp" alt="" width={32} height={32} />Pocket 1.1</span><p>Your Mac.<br />Your phone.<br /><span>Your server.</span></p><span className="release-visual-note">Sync is optional. You’re in control.</span></div>
             : <div className="release-visual-copy"><span className="release-visual-mark"><img src="/pocket-icon.webp" alt="" width={32} height={32} />Pocket 1.2</span><p>Got it.<br />Skip it.<br /><span>Save it.</span></p><span className="release-visual-note">Every action, one click away.</span></div>}

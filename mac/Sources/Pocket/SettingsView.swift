@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var store: Store
+    @ObservedObject private var updates = UpdateChecker.shared
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var confirmErase = false
     @State private var pendingImport: URL?
@@ -120,8 +121,21 @@ struct SettingsView: View {
                      : "Everything stays on this Mac in one file, with a daily backup for the last 7 days. Nothing is sent anywhere.")
             }
 
-            Section("About") {
-                LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")
+            Section {
+                LabeledContent("Version") {
+                    HStack {
+                        Text(UpdateChecker.currentVersion).monospacedDigit().foregroundStyle(.secondary)
+                        Button("Check for Updates…") { updates.checkAndReport() }
+                            .disabled(updates.checking)
+                    }
+                }
+                LabeledContent("Pocket for Mac") {
+                    Button("About Pocket") { AboutPanel.show() }
+                }
+            } header: {
+                Text("About")
+            } footer: {
+                Text("Checking for updates asks GitHub for the latest release, only when you click it. Nothing about your money is sent.")
             }
         }
         .formStyle(.grouped)

@@ -190,6 +190,9 @@ struct MenuPanel: View {
                 Button("Settings…") { request(.section(.settings)) }
                 if store.connected { Link("Open Web App", destination: store.server.webLink(code: nil)) }
                 Divider()
+                Button("About Pocket") { AboutPanel.show() }
+                Button("Check for Updates…") { UpdateChecker.shared.checkAndReport() }
+                Divider()
                 Button("Quit Pocket") { NSApp.terminate(nil) }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)

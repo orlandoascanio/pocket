@@ -3,7 +3,7 @@ export type Release = {
   date: string;
   title: string;
   summary: string;
-  theme: "sync" | "launch" | "findable";
+  theme: "sync" | "launch" | "findable" | "update";
   highlights: { title: string; description: string }[];
   detailsTitle: string;
   details: string[];
@@ -13,6 +13,23 @@ export type Release = {
 // Curated from the published GitHub releases. Add a new entry here when shipping,
 // and update VERSION in site.ts. Dates are publication dates, not commit dates.
 export const RELEASES: Release[] = [
+  {
+    version: "1.3.0",
+    date: "2026-10-13",
+    title: "Know when there's a new Pocket.",
+    summary: "Check for updates from inside Pocket, and see which version you have in a proper About window.",
+    theme: "update",
+    highlights: [
+      { title: "Check for Updates", description: "Choose Check for Updates… from the Pocket menu, the ⋯ menu in the menu bar panel, or Settings → About. If there's a newer version, Download gets it in one click." },
+      { title: "About Pocket", description: "The standard Mac About window shows your version, with links to pocketleft.app and the source code." },
+    ],
+    detailsTitle: "How the check works",
+    details: [
+      "Pocket asks GitHub for the latest release only when you click Check for Updates. It never checks in the background.",
+      "Nothing about your money is sent. Your data stays where it is when you install the new version.",
+    ],
+    source: "https://github.com/orlandoascanio/pocketleft/releases/tag/v1.3.0",
+  },
   {
     version: "1.2.0",
     date: "2026-10-13",

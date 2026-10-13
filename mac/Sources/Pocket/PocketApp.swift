@@ -47,7 +47,13 @@ struct PocketApp: App {
                 .frame(minWidth: 780, minHeight: 560)
         }
         .defaultSize(width: 1000, height: 780)
-        .commands { QuickAddCommands(store: store) }
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Pocket") { AboutPanel.show() }
+                Button("Check for Updates…") { UpdateChecker.shared.checkAndReport() }
+            }
+            QuickAddCommands(store: store)
+        }
 
         Window("Welcome to Pocket", id: "welcome") {
             Onboarding().environmentObject(store)
