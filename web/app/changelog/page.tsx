@@ -44,7 +44,7 @@ export default function ChangelogPage() {
         </div>
       </main>
       <footer className="changes-footer wrap">
-        <a className="brand" href="/"><img src="/apple-touch-icon.png" alt="" width={28} height={28} />Pocket</a>
+        <a className="brand" href="/"><img src="/pocket-icon.webp" alt="" width={28} height={28} />Pocket</a>
         <nav className="foot-legal" aria-label="Website preferences">
           <a href="/privacy/">Website privacy</a>
           <AnalyticsPreferences />
