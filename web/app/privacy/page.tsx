@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SiteNav } from "@/components/SiteNav";
-import { AnalyticsPreferences } from "@/components/WebsiteAnalytics";
+import { SiteFooter } from "@/components/SiteFooter";
 import { REPO_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -29,12 +29,6 @@ export default function PrivacyPage() {
       <p><a href="https://policies.google.com/privacy">Google privacy policy</a> · <a href="https://sentry.io/privacy/">Sentry privacy policy</a> · <a href="https://vercel.com/legal/privacy-policy">Vercel privacy policy</a> · <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub privacy policy</a></p>
       <p>Questions or corrections: <a href={`${REPO_URL}/issues`}>open an issue on GitHub</a>. Don’t include private money data in a public issue.</p>
     </main>
-    <footer className="site-legal-footer wrap">
-      <a href="/">Back to Pocket for Mac</a>
-      <nav className="foot-legal" aria-label="Website preferences">
-        <a href="/privacy/">Website privacy</a>
-        <AnalyticsPreferences />
-      </nav>
-    </footer>
+    <SiteFooter />
   </>;
 }
