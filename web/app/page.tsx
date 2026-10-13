@@ -8,53 +8,20 @@ import { PocketCharacter } from "@/components/PocketCharacter";
 import { DownloadIcon, SiteNav } from "@/components/SiteNav";
 import { Tour } from "@/components/Tour";
 import { HeroScene } from "@/components/HeroScene";
-import { AnalyticsPreferences } from "@/components/WebsiteAnalytics";
+import { SiteFooter } from "@/components/SiteFooter";
+import { FAQ } from "@/lib/faq";
+import { AUTHOR, PUBLISHER } from "@/lib/schema";
 import "./home.css";
 import "./guides/guides.css";
+import { RELEASES } from "@/lib/releases";
 import {
   DESCRIPTION,
   DOWNLOAD_URL,
-  ISSUES_URL,
-  RELEASES_URL,
   REPO_URL,
-  SELF_HOSTING_URL,
+  SELF_HOSTING_GUIDE_URL,
   SITE_URL,
   VERSION,
-  WEB_APP_URL,
 } from "@/lib/site";
-
-const FAQ: { q: string; a: string; link?: { href: string; label: string } }[] = [
-  { q: "Is Pocket free?", a: "Yes. Every feature, with no account and no trial. The source code is on GitHub." },
-  {
-    q: "Does Pocket connect to my bank?",
-    a: "No. You add what comes in and what goes out, and Pocket keeps the balance you've recorded. Repeating payments log themselves on their day, and quick-add buttons (⌘1 to ⌘9) add the things you buy often in one keystroke.",
-  },
-  {
-    q: "Where is my money data stored?",
-    a: "In one file on your Mac (~/Library/Application Support/Pocket/ledger.json), with seven daily backups. From Settings you can restore one of those backups, export your data as JSON, import it again, or erase it.",
-  },
-  {
-    q: "Can I see my balance on my phone?",
-    a: "Yes, if you want to. Connect Pocket to a server you run (a free Supabase project), then pair your phone from Settings → Sync. Your phone uses the Pocket web app, and your Mac keeps a full copy that works offline.",
-    link: { href: SELF_HOSTING_URL, label: "Read the self-hosting guide" },
-  },
-  {
-    q: "Which currencies does it support?",
-    a: "Any standard currency. Each ledger uses one. Changing it relabels your amounts; it doesn't convert them.",
-  },
-  {
-    q: "Which Macs does it run on?",
-    a: "macOS 14 Sonoma or later, on Apple Silicon and Intel. The app is signed and notarized by Apple. To update, choose Check for Updates… from the Pocket menu or Settings → About.",
-  },
-  {
-    q: "How do I move Pocket to a new Mac?",
-    a: "Export your data from Settings on the old Mac, then import that file on the new one.",
-  },
-  {
-    q: "Is there a Windows or iPhone app?",
-    a: "Not a native one. With sync set up, the Pocket web app works in any browser, and you can add it to your home screen.",
-  },
-];
 
 const jsonLd = [
   {
@@ -67,6 +34,22 @@ const jsonLd = [
     downloadUrl: DOWNLOAD_URL,
     softwareVersion: VERSION,
     image: `${SITE_URL}/screenshot-overview.png`,
+    datePublished: RELEASES[RELEASES.length - 1].date,
+    dateModified: RELEASES[0].date,
+    releaseNotes: `${SITE_URL}/changelog/`,
+    author: AUTHOR,
+    publisher: PUBLISHER,
+    sameAs: [REPO_URL],
+    featureList: [
+      "Recorded balance in the Mac menu bar",
+      "Manual spending and income entries with categories",
+      "Quick-add buttons with Command-1 through Command-9",
+      "Weekly, every-two-weeks, monthly and yearly repeating payments",
+      "Expected payments that wait for confirmation",
+      "Balance forecast for the next 1, 3, 6 or 12 months",
+      "Local data file with seven daily backups and JSON export/import",
+      "Optional self-hosted sync with a Pocket web app for phones",
+    ],
     operatingSystem: "macOS 14 or later",
     applicationCategory: "FinanceApplication",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -215,6 +198,9 @@ export default function Home() {
                 <li>Your balance only changes once you confirm</li>
                 <li>A reminder on the day it&apos;s due</li>
               </ul>
+              <a className="feature-guide" href="/guides/expected-income/">
+                Guide: track expected income before it arrives <span aria-hidden="true">→</span>
+              </a>
             </div>
             <PocketCharacter id="waiting" mood="excited" bubble="Can't wait!" style={{ width: "min(280px, 64vw)" }} />
           </div>
@@ -226,6 +212,9 @@ export default function Home() {
                 Add a coffee once, then choose Save as Button. From then on it&apos;s one click, or ⌘1 to ⌘9 from the
                 menu bar panel or anywhere in the Pocket window, and your balance updates right away.
               </p>
+              <a className="feature-guide" href="/guides/quick-add-spending/">
+                Guide: set up quick-add buttons <span aria-hidden="true">→</span>
+              </a>
             </div>
             <figure className="quick-add-recording">
               <video
@@ -286,6 +275,9 @@ export default function Home() {
                 <Check>Seven daily backups you can restore</Check>
                 <Check>Export, import or erase any time</Check>
               </ul>
+              <a className="feature-guide plan-guide" href="/guides/back-up-your-data/">
+                Back up or move to a new Mac <span aria-hidden="true">→</span>
+              </a>
               <DownloadButton wide />
             </div>
             <div className="plan">
@@ -297,8 +289,8 @@ export default function Home() {
                 <Check>Your Mac keeps a full copy and works offline</Check>
                 <Check>A free Supabase project that only you can read</Check>
               </ul>
-              <a className="pill pill-line pill-wide" href={SELF_HOSTING_URL}>
-                Self-hosting guide
+              <a className="pill pill-line pill-wide" href={SELF_HOSTING_GUIDE_URL}>
+                Set up sync
               </a>
             </div>
           </div>
@@ -329,61 +321,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="foot">
-        <div className="wrap foot-grid">
-          <div className="foot-brand">
-            <a className="brand" href="/">
-              <img src="/pocket-icon.webp" alt="" width={28} height={28} />
-              Pocket
-            </a>
-            <p>Your balance in the menu bar, and how long it will last.</p>
-            <a className="foot-ver" href="/changelog/">
-              v{VERSION} · Release notes <span className="live-dot" aria-hidden="true" />
-            </a>
-            <span className="foot-badge">
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="m3 8.5 3.2 3L13 4.5" />
-              </svg>
-              Signed and notarized by Apple
-            </span>
-          </div>
-          <nav className="foot-col" aria-label="Product">
-            <h3>Product</h3>
-            <a href={DOWNLOAD_URL} data-download>
-              Download
-            </a>
-            <a href="#tour">Features</a>
-            <a href="#plan">Plan ahead</a>
-            <a href={WEB_APP_URL}>Web app</a>
-          </nav>
-          <nav className="foot-col" aria-label="Help">
-            <h3>Help</h3>
-            <a href="/guides/">Guides</a>
-            <a href="#faq">Questions</a>
-            <a href={SELF_HOSTING_URL}>Self-hosting</a>
-            <a href={ISSUES_URL}>Report a bug</a>
-          </nav>
-          <nav className="foot-col" aria-label="Project">
-            <h3>Project</h3>
-            <a href={REPO_URL}>Source code</a>
-            <a href="/changelog/">Changelog</a>
-            <a href={RELEASES_URL}>All releases</a>
-            <a href="https://www.orlandoascanio.com">Made by Orlando Ascanio</a>
-          </nav>
-        </div>
-        <div className="wrap foot-base">
-          <span>
-            Download Pocket only from <b>pocketleft.app</b> or its GitHub page.
-          </span>
-          <nav className="foot-legal" aria-label="Website preferences">
-            <a href="/privacy/">Website privacy</a>
-            <AnalyticsPreferences />
-          </nav>
-        </div>
-        <div className="foot-word" aria-hidden="true">
-          Pocket
-        </div>
-      </footer>
+      <SiteFooter />
 
       <DownloadDialog />
       <ButtonFx />
