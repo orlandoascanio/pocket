@@ -4,7 +4,7 @@ export type GuideSection = {
   paragraphs: string[];
   steps?: string[];
   note?: string;
-  table?: { caption: string; headings: string[]; rows: string[][] };
+  table?: { label: string; headings: string[]; rows: string[][] };
 };
 
 export type Guide = {
@@ -16,6 +16,8 @@ export type Guide = {
   updated: string;
   image: string;
   imageAlt: string;
+  imageWidth?: number;
+  imageHeight?: number;
   video?: string;
   poster?: string;
   related: string[];
@@ -30,21 +32,23 @@ export const GUIDES: Guide[] = [
     category: "Start here",
     minutes: 4,
     updated: "2026-10-13",
-    image: "/screenshot-overview.png",
+    image: "/media/overview-2026-10-13.png",
     imageAlt: "Pocket Overview with the recorded balance and money entries",
+    imageWidth: 2128,
+    imageHeight: 1692,
     related: ["quick-add-spending", "expected-income", "back-up-your-data"],
     sections: [
       {
         id: "starting-balance",
         title: "Start with the money you have today",
         paragraphs: [
-          "Pocket is a manual money tracker for macOS 14 or later. Its menu bar balance comes from your starting amount and the entries you record. It does not read your bank account.",
+          "Pocket is a manual money tracker for macOS. Its menu bar balance comes from your starting amount and the entries you record. It does not read your bank account.",
           "Choose which money you want to track, such as the balance in your everyday spending account. Record money coming into and going out of that account, and use one currency.",
         ],
         steps: [
           "Download Pocket from pocketleft.app, open the disk image and drag Pocket into Applications. Open the app.",
           "Enter your current amount. Choose “I'm below zero by” if you are starting with a negative balance. An empty amount starts at zero.",
-          "Choose your currency. Each ledger uses one currency; changing it later changes the label without converting the amounts.",
+          "Choose your currency. Pocket uses one currency at a time. Changing it later changes the label without converting the amounts.",
           "Choose whether Pocket should open when you log in, then click Start. Your recorded balance appears in the menu bar.",
         ],
         note: "If today's balance already includes an old purchase or paycheck, entering that transaction again changes the balance twice. Start from today and record changes from that point onward.",
@@ -52,9 +56,9 @@ export const GUIDES: Guide[] = [
       {
         id: "first-entry",
         title: "Record one purchase and check the balance",
-        paragraphs: ["Click the menu bar balance to open Pocket, or use the entry field in Overview. Choose Spent, enter the amount and describe the purchase. Add a category if useful, check the date and save."],
+        paragraphs: ["Click the menu bar balance to open Pocket, or use the entry field in Overview. Keep the minus button selected for spending, then enter the amount and describe the purchase. Choose a category from the icon to the left of the description. Press Return to save."],
         table: {
-          caption: "Example in USD",
+          label: "Balance after each entry",
           headings: ["Entry", "Change", "Recorded balance"],
           rows: [["Starting amount", "$500.00", "$500.00"], ["Coffee", "−$4.50", "$495.50"], ["Money received", "+$120.00", "$615.50"]],
         },
@@ -64,7 +68,7 @@ export const GUIDES: Guide[] = [
         id: "first-plan",
         title: "Add one upcoming bill",
         paragraphs: [
-          "Click Date, repeat and more beneath the entry field. Enter the bill's amount, description and next date. Choose Repeat for a weekly, every-two-weeks, monthly or yearly payment. Leave the number of payments empty if it has no end date.",
+          "Click the sliders icon to the right of the amount field. It opens the full entry form, where you can set the date, category and repeat schedule. Enter the bill's amount, description and next date. Choose Repeat for a weekly, every-two-weeks, monthly or yearly payment. Leave the number of payments empty if it has no end date.",
           "An automatic payment counts on its date. Turn on Confirm each payment if you want to record the actual amount and date yourself. Those payments wait for confirmation in Overview.",
           "Open Plan to see your projected balance after each scheduled payment. The chart includes only the money you have recorded or planned.",
         ],
@@ -100,7 +104,7 @@ export const GUIDES: Guide[] = [
           "A Coffee button with an amount of 4.50 records a 4.50 purchase each time you use it. Create it when you record your next coffee.",
         ],
         steps: [
-          "Open the full entry form, choose Spent and enter the purchase's amount and description.",
+          "Click the sliders icon to the right of the amount field. In the full entry form, choose Spent and enter the purchase's amount and description.",
           "Choose a category and turn on Save as a quick-add button. Save the entry. This records the purchase and creates its button.",
           "Use the saved button for the next purchase. A button with a fixed amount adds another entry immediately.",
         ],
@@ -128,7 +132,7 @@ export const GUIDES: Guide[] = [
         title: "Review the entries behind the total",
         paragraphs: [
           "A quick-add button records one entry per use. If the price changes, update its saved amount in Settings.",
-          "In Insights, review income and spending by category. The breakdown uses the categories you assigned to your entries.",
+          "In Categories, review income and spending by category. The breakdown uses the categories you assigned to your entries.",
         ],
       },
     ],
@@ -155,7 +159,7 @@ export const GUIDES: Guide[] = [
       {
         id: "schedule-income",
         title: "Schedule a payment that needs confirmation",
-        paragraphs: ["Open the full entry form. Set a future date or choose a repeating schedule to see the confirmation setting."],
+        paragraphs: ["Click the sliders icon to the right of the amount field to open the full entry form. Set a future date or choose a repeating schedule to see the confirmation setting."],
         steps: [
           "Choose Got money and enter the expected amount, such as 300.00, with a description such as Client payment.",
           "Set the expected date. Leave Repeat at Once for a single payment, or choose how often it repeats.",
@@ -172,7 +176,7 @@ export const GUIDES: Guide[] = [
           "If $280 arrives on October 23, click Got it for the waiting payment. Enter 280.00 and October 23, then confirm. Pocket records the actual amount and date.",
         ],
         table: {
-          caption: "Example in USD, with no other entries",
+          label: "Recorded balance before and after confirming income",
           headings: ["Event", "Recorded balance"],
           rows: [["Starting amount", "$500.00"], ["$300 expected for October 20", "$500.00"], ["Due, still waiting for confirmation", "$500.00"], ["Confirm $280 received on October 23", "$780.00"]],
         },
@@ -203,7 +207,7 @@ export const GUIDES: Guide[] = [
         id: "local-file",
         title: "Find your data file",
         paragraphs: [
-          "Pocket stores your ledger on your Mac by default. You can use the local app without an account. Entries, planned payments and quick-add buttons are saved together.",
+          "Pocket saves your money data on your Mac by default. You can use the local app without an account. Entries, planned payments and quick-add buttons are saved together.",
           "Open Settings and click Show in Finder next to Data file. In local mode, the file is normally ~/Library/Application Support/Pocket/ledger.json.",
           "Pocket keeps seven daily backups in its data folder on the same Mac. Keep an exported copy elsewhere so you can recover it if you lose the computer or its drive.",
         ],
