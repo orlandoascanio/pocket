@@ -44,7 +44,9 @@ export function ButtonFx() {
       if (!el) return;
       const { p, apply } = pull(el);
       gsap.killTweensOf(p);
-      gsap.to(p, { x: 0, y: 0, duration: 0.9, ease: "elastic.out(1, 0.45)", onUpdate: apply });
+      // Settles without overshoot: the pointer just left, nothing was thrown, so there's no
+      // momentum for a wobble to express.
+      gsap.to(p, { x: 0, y: 0, duration: 0.5, ease: "power3.out", onUpdate: apply });
       el = null;
     }
 
