@@ -27,6 +27,8 @@ enum WindowRequest: Equatable {
     case editRule(UUID)
     case section(AppSection)
     case newEntry(EntryDraft)
+    /// Open the simple Overview composer with the amount field ready for a first expense.
+    case firstEntry
     /// A quick-add button that asks for its amount: fill the Overview entry and wait for the amount.
     case quickAdd(Preset)
     case waiting
@@ -125,6 +127,7 @@ final class Store: ObservableObject {
     }
 
     var spentThisMonth: Cents { ledger.summary(today.yearMonth).spent }
+    var hasRecordedEntries: Bool { ledger.entries.contains { $0.category != Categories.start } }
 
     var runway: Projection.Runway? {
         let p = ledger.project(today: today, days: 91)
@@ -172,9 +175,9 @@ final class Store: ObservableObject {
         if key != nil {
             journal = (try? Data(contentsOf: journalURL)).flatMap { try? Store.decoder().decode(SyncJournal.self, from: $0) } ?? SyncJournal()
         }
-        let hasDemoData = env["POCKET_DATA_DIR"] != nil && !loaded.entries.isEmpty
+        let hasSavedData = !loaded.entries.isEmpty || !loaded.rules.isEmpty
         let wasOnboarded = defaults.bool(forKey: "onboarded")
-        onboarded = wasOnboarded || hasDemoData || key != nil || initialLoadError != nil
+        onboarded = wasOnboarded || hasSavedData || key != nil || initialLoadError != nil
         let r = defaults.integer(forKey: "range")
         range = [30, 91, 182, 365].contains(r) ? r : 91
         reminders = defaults.object(forKey: "reminders") as? Bool ?? true
@@ -505,6 +508,7 @@ final class Store: ObservableObject {
 
     @discardableResult
     func start(currency: String, cents: Cents, openAtLogin: Bool) -> Bool {
+        guard !onboarded else { return false }
         guard mutate({
             $0.currency = currency
             if cents != 0 { $0.add(Entry(cents: cents, label: "Starting balance", day: today, category: Categories.start)) }
