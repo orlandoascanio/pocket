@@ -40,6 +40,7 @@ struct MenuPanel: View {
                 QuickBar(onAsk: { quick.start(from: $0) }).padding(.horizontal, 10).padding(.top, 12)
             }
             Composer(state: quick, onMore: openOptions).padding(.horizontal, 10).padding(.top, 10)
+                .disabled(store.loadError != nil)
             if let error = quick.error {
                 Text(error).font(.caption).foregroundStyle(Palette.negative)
                     .padding(.horizontal, 16).padding(.top, 6)
@@ -89,14 +90,14 @@ struct MenuPanel: View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Money left").font(.subheadline).foregroundStyle(.secondary)
-                Text(store.money.string(store.balance))
+                Text(store.loadError == nil ? store.money.string(store.balance) : "—")
                     .font(.display(34, .semibold)).tracking(-0.6).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.5)
-                    .accessibilityLabel("Money left").accessibilityValue(store.money.string(store.balance))
+                    .accessibilityLabel("Money left").accessibilityValue(store.loadError == nil ? store.money.string(store.balance) : "Unavailable")
                     .contentTransition(.numericText(value: Double(store.balance)))
                     .foregroundStyle(store.balance < 0 ? Palette.negative : Color.primary)
                     .animation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0), value: store.balance)
-                if let runway = store.runway {
+                if store.loadError == nil, let runway = store.runway {
                     Button { request(.section(.plan)) } label: {
                         HStack(spacing: 4) {
                             RunwayLine(runway: runway, range: store.range)
@@ -170,7 +171,7 @@ struct MenuPanel: View {
                 }
                 .buttonStyle(.plain).help("Sync now")
             } else {
-                Text("\(store.money.string(store.spentThisMonth)) spent this month")
+                Text(store.loadError == nil ? "\(store.money.string(store.spentThisMonth)) spent this month" : "Saved data unavailable")
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                     .padding(.horizontal, 6)
             }
@@ -184,7 +185,7 @@ struct MenuPanel: View {
             Menu {
                 Button("Open Pocket") { open("main") }
                 Button("Plan") { request(.section(.plan)) }
-                Button("Insights") { request(.section(.insights)) }
+                Button(AppSection.insights.title) { request(.section(.insights)) }
                 Divider()
                 Button("Settings…") { request(.section(.settings)) }
                 if store.connected { Link("Open Web App", destination: store.server.webLink(code: nil)) }
