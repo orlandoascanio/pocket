@@ -21,12 +21,16 @@ struct SettingsView: View {
         Form {
             SyncSection()
 
-            Section("Money") {
+            Section {
                 Picker("Currency", selection: Binding(get: { store.ledger.currency }, set: { store.setCurrency($0) })) {
                     ForEach(Self.currencies, id: \.self) { code in
                         Text("\(code) · \(Locale.current.localizedString(forCurrencyCode: code) ?? code)").tag(code)
                     }
                 }
+            } header: {
+                Text("Money")
+            } footer: {
+                Text("Changing currency changes how amounts are displayed. It doesn't convert your entries.")
             }
 
             Section {
@@ -44,11 +48,20 @@ struct SettingsView: View {
                 Text("Quick-add buttons")
             } footer: {
                 Text("⌘1 to ⌘9 use the first nine. Leave the amount empty for things that cost something different each time."
+                     + " Save each button after editing."
                      + (store.connected ? "" : " Drag to reorder."))
             }
 
             Section("General") {
                 Toggle("Remind me when a payment I'm waiting for is due", isOn: $store.reminders)
+                Button("Send Test Reminder") { Task { await store.sendTestReminder() } }
+                    .disabled(!store.notificationServicesAvailable || !store.reminders || store.sendingTestReminder)
+                    .help("Send a reminder in five seconds to check macOS notifications.")
+                if let message = store.reminderMessage {
+                    Text(message).font(.callout).foregroundStyle(.secondary)
+                } else if !store.notificationServicesAvailable {
+                    Text("System notifications are disabled in this demo.").font(.callout).foregroundStyle(.secondary)
+                }
                 Toggle("Open at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, on in
                         do {
@@ -62,7 +75,7 @@ struct SettingsView: View {
             Section {
                 LabeledContent("Backup") {
                     HStack {
-                        Button("Export…", action: export)
+                        Button("Export…", action: export).disabled(store.loadError != nil)
                         if !store.connected { Button("Import…", action: chooseImport) }
                     }
                 }
@@ -133,57 +146,106 @@ struct SettingsView: View {
             try store.importFile(url)
             message = "Imported \(url.lastPathComponent)."
         } catch {
-            message = "That file isn't a Pocket export, so nothing changed."
+            message = "Couldn't import: \(error.localizedDescription) Your saved data is unchanged."
         }
+    }
+}
+
+/// A settings edit remains a draft until the whole button is valid and durably saved.
+@MainActor
+final class PresetEditorState: ObservableObject {
+    @Published var label: String
+    @Published var amount: String
+    @Published var category: String?
+    @Published private(set) var error: String?
+    private var original: Preset
+
+    init(_ preset: Preset) {
+        original = preset
+        label = preset.label
+        amount = preset.cents.map(Money.edit) ?? ""
+        category = preset.category
+    }
+
+    var hasChanges: Bool {
+        label != original.label || amount != (original.cents.map(Money.edit) ?? "") || category != original.category
+    }
+
+    func revert(to preset: Preset) {
+        original = preset
+        label = preset.label
+        amount = preset.cents.map(Money.edit) ?? ""
+        category = preset.category
+        error = nil
+    }
+
+    func refresh(_ preset: Preset) {
+        if !hasChanges { revert(to: preset) }
+    }
+
+    @discardableResult
+    func save(in store: Store) -> Bool {
+        guard !label.trimmed.isEmpty else { error = "Give this button a name."; return false }
+        let cents = Money.parse(amount)
+        guard amount.trimmed.isEmpty || cents != nil else {
+            error = "Enter an amount, like 6.50, or leave it empty to ask each time."
+            return false
+        }
+        // Preserve changes arriving from sync while this row is being edited.
+        guard var preset = store.ledger.presets.first(where: { $0.id == original.id }) else {
+            error = "This button was removed. Add a new one to save these details."
+            return false
+        }
+        if label != original.label { preset.label = label.trimmed }
+        if amount != (original.cents.map(Money.edit) ?? "") { preset.cents = cents }
+        if category != original.category { preset.category = category }
+        guard store.savePreset(preset) else { error = "Couldn't save. Your edits are still here; try again."; return false }
+        revert(to: preset)
+        return true
     }
 }
 
 struct PresetRow: View {
     @EnvironmentObject var store: Store
     let preset: Preset
-    @State private var label = ""
-    @State private var amount = ""
+    @StateObject private var editor: PresetEditorState
 
-    var body: some View {
-        HStack(spacing: 10) {
-            CategoryIcon(category: preset.category, cents: preset.sign, size: 24)
-            TextField("", text: $label, prompt: Text("Name"))
-                .textFieldStyle(.roundedBorder)
-                .onSubmit(save)
-            TextField("", text: $amount, prompt: Text("Ask each time"))
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 110)
-                .monospacedDigit()
-                .onSubmit(save)
-            Picker("", selection: Binding(get: { preset.category ?? "" }, set: { c in
-                var p = preset; p.category = c.isEmpty ? nil : c; store.savePreset(p)
-            })) {
-                Text("No category").tag("")
-                ForEach(preset.sign > 0 ? Categories.income : Categories.spending) { Text($0.name).tag($0.id) }
-            }
-            .labelsHidden()
-            .frame(width: 140)
-            Button(role: .destructive) { store.deletePreset(preset.id) } label: { Image(systemName: "trash") }
-                .buttonStyle(.borderless)
-                .help("Delete this button")
-        }
-        .labelsHidden()
-        .onAppear {
-            label = preset.label
-            amount = preset.cents.map(Money.edit) ?? ""
-        }
-        .onChange(of: label) { _, _ in save() }
-        .onChange(of: amount) { _, _ in save() }
+    init(preset: Preset) {
+        self.preset = preset
+        _editor = StateObject(wrappedValue: PresetEditorState(preset))
     }
 
-    private func save() {
-        let l = label.trimmed
-        guard !l.isEmpty else { return }
-        let c = amount.trimmed.isEmpty ? nil : Money.parse(amount)
-        guard l != preset.label || c != preset.cents else { return }
-        var p = preset
-        p.label = l
-        p.cents = c
-        store.savePreset(p)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                CategoryIcon(category: editor.category, cents: preset.sign, size: 24)
+                TextField("Button name", text: $editor.label, prompt: Text("Name"))
+                    .textFieldStyle(.roundedBorder).labelsHidden()
+                    .onSubmit { editor.save(in: store) }
+                Button(role: .destructive) { store.deletePreset(preset.id) } label: { Image(systemName: "trash") }
+                    .buttonStyle(.borderless).help("Delete this button")
+                    .accessibilityLabel("Delete \(preset.label) quick-add button")
+            }
+            HStack(spacing: 10) {
+                TextField("Button amount", text: $editor.amount, prompt: Text("Ask each time"))
+                    .textFieldStyle(.roundedBorder).labelsHidden()
+                    .frame(width: 110).monospacedDigit()
+                    .onSubmit { editor.save(in: store) }
+                Picker("Button category", selection: $editor.category) {
+                    Text("No category").tag(String?.none)
+                    ForEach(preset.sign > 0 ? Categories.income : Categories.spending) { Text($0.name).tag(Optional($0.id)) }
+                }
+                .labelsHidden().frame(maxWidth: 160)
+                Spacer(minLength: 0)
+                if editor.hasChanges {
+                    Button("Revert") { editor.revert(to: preset) }
+                    Button("Save") { editor.save(in: store) }.buttonStyle(.borderedProminent)
+                }
+            }
+            if let error = editor.error {
+                Text(error).font(.caption).foregroundStyle(Palette.negative)
+            }
+        }
+        .onChange(of: preset) { _, value in editor.refresh(value) }
     }
 }
