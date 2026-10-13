@@ -306,7 +306,7 @@ struct PocketStage: View {
                     .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
                     .fixedSize()
                     .offset(x: 2, y: -26)
-                    .transition(.scale(scale: 0.6, anchor: .bottomTrailing).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.6, anchor: .bottomTrailing).combined(with: .opacity))
                     .zIndex(2)
             }
         }
@@ -365,7 +365,8 @@ struct PocketStage: View {
 
     private func say(_ text: String) {
         bubbleTask?.cancel()
-        withAnimation(.spring(duration: 0.35, bounce: 0.35)) { bubble = text }
+        // The pop has a little bounce, it's the pocket talking; with Reduce Motion it just fades in.
+        withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.35)) { bubble = text }
         bubbleTask = Task {
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
