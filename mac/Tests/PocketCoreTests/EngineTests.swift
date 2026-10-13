@@ -176,6 +176,40 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(back.presets[0].cents, 999)
     }
 
+    func testAmountsRejectMalformedInputInsteadOfChangingItsMeaning() {
+        for text in ["abc12", "12abc", "1$2", "1-2", "--12", "9..99", "1,23,456", "12.3456", ".", ",", "1000000000"] {
+            XCTAssertNil(Money.parse(text, allowZero: true), text)
+        }
+        XCTAssertEqual(Money.parse(".05"), 5)
+        XCTAssertEqual(Money.parse("+12.50"), 1250)
+        XCTAssertEqual(Money.parse("1,234,567.89"), 123456789)
+        XCTAssertEqual(Money.parse("1.234.567,89"), 123456789)
+        XCTAssertEqual(Money.parse("999999999.99"), 99999999999)
+        XCTAssertEqual(Money.parse("0.00", allowZero: true), 0)
+        XCTAssertNil(Money.parse("0.00"))
+        let yen = Money(currency: "JPY", locale: Locale(identifier: "en_US"))
+        XCTAssertEqual(yen.placeholder, "0.00")
+        XCTAssertTrue(yen.string(12345).contains("123.45"), "a fractional recorded balance must remain visible")
+    }
+
+    func testDatesRejectNonexistentDaysAndMalformedExports() {
+        for date in ["2026-02-29", "2026-04-31", "2026-00-01", "2026--10-01", "2026-1-01", "0000-01-01", "2026-10-01-extra"] {
+            XCTAssertNil(Day(iso: date), date)
+        }
+        XCTAssertNotNil(Day(iso: "2028-02-29"))
+    }
+
+    func testExternalLedgerValidationRejectsUnsafeData() throws {
+        let entry = Entry(cents: 1000, label: "Start", day: day("2026-10-12"))
+        XCTAssertThrowsError(try Ledger(entries: [entry, entry]).validate())
+        XCTAssertThrowsError(try Ledger(entries: [Entry(cents: Int.min, label: "Invalid", day: entry.day)]).validate())
+        XCTAssertThrowsError(try Ledger(rules: [Rule(cents: 100, label: "Invalid", cadence: .monthly, anchor: entry.day, posted: -1)]).validate())
+        XCTAssertThrowsError(try Ledger(presets: [Preset(label: "Invalid", cents: -100, sign: -1, category: nil)]).validate())
+        var future = Ledger(); future.version = 2
+        XCTAssertThrowsError(try future.validate())
+        XCTAssertNoThrow(try Ledger(entries: [entry]).validate())
+    }
+
     func testLinesDontRepeatUntilTheDeckRunsOut() {
         let lines = Lines()
         let pool = Lines.pools["poke"]!
