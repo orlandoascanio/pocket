@@ -22,14 +22,14 @@
 .hero-dimensional .announce-arrow { width: 23px; height: 23px; }
 .hero-copy { position: relative; z-index: 2; }
 
-/* A finite entrance, slow float, and bounded pointer perspective share one stage. */
+/* Paint the hero immediately; the slow float starts after its first render. */
 .pocket-scene { position: relative; height: 590px; min-width: 0; perspective: 1100px; isolation: isolate; --rx: 0deg; --ry: 0deg; }
 .scene-backdrop { position: absolute; inset: 12px -10px 72px 5px; background: #e1e9dd; border-radius: 48% 48% 42% 42%; overflow: hidden; transform: rotate(-7deg); }
 .scene-backdrop::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 32% 18%, #f5f4d8 0%, transparent 65%); }
 .scene-orbit { position: absolute; width: 125%; height: 53%; border: 1px solid #9aad944a; border-radius: 50%; top: 23%; left: -13%; transform: rotate(-30deg); }
 .scene-orbit.second { transform: rotate(30deg); }
 .scene-world { position: absolute; inset: 0 0 84px; transform-style: preserve-3d; transform: rotateX(var(--rx)) rotateY(var(--ry)); transition: transform 650ms var(--out); }
-.scene-mascot { position: absolute; width: 83%; top: 20px; left: 14%; transform: translateZ(38px) rotate(-8deg); animation: pocket-arrive 900ms var(--out) both, pocket-drift 7s 900ms ease-in-out infinite; }
+.scene-mascot { position: absolute; width: 83%; top: 20px; left: 14%; transform: translateZ(38px) rotate(-8deg); animation: pocket-drift 7s 1200ms ease-in-out infinite; }
 .scene-mascot img { display: block; width: 100%; height: auto; filter: drop-shadow(12px 24px 16px #324b2929); }
 .scene-menubar { position: absolute; z-index: 3; top: 12px; right: 0; display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-radius: 12px; background: #fcfcf4; color: #234c38; box-shadow: 0 15px 32px -14px #243b3852; font-size: 13px; transform: translateZ(60px) rotate(5deg); }
 .scene-menubar > svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; }
@@ -56,7 +56,6 @@
 .scene-motion svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .scene-motion:hover { color: var(--ink); }
 .pocket-scene[data-active="false"] .scene-mascot, .pocket-scene[data-moving="false"] .scene-mascot { animation-play-state: paused; }
-@keyframes pocket-arrive { from { opacity: .7; translate: 0 18px; } to { opacity: 1; translate: 0 0; } }
 @keyframes pocket-drift { 0%, 100% { transform: translate3d(0, 0, 38px) rotate(-8deg); } 50% { transform: translate3d(0, -12px, 38px) rotate(-5deg); } }
 @keyframes amount-settle { from { opacity: .65; translate: 0 3px; } to { opacity: 1; translate: 0 0; } }
 
@@ -84,11 +83,13 @@
 #tour .tour-menu .mp { transform: rotate(3deg); right: 10%; top: 65px; }
 #plan .feature { padding-block: 36px 55px; }
 #plan .upcoming { transform: perspective(1100px) rotateY(-7deg) rotateZ(2deg); border: 0; border-radius: 16px; box-shadow: 8px 26px 60px -20px #1d44252b; }
-#plan .quick-add-feature { grid-template-columns: .7fr 1.3fr; gap: 40px; }
-.quick-add-feature > * { min-width: 0; }
-.quick-add-recording { margin: 0; }
-.quick-add-recording video { display: block; width: 100%; height: auto; aspect-ratio: 83 / 54; background: var(--surface-2); border-radius: 16px; }
-.quick-add-recording video:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+#plan .quick-add-feature, #plan .categories-feature { grid-template-columns: .7fr 1.3fr; gap: 40px; }
+.quick-add-feature > *, .categories-feature > * { min-width: 0; }
+.quick-add-recording, .categories-recording { margin: 0; }
+.quick-add-recording video, .categories-recording video { display: block; width: 100%; height: auto; background: var(--surface-2); border-radius: 16px; }
+.quick-add-recording video { aspect-ratio: 83 / 54; }
+.categories-recording video { aspect-ratio: 77 / 60; }
+.quick-add-recording video:focus-visible, .categories-recording video:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 #private .two-tone span { color: var(--muted); }
 #private .plan { border-radius: 16px; }
 .home-closing { position: relative; margin-top: 90px; margin-bottom: 70px; padding: 45px 24px 60px; background: #e1e9dd; border-radius: 16px; color: #193d2b; }
@@ -133,7 +134,7 @@
   #tour { padding-top: 78px; }
   #tour .tour-menu .mp { transform: none; }
   #plan .upcoming { transform: none; }
-  #plan .quick-add-feature { grid-template-columns: 1fr; gap: 24px; }
+  #plan .quick-add-feature, #plan .categories-feature { grid-template-columns: 1fr; gap: 24px; }
   .home-closing { margin-inline: 24px; }
 }
 @media (max-width: 480px) {
@@ -144,6 +145,7 @@
   .hero-dimensional .cta { gap: 8px; }
   .pocket-scene { height: 465px; }
   .scene-mascot { width: 94%; left: 3%; top: 37px; }
+  .scene-mascot img { filter: none; }
   .scene-backdrop { inset-block: 22px 68px; }
   .scene-menubar { right: 7px; padding: 10px 14px; gap: 11px; }
   .scene-balance { width: 233px; padding: 17px 20px 14px; left: 4px; bottom: 0; }
