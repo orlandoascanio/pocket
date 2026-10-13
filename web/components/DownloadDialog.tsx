@@ -3,25 +3,30 @@
 import { useEffect, useRef } from "react";
 import { DMG_SIZE, DOWNLOAD_URL, ISSUES_URL } from "@/lib/site";
 import { MenuBarStrip } from "@/components/MenuBar";
+import { trackWebsiteEvent } from "@/lib/analytics";
 
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Any link marked `data-download` still downloads as usual; this also opens the install steps.
-// The dialog grows out of the button that was pressed and shrinks back into it when it closes,
-// along the same path. Closing mid-open (or opening mid-close) turns around from wherever it is.
+// The dialog moves gently toward the button that was pressed when it opens and closes.
+// Closing mid-open (or opening mid-close) turns around from wherever it is.
 export function DownloadDialog() {
   const ref = useRef<HTMLDialogElement>(null);
   const origin = useRef<{ x: number; y: number } | null>(null);
   const anim = useRef<Animation | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const openedAt = useRef(0);
+  const closing = useRef(false);
 
-  // The transform that puts the dialog small and centred on the button it came from.
+  // A small directional nudge toward the button it came from.
   function collapsed(d: HTMLDialogElement) {
     const o = origin.current;
     const r = d.getBoundingClientRect();
     if (!o || !r.width) return "translate(0, 16px) scale(.97)";
     const dx = o.x - (r.left + r.width / 2);
     const dy = o.y - (r.top + r.height / 2);
-    return `translate(${dx}px, ${dy}px) scale(.2)`;
+    return `translate(${dx * .15}px, ${dy * .15}px) scale(.92)`;
   }
 
   // The dimmed page behind fades with the dialog. `from` null means "from where it is now".
@@ -37,14 +42,19 @@ export function DownloadDialog() {
     }
   }
 
-  function open(from: Element) {
+  function open(from: HTMLElement) {
     const d = ref.current;
     if (!d) return;
+    if (d.open && !closing.current) return;
+    closing.current = false;
+    opener.current = from;
     const b = from.getBoundingClientRect();
     origin.current = { x: b.left + b.width / 2, y: b.top + b.height / 2 };
     const running = anim.current;
     if (!d.open) d.showModal();
-    else if (!running) return;
+    closeButton.current?.focus({ preventScroll: true });
+    openedAt.current = performance.now();
+    trackWebsiteEvent("install_help_viewed", { trigger: "download_click" });
     // Start from what's on screen now, so a reopen during the close turns around in place.
     const { transform, opacity } = getComputedStyle(d);
     running?.cancel();
@@ -53,16 +63,21 @@ export function DownloadDialog() {
     } else {
       anim.current = d.animate(
         { transform: [running ? transform : collapsed(d), "none"], opacity: [running ? opacity : "0", "1"] },
-        { duration: 520, easing: "cubic-bezier(.16, 1, .3, 1)" },
+        { duration: 380, easing: "cubic-bezier(.16, 1, .3, 1)" },
       );
     }
     fadeBackdrop(d, running ? null : 0, 1, reduced() ? 180 : 400);
     anim.current.onfinish = () => (anim.current = null);
   }
 
-  function close() {
+  function close(reason: "close_button" | "done" | "escape" | "outside") {
     const d = ref.current;
-    if (!d?.open) return;
+    if (!d?.open || closing.current) return;
+    closing.current = true;
+    const seconds = (performance.now() - openedAt.current) / 1000;
+    trackWebsiteEvent("install_help_dismissed", {
+      reason, time_open: seconds < 5 ? "under_5s" : seconds < 15 ? "5_to_15s" : "over_15s",
+    });
     const { transform, opacity } = getComputedStyle(d);
     anim.current?.cancel();
     const a = reduced()
@@ -80,18 +95,23 @@ export function DownloadDialog() {
       a.cancel();
       backdrop.current?.cancel();
       anim.current = null;
+      closing.current = false;
     };
   }
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      const link = (e.target as Element).closest?.("a[data-download]");
-      if (!link || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      const link = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>("a[data-download]") : null;
+      if (!link || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0 || (link.target && link.target !== "_self")) return;
       // The link's own navigation still starts the download; the steps open on the next frame.
       requestAnimationFrame(() => open(link));
     }
     document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
+    return () => {
+      document.removeEventListener("click", onClick);
+      anim.current?.cancel();
+      backdrop.current?.cancel();
+    };
   }, []);
 
   return (
@@ -99,34 +119,44 @@ export function DownloadDialog() {
       ref={ref}
       className="dl"
       aria-labelledby="dl-title"
+      aria-describedby="dl-description"
+      onClose={() => opener.current?.focus({ preventScroll: true })}
+      onKeyDown={(e) => {
+        if (e.key !== "Tab") return;
+        const controls = e.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not(:disabled)");
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }}
       onCancel={(e) => {
         // Escape: animate out instead of vanishing.
         e.preventDefault();
-        close();
+        close("escape");
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) close();
+        if (e.target !== e.currentTarget) return;
+        const bounds = e.currentTarget.getBoundingClientRect();
+        if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) close("outside");
       }}
     >
       <div className="dl-inner">
         <div className="dl-head">
           <div>
-            <h2 id="dl-title">Almost there.</h2>
-            <p>
-              Pocket.dmg ({DMG_SIZE}) should be downloading. If it isn&apos;t,{" "}
-              <a href={DOWNLOAD_URL}>download it here</a>.
-            </p>
+            <span className="dl-eyebrow">Pocket for Mac</span>
+            <h2 id="dl-title">Install Pocket.</h2>
+            <p id="dl-description">After Pocket.dmg downloads, follow these three steps.</p>
           </div>
-          <div className="dl-actions">
-            <a className="pill pill-soft" href={ISSUES_URL}>
-              Report a problem
-            </a>
-            <button className="dl-close" type="button" aria-label="Close" onClick={close}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6 6l12 12M18 6 6 18" />
-              </svg>
-            </button>
-          </div>
+          <button ref={closeButton} className="dl-close" type="button" aria-label="Close installation guide" onClick={() => close("close_button")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
         </div>
         <ol className="dl-steps">
           <li>
@@ -137,9 +167,11 @@ export function DownloadDialog() {
                 <span className="dl-size">{DMG_SIZE}</span>
               </div>
             </div>
-            <span className="dl-step">Step 1</span>
-            <h3>Open</h3>
-            <p>Open Pocket.dmg from your Downloads folder.</p>
+            <div className="dl-step-copy">
+              <span className="dl-step">01</span>
+              <h3>Open the download</h3>
+              <p>Find Pocket.dmg in your Downloads folder and open it.</p>
+            </div>
           </li>
           <li>
             <div className="dl-art" aria-hidden="true">
@@ -152,19 +184,30 @@ export function DownloadDialog() {
                 <path className="dl-folder-a" d="M48 26 34 58M48 26l14 32M39 48h18" />
               </svg>
             </div>
-            <span className="dl-step">Step 2</span>
-            <h3>Install</h3>
-            <p>Drag Pocket into your Applications folder.</p>
+            <div className="dl-step-copy">
+              <span className="dl-step">02</span>
+              <h3>Move to Applications</h3>
+              <p>Drag the Pocket icon into the Applications folder.</p>
+            </div>
           </li>
           <li>
             <div className="dl-art" aria-hidden="true">
               <MenuBarStrip amount="$337.03" />
             </div>
-            <span className="dl-step">Step 3</span>
-            <h3>Launch</h3>
-            <p>Open Pocket and type what you have now. From then on, it&apos;s in your menu bar.</p>
+            <div className="dl-step-copy">
+              <span className="dl-step">03</span>
+              <h3>Set your starting balance</h3>
+              <p>Open Pocket from Applications and enter your current amount. Your balance appears in the menu bar.</p>
+            </div>
           </li>
         </ol>
+        <div className="dl-foot">
+          <div>
+            <a className="dl-retry" href={DOWNLOAD_URL} onClick={() => trackWebsiteEvent("install_help_retry", { action: "download_again" })}>Download again <span aria-hidden="true">↓</span></a>
+            <a className="dl-help" href={ISSUES_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackWebsiteEvent("install_help_support", { action: "report_problem" })}>Report a problem <span aria-hidden="true">↗</span></a>
+          </div>
+          <button className="pill pill-dark" type="button" onClick={() => close("done")}>Got it</button>
+        </div>
       </div>
     </dialog>
   );
