@@ -52,7 +52,7 @@ export function DownloadDialog() {
           <li>
             <div className="dl-art" aria-hidden="true">
               <div className="dl-file">
-                <img src="/apple-touch-icon.png" alt="" width={72} height={72} />
+                <img src="/pocket-icon.webp" alt="" width={72} height={72} />
                 <span className="dl-filename">Pocket.dmg</span>
                 <span className="dl-size">{DMG_SIZE}</span>
               </div>
@@ -63,7 +63,7 @@ export function DownloadDialog() {
           </li>
           <li>
             <div className="dl-art" aria-hidden="true">
-              <img className="dl-app" src="/apple-touch-icon.png" alt="" width={84} height={84} />
+              <img className="dl-app" src="/pocket-icon.webp" alt="" width={84} height={84} />
               <svg className="dl-arrow" viewBox="0 0 48 24">
                 <path d="M2 12h40M34 4l8 8-8 8" />
               </svg>
