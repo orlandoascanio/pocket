@@ -7,6 +7,7 @@ struct PlanView: View {
     var onEdit: (EditTarget) -> Void
     @State private var showAll = false
     @State private var pendingStop: Rule?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let p = store.projection
@@ -37,7 +38,13 @@ struct PlanView: View {
     private func header(_ p: Projection) -> some View {
         let t = p.runway.text(store.range)
         let d = { (day: Day) in day.localDate.formatted(.dateTime.month(.abbreviated).day()) }
-        return HStack(alignment: .top) {
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 20) { forecastSummary(p, text: t, date: d); rangePicker }
+            VStack(alignment: .leading, spacing: 14) { forecastSummary(p, text: t, date: d); rangePicker }
+        }
+    }
+
+    private func forecastSummary(_ p: Projection, text t: (lead: String, strong: String), date d: (Day) -> String) -> some View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(t.lead) \(t.strong)")
                     .font(.display(26, .semibold)).tracking(-0.3)
@@ -46,7 +53,10 @@ struct PlanView: View {
                      + (p.lowBalance < p.start ? " · lowest \(store.money.string(p.lowBalance)) on \(d(p.lowDay))" : ""))
                     .foregroundStyle(.secondary).monospacedDigit()
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var rangePicker: some View {
             Picker("Range", selection: $store.range) {
                 Text("1M").tag(30)
                 Text("3M").tag(91)
@@ -56,7 +66,6 @@ struct PlanView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .frame(width: 210)
-        }
     }
 
     @ViewBuilder
@@ -76,7 +85,7 @@ struct PlanView: View {
                         }
                     }
                     if steps.count > 10 {
-                        Button(showAll ? "Show less" : "Show all \(steps.count)") { withAnimation(.snappy) { showAll.toggle() } }
+                        Button(showAll ? "Show less" : "Show all \(steps.count)") { withAnimation(reduceMotion ? nil : .snappy) { showAll.toggle() } }
                             .buttonStyle(.plain)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
@@ -110,11 +119,15 @@ struct PlanView: View {
                             ? "One time · \(r.next.localDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))"
                             : "\(r.cadence.name) · next \(r.next.localDate.formatted(.dateTime.month(.abbreviated).day()))"
                                 + (r.remaining.map { $0 == 1 ? " · last one" : " · \($0) left" } ?? "")
-                        MoneyRow(category: r.category, symbol: r.isOnce ? "clock" : (r.category == nil ? "repeat" : nil), title: r.label,
+                        Button { onEdit(EditTarget(kind: .rule(r))) } label: {
+                            MoneyRow(category: r.category, symbol: r.isOnce ? "clock" : (r.category == nil ? "repeat" : nil), title: r.label,
                                  tag: !r.active ? "paused" : !r.auto ? "you confirm" : nil,
                                  note: when, cents: r.cents,
                                  rightNote: r.isOnce ? "expected" : "per \(r.cadence.unit)", dimmed: !r.active)
-                            .onTapGesture { onEdit(EditTarget(kind: .rule(r))) }
+                        }
+                            .buttonStyle(.plain)
+                            .help("Edit \(r.label)")
+                            .accessibilityHint("Open to edit this scheduled payment")
                             .contextMenu {
                                 Button("Edit…") { onEdit(EditTarget(kind: .rule(r))) }
                                 if !r.isOnce { Button(r.active ? "Pause" : "Resume") { store.setActive(r.id, !r.active) } }
@@ -173,6 +186,7 @@ struct ForecastChart: View {
     let projection: Projection
     let money: Money
     @State private var selected: Date?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private struct Sample: Identifiable {
         let index: Int
@@ -242,15 +256,15 @@ struct ForecastChart: View {
         .chartYAxis {
             AxisMarks(position: .leading) { v in
                 AxisGridLine().foregroundStyle(Palette.line)
-                AxisValueLabel { if let d = v.as(Double.self) { Text(money.compact(Int(d * 100))) } }
+                AxisValueLabel(anchor: .trailing) { if let d = v.as(Double.self) { Text(money.compact(Int(d * 100))) } }
             }
         }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 5)) { _ in
-                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                AxisValueLabel(format: .dateTime.month(.abbreviated).day(), anchor: .top)
             }
         }
-        .animation(.snappy(duration: 0.5), value: projection.days)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.5), value: projection.days)
         .accessibilityLabel("Projected balance until \(projection.end.localDate.formatted(date: .abbreviated, time: .omitted)), ending at \(money.string(projection.endBalance))")
     }
 }
