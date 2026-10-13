@@ -9,9 +9,9 @@ import { DOWNLOAD_URL } from "@/lib/site";
 const LINKS = [
   { href: "#tour", label: "Features" },
   { href: "#plan", label: "Plan ahead" },
-  { href: "/guides/", label: "Guides" },
-  { href: "#private", label: "Privacy" },
+  { href: "#private", label: "Data & privacy" },
   { href: "#faq", label: "FAQ" },
+  { href: "/guides/", label: "Guides" },
   { href: "/changelog/", label: "Changelog" },
 ];
 
@@ -24,6 +24,8 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 export function SiteNav() {
   const pathname = usePathname();
   const home = pathname === "/";
+  // Guide articles sit under the Guides link.
+  const page = LINKS.find((l) => !l.href.startsWith("#") && pathname.startsWith(l.href))?.href ?? null;
   const linkTo = (href: string) => !home && href.startsWith("#") ? `/${href}` : href;
   const [past, setPast] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -147,7 +149,7 @@ export function SiteNav() {
   useEffect(() => {
     const d = dot.current;
     if (!d) return;
-    const current = home ? section : pathname;
+    const current = home ? section : page;
     const link = current ? links.current?.querySelector<HTMLElement>(`a[href="${linkTo(current)}"]`) : null;
     if (!link) {
       gsap.to(d, { opacity: 0, scale: 0, duration: reduced() ? 0 : 0.25, overwrite: true });
@@ -164,7 +166,7 @@ export function SiteNav() {
       .timeline({ overwrite: true })
       .to(d, { x: Math.min(from, to), width: Math.abs(to - from) + 4, duration: 0.2, ease: "power2.in" })
       .to(d, { x: to, width: 4, duration: 0.45, ease: "expo.out" });
-  }, [section, home, pathname]);
+  }, [section, home, page]);
 
   // The menu closes on Escape, on a click outside it, and when the screen grows past it.
   useEffect(() => {
@@ -216,7 +218,7 @@ export function SiteNav() {
               key={href}
               href={linkTo(href)}
               style={{ "--i": i } as React.CSSProperties}
-              aria-current={href === pathname ? "page" : href === section ? "location" : undefined}
+              aria-current={href === pathname ? "page" : href === page || href === section ? "location" : undefined}
               onPointerEnter={() => setHover(href)}
               onFocus={() => setHover(href)}
               onBlur={() => setHover(null)}
@@ -252,7 +254,7 @@ export function SiteNav() {
             key={href}
             href={linkTo(href)}
             style={{ "--i": i } as React.CSSProperties}
-            aria-current={href === pathname ? "page" : href === section ? "location" : undefined}
+            aria-current={href === pathname ? "page" : href === page || href === section ? "location" : undefined}
             onClick={() => setMenu(false)}
           >
             {label}
