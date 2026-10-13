@@ -63,11 +63,11 @@ const jsonLd = [
   },
 ];
 
-function DownloadButton({ label = "Download for Mac", wide }: { label?: string; wide?: boolean }) {
+function DownloadButton() {
   return (
-    <a className={wide ? "pill pill-dark pill-wide" : "pill pill-dark"} href={DOWNLOAD_URL} data-download>
+    <a className="pill pill-dark" href={DOWNLOAD_URL} data-download>
       <DownloadIcon />
-      {label}
+      Download for Mac
     </a>
   );
 }
@@ -102,17 +102,17 @@ export default function Home() {
             <a className="announce" href="/changelog/">
               <span className="announce-tag">New</span>
               <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
-              <span className="announce-text">Your balance on your phone too</span>
+              <span className="announce-text">Free money tracker for your Mac.</span>
               <span className="announce-arrow" aria-hidden="true">
                 ↗
               </span>
             </a>
-            <h1>Know what&apos;s<br />left. <span>Before<br />you spend it.</span></h1>
-            <p className="lead">{DESCRIPTION}</p>
+            <h1>Your money left,<br /><span>in your Mac menu bar.</span></h1>
+            <p className="lead">Enter your starting balance, record spending and income, and see what&apos;s left in your menu bar.</p>
             <div className="cta" id="hero-cta">
               <DownloadButton />
               <a className="pill pill-soft" href="#tour">
-                See how it works
+                See Pocket in action
               </a>
             </div>
             <ul className="meta">
@@ -120,7 +120,7 @@ export default function Home() {
               <li>No account</li>
               <li>macOS 14+</li>
               <li>Apple Silicon &amp; Intel</li>
-              <li>Signed by Apple</li>
+              <li>Developer signed · Apple notarized</li>
               <li>
                 <a href="/changelog/">
                   v{VERSION} <span className="live-dot" aria-hidden="true" />
@@ -131,34 +131,32 @@ export default function Home() {
           <HeroScene />
         </section>
 
-        <div className="home-proof wrap" aria-label="Pocket at a glance">
-          <span>Small app. A clearer picture.</span>
-          <p>In your menu bar. On your Mac. Always within reach.</p>
-          <a href="#tour">Take a closer look <span aria-hidden="true">↓</span></a>
-        </div>
+        <section className="section wrap" id="tour">
+          <h2>Inside Pocket.</h2>
+          <p className="section-lead">
+            Your balance, entries and upcoming payments in one window.
+          </p>
+          <Tour initialView="overview" />
+          <div className="tour-download">
+            <DownloadButton />
+            <p>Free. No account. Your money data stays on your Mac by default.</p>
+          </div>
+        </section>
 
         <div className="wrap wrap-wide home-demos">
           <Bento />
         </div>
 
-        <section className="section wrap" id="tour">
-          <h2>Your balance in the Mac menu bar.</h2>
-          <p className="section-lead">
-            A number in your menu bar, a window for the details, and a plan for the months ahead.
-          </p>
-          <Tour />
-        </section>
-
         <section className="section wrap" id="plan">
           <div className="feature">
             <div className="copy">
-              <h2>Know when it runs out.</h2>
+              <h2>Plan for upcoming bills.</h2>
               <p>
-                Add your bills, subscriptions and paychecks once. Pocket logs them on their day and draws where your
-                balance is heading, a month or a year out.
+                See where your balance is heading based on the payments you enter. Add your bills, subscriptions
+                and expected income to plan a month or a year ahead.
               </p>
               <ul className="dots">
-                <li>“Lasts past Jan 10”, or “Runs out on Dec 4”, at a glance</li>
+                <li>A projected runway based on your recorded balance and planned payments</li>
                 <li>Every payment coming up, with the balance after it</li>
                 <li>Pause, skip or stop anything that repeats</li>
               </ul>
@@ -265,35 +263,39 @@ export default function Home() {
             <br />
             <span>No account, and Pocket is</span> yours.
           </h2>
-          <div className="plans">
-            <div className="plan">
+          <div className="local-default plan">
+            <div className="local-copy">
               <h3>On your Mac</h3>
-              <p>How Pocket works out of the box. Nothing to sign up for.</p>
-              <ul className="checks">
-                <Check>Everything in one file on your Mac</Check>
-                <Check>Nothing is sent anywhere</Check>
-                <Check>Seven daily backups you can restore</Check>
-                <Check>Export, import or erase any time</Check>
-              </ul>
+              <p>Download Pocket, enter your starting balance, and start recording. No account or server to set up.</p>
+              <DownloadButton />
               <a className="feature-guide plan-guide" href="/guides/back-up-your-data/">
                 Back up or move to a new Mac <span aria-hidden="true">→</span>
               </a>
-              <DownloadButton wide />
             </div>
-            <div className="plan">
-              <h3>With sync</h3>
-              <p>Optional. Your balance on your phone too, from a server you run.</p>
+            <ul className="checks">
+              <Check>Your money data stays in one file on your Mac</Check>
+              <Check>Works offline</Check>
+              <Check>Seven daily backups you can restore</Check>
+              <Check>Export, import or erase any time</Check>
+            </ul>
+          </div>
+          <details className="sync-details">
+            <summary>
+              <span>Optional: see your balance on your phone</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </summary>
+            <div className="sync-content">
+              <p>Sync requires a server you run, using a free Supabase project. Set it up when you want access from your phone or another computer.</p>
               <ul className="checks">
                 <Check>The Pocket web app on your phone or any computer</Check>
                 <Check>Pair a device with a 6-digit code</Check>
                 <Check>Your Mac keeps a full copy and works offline</Check>
-                <Check>A free Supabase project that only you can read</Check>
               </ul>
-              <a className="pill pill-line pill-wide" href={SELF_HOSTING_GUIDE_URL}>
-                Set up sync
+              <a className="pill pill-line" href={SELF_HOSTING_GUIDE_URL}>
+                Read the self-hosting guide
               </a>
             </div>
-          </div>
+          </details>
         </section>
 
         <section className="home-guides wrap" id="guides">
