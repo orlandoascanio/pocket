@@ -27,8 +27,15 @@ public struct Day: Hashable, Comparable, Codable, CustomStringConvertible, Senda
     }
 
     public init?(iso: String) {
-        let parts = iso.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3, (1...12).contains(parts[1]), (1...31).contains(parts[2]) else { return nil }
+        let components = iso.split(separator: "-", omittingEmptySubsequences: false)
+        guard components.count == 3, components.map(\.count) == [4, 2, 2],
+              components.allSatisfy({ $0.allSatisfy { "0123456789".contains($0) } }) else { return nil }
+        let parts = components.compactMap { Int($0) }
+        guard parts.count == 3, (1...9999).contains(parts[0]), (1...12).contains(parts[1]),
+              (1...31).contains(parts[2]),
+              let date = Day.utc.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])),
+              Day.utc.component(.month, from: date) == parts[1],
+              Day.utc.component(.day, from: date) == parts[2] else { return nil }
         self.init(year: parts[0], month: parts[1], day: parts[2])
     }
 
