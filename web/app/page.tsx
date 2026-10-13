@@ -210,11 +210,35 @@ export default function Home() {
               </p>
               <ul className="dots">
                 <li>A reminder on the day it&apos;s due</li>
-                <li>Quick-add buttons for the things you buy often, ⌘1 to ⌘9</li>
                 <li>Categories and a monthly breakdown of where it went</li>
               </ul>
             </div>
             <PocketCharacter id="waiting" mood="excited" bubble="Can't wait!" style={{ width: "min(280px, 64vw)" }} />
+          </div>
+
+          <div className="feature quick-add-feature" id="quick-add">
+            <div className="copy">
+              <h2>Quick-add for everyday spending.</h2>
+              <p>
+                Save buttons for the things you buy often. Press ⌘1 to ⌘9 to add a saved entry, and see your
+                balance update in the menu bar and the main window.
+              </p>
+            </div>
+            <figure className="quick-add-recording">
+              <video
+                controls
+                muted
+                playsInline
+                preload="none"
+                width={1660}
+                height={1080}
+                poster="/media/quick-add-2026-10-12.jpg"
+                aria-label="Pocket quick-add keyboard shortcuts demonstration"
+              >
+                <source src="/media/quick-add-2026-10-12.mp4" type="video/mp4" />
+                <a href="/media/quick-add-2026-10-12.mp4">Watch the quick-add demonstration</a>
+              </video>
+            </figure>
           </div>
         </section>
 

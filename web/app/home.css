@@ -84,6 +84,11 @@
 #tour .tour-menu .mp { transform: rotate(3deg); right: 10%; top: 65px; }
 #plan .feature { padding-block: 36px 55px; }
 #plan .upcoming { transform: perspective(1100px) rotateY(-7deg) rotateZ(2deg); border: 0; border-radius: 16px; box-shadow: 8px 26px 60px -20px #1d44252b; }
+#plan .quick-add-feature { grid-template-columns: .7fr 1.3fr; gap: 40px; }
+.quick-add-feature > * { min-width: 0; }
+.quick-add-recording { margin: 0; }
+.quick-add-recording video { display: block; width: 100%; height: auto; aspect-ratio: 83 / 54; background: var(--surface-2); border-radius: 16px; }
+.quick-add-recording video:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 #private .two-tone span { color: var(--muted); }
 #private .plan { border-radius: 16px; }
 .home-closing { position: relative; margin-top: 90px; margin-bottom: 70px; padding: 45px 24px 60px; background: #e1e9dd; border-radius: 16px; color: #193d2b; }
@@ -128,6 +133,7 @@
   #tour { padding-top: 78px; }
   #tour .tour-menu .mp { transform: none; }
   #plan .upcoming { transform: none; }
+  #plan .quick-add-feature { grid-template-columns: 1fr; gap: 24px; }
   .home-closing { margin-inline: 24px; }
 }
 @media (max-width: 480px) {
