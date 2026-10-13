@@ -191,6 +191,14 @@ struct MainWindow: View {
         case .section(let s): section = s
         case .newEntry(let draft):
             editTarget = EditTarget(kind: .new(draft))
+        case .firstEntry:
+            section = .overview
+            filter = nil
+            scrollTarget = "entry"
+            DispatchQueue.main.async {
+                editor.reset()
+                editor.focusAmount += 1
+            }
         case .quickAdd(let preset):
             section = .overview
             scrollTarget = "entry"
@@ -259,8 +267,16 @@ struct OverviewView: View {
                     hero
                     if store.saveError != nil { SaveFailureView() }
                     VStack(alignment: .leading, spacing: 10) {
+                        if !store.hasRecordedEntries {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Keep your balance current").font(.headline)
+                                Text("Add an expense or money you received. Your balance updates when you save.")
+                                    .font(.callout).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                         if !store.ledger.presets.isEmpty { QuickBar(onAsk: { editor.start(from: $0) }) }
-                        Composer(state: editor, amountSize: 30, onMore: {
+                        Composer(state: editor, amountSize: 30, showSaveTitle: !store.hasRecordedEntries, onMore: {
                             let draft = editor.draft
                             editor.reset()
                             onEdit(EditTarget(kind: .new(draft)))
