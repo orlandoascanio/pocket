@@ -3,12 +3,14 @@ import { Bento } from "@/components/Bento";
 import { ButtonFx } from "@/components/ButtonFx";
 import { DownloadDialog } from "@/components/DownloadDialog";
 import { Faq } from "@/components/Faq";
+import { GuideCards } from "@/components/GuideCards";
 import { PocketCharacter } from "@/components/PocketCharacter";
 import { DownloadIcon, SiteNav } from "@/components/SiteNav";
 import { Tour } from "@/components/Tour";
 import { HeroScene } from "@/components/HeroScene";
 import { AnalyticsPreferences } from "@/components/WebsiteAnalytics";
 import "./home.css";
+import "./guides/guides.css";
 import {
   DESCRIPTION,
   DOWNLOAD_URL,
@@ -157,7 +159,7 @@ export default function Home() {
         </div>
 
         <section className="section wrap" id="tour">
-          <h2>One balance, everywhere you look.</h2>
+          <h2>Your balance in the Mac menu bar.</h2>
           <p className="section-lead">
             A number in your menu bar, a window for the details, and a plan for the months ahead.
           </p>
@@ -210,7 +212,6 @@ export default function Home() {
               </p>
               <ul className="dots">
                 <li>A reminder on the day it&apos;s due</li>
-                <li>Categories and a monthly breakdown of where it went</li>
               </ul>
             </div>
             <PocketCharacter id="waiting" mood="excited" bubble="Can't wait!" style={{ width: "min(280px, 64vw)" }} />
@@ -232,11 +233,36 @@ export default function Home() {
                 preload="none"
                 width={1660}
                 height={1080}
-                poster="/media/quick-add-2026-10-12.jpg"
+                poster="/media/quick-add-2026-10-12.webp"
                 aria-label="Pocket quick-add keyboard shortcuts demonstration"
               >
                 <source src="/media/quick-add-2026-10-12.mp4" type="video/mp4" />
                 <a href="/media/quick-add-2026-10-12.mp4">Watch the quick-add demonstration</a>
+              </video>
+            </figure>
+          </div>
+
+          <div className="feature categories-feature" id="categories">
+            <div className="copy">
+              <h2>Categories, month by month.</h2>
+              <p>
+                See how much went to food, bills and other categories. Switch between Month and All time,
+                or click a category to see its purchases.
+              </p>
+            </div>
+            <figure className="categories-recording">
+              <video
+                controls
+                muted
+                playsInline
+                preload="none"
+                width={1540}
+                height={1200}
+                poster="/media/categories-2026-10-12.webp"
+                aria-label="Pocket Categories: monthly spending, all-time totals, and purchases by category"
+              >
+                <source src="/media/categories-2026-10-12.mp4" type="video/mp4" />
+                <a href="/media/categories-2026-10-12.mp4">Watch the Categories demonstration</a>
               </video>
             </figure>
           </div>
@@ -276,6 +302,13 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="home-guides wrap" id="guides">
+          <h2>A few useful things to start with.</h2>
+          <p className="section-lead">Set up your balance, make everyday spending easier to record, and keep expected money in its place.</p>
+          <GuideCards slugs={["getting-started", "quick-add-spending", "expected-income"]} />
+          <a href="/guides/">All Pocket guides <span aria-hidden="true">↗</span></a>
+        </section>
+
         <section className="section wrap" id="faq">
           <h2>Straight answers.</h2>
           <Faq items={FAQ} />
@@ -298,7 +331,7 @@ export default function Home() {
         <div className="wrap foot-grid">
           <div className="foot-brand">
             <a className="brand" href="/">
-              <img src="/apple-touch-icon.png" alt="" width={28} height={28} />
+              <img src="/pocket-icon.webp" alt="" width={28} height={28} />
               Pocket
             </a>
             <p>Your balance in the menu bar, and how long it will last.</p>
@@ -323,6 +356,7 @@ export default function Home() {
           </nav>
           <nav className="foot-col" aria-label="Help">
             <h3>Help</h3>
+            <a href="/guides/">Guides</a>
             <a href="#faq">Questions</a>
             <a href={SELF_HOSTING_URL}>Self-hosting</a>
             <a href={ISSUES_URL}>Report a bug</a>
@@ -332,6 +366,7 @@ export default function Home() {
             <a href={REPO_URL}>Source code</a>
             <a href="/changelog/">Changelog</a>
             <a href={RELEASES_URL}>All releases</a>
+            <a href="https://www.orlandoascanio.com">Made by Orlando Ascanio</a>
           </nav>
         </div>
         <div className="wrap foot-base">
