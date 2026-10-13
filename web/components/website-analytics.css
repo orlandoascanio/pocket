@@ -3,8 +3,6 @@
 .analytics-preferences, .website-consent-cancel { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .foot-legal a:hover, .analytics-preferences:hover { text-decoration: underline; }
 .foot .foot-legal a:hover, .foot .analytics-preferences:hover { color: var(--foot-ink); }
-.site-legal-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding-top: 20px; padding-bottom: 24px; border-top: 1px solid var(--line); color: var(--muted); }
-.site-legal-footer > a { color: inherit; font-size: 13px; }
 .website-consent { position: fixed; z-index: 60; bottom: 20px; right: 20px; width: min(420px, calc(100vw - 40px)); padding: 22px; border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: 0 8px 32px rgb(0 0 0 / .12); }
 .website-consent p { margin: 0 0 8px; font-weight: 650; }
 .website-consent > span { display: block; font-size: 13px; line-height: 1.6; color: var(--muted); }
