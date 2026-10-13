@@ -74,7 +74,7 @@ export function HeroScene() {
           <span>9:41</span>
         </div>
         <div className="scene-mascot" aria-hidden="true">
-          <Image src="/pocket-sculpture.webp" alt="" width={900} height={900} sizes="(max-width: 600px) 85vw, (max-width: 1000px) 500px, 560px" preload />
+          <Image src="/pocket-sculpture.webp" alt="" width={900} height={900} sizes="(max-width: 600px) 85vw, (max-width: 1000px) 500px, 560px" preload fetchPriority="high" />
         </div>
         <div className="scene-balance">
           <div className="scene-balance-head"><span>Money left</span><span className="scene-status">On your Mac</span></div>
