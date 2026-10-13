@@ -63,7 +63,7 @@ Pocket is an ordinary software download website. The AMP report in the supplied 
 | --- | --- | --- |
 | `page_view` | Accepted analytics, public page loaded or route changed | `page_title`, clean `page_location` |
 | `download_clicked` | Download anchor clicked, including the install-dialog fallback | `location`, `download_target=latest` |
-| `self_hosting_opened` | Self-hosting guide clicked | `location` |
+| `self_hosting_opened` | On-site self-hosting guide (`/guides/self-hosting/`) or GitHub reference clicked | `location` |
 | `web_app_opened` | Public website link to `/app/` clicked | `location` |
 | `source_opened` | Repository link clicked | `location` |
 
