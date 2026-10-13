@@ -159,4 +159,39 @@ public struct Ledger: Codable, Equatable, Sendable {
         self.rules = rules
         self.presets = presets
     }
+
+    /// Check external data before it can replace the saved ledger or reach money arithmetic.
+    public func validate() throws {
+        guard version == 1 else { throw LedgerError("This file uses an unsupported Pocket version.") }
+        guard Locale.commonISOCurrencyCodes.contains(currency) else { throw LedgerError("This file has an unrecognized currency.") }
+        guard Set(entries.map(\.id)).count == entries.count,
+              Set(rules.map(\.id)).count == rules.count,
+              Set(presets.map(\.id)).count == presets.count else { throw LedgerError("This file contains duplicate identifiers.") }
+        let amountRange = -99_999_999_999...99_999_999_999
+        var exposure = 0
+        func include(_ cents: Cents, multiplier: Int = 1) throws {
+            guard amountRange.contains(cents) else { throw LedgerError("This file contains an amount outside Pocket's supported range.") }
+            let (total, overflow) = exposure.addingReportingOverflow(abs(cents) * multiplier)
+            guard !overflow else { throw LedgerError("The totals in this file are too large.") }
+            exposure = total
+        }
+        for entry in entries { try include(entry.cents) }
+        for rule in rules {
+            guard (0...1_000_000).contains(rule.posted),
+                  rule.total.map({ (0...1_000_000).contains($0) && rule.posted <= $0 }) ?? true else {
+                throw LedgerError("This file contains an invalid payment schedule.")
+            }
+            try include(rule.cents, multiplier: 400)
+        }
+        for preset in presets {
+            guard [-1, 1].contains(preset.sign), preset.cents.map({ $0 > 0 && amountRange.contains($0) }) ?? true else {
+                throw LedgerError("This file contains an invalid quick-add amount or direction.")
+            }
+        }
+    }
+}
+
+public struct LedgerError: LocalizedError {
+    public let errorDescription: String?
+    init(_ message: String) { errorDescription = message }
 }
