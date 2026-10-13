@@ -119,17 +119,17 @@ struct MenuLabel: View {
     }
 }
 
-/// First run: meet the pocket, say how much you have, done.
+/// First run: save a real balance, then hand off to a first entry.
 struct Onboarding: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var step = 0
     @State private var currency = Locale.current.currency?.identifier ?? "USD"
     @State private var amount = ""
     @State private var inTheRed = false
-    @State private var openAtLogin = true
     @State private var connecting = false
     @State private var amountError: String?
     @FocusState private var focused: Bool
@@ -149,60 +149,73 @@ struct Onboarding: View {
         VStack(spacing: 18) {
             PocketStage(width: 150, fixedFace: face)
                 .padding(.top, 12)
-                .animation(.easeOut(duration: 0.2), value: face)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: face)
             if step == 0 { first; SaveFailureView() } else { done }
         }
         .padding(36)
         .frame(width: 470)
         .background(Palette.bg)
         .tint(Palette.accent)
-        .onAppear { focused = true }
+        .onAppear {
+            // Reopening Welcome must never offer to add a second starting balance.
+            step = store.onboarded ? 1 : 0
+            focused = step == 0
+        }
         .sheet(isPresented: $connecting) { ConnectSheet() }
-        .onChange(of: store.connected) { _, on in if on { withAnimation(.snappy) { step = 1 } } }
+        .onChange(of: store.onboarded) { _, on in
+            withAnimation(reduceMotion ? nil : .snappy) { step = on ? 1 : 0 }
+        }
     }
 
     private var first: some View {
         VStack(spacing: 16) {
             VStack(spacing: 6) {
-                Text("Hi! I'm your Pocket").font(.display(28, .heavy))
-                Text("I keep your recorded balance in the menu bar. Your data stays on this Mac unless you choose to connect an account.")
+                Text("Know how much is left").font(.display(28, .heavy))
+                Text("Set your current balance. Pocket keeps it in your Mac’s menu bar as you record money in and out.")
                     .multilineTextAlignment(.center).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             VStack(alignment: .leading, spacing: 8) {
                 Text("How much money do you have right now?").font(.headline)
-                Picker("", selection: $inTheRed) {
+                Picker("Balance direction", selection: $inTheRed) {
                     Text("I have").tag(false)
                     Text("I'm below zero by").tag(true)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 HStack {
-                    TextField("Starting balance", text: $amount, prompt: Text(store.money.placeholder))
+                    TextField("Starting balance", text: $amount, prompt: Text(Money(currency: currency).placeholder))
                         .textFieldStyle(.roundedBorder)
                         .controlSize(.large)
                         .focused($focused)
                         .onSubmit(start)
-                        .onChange(of: amount) { _, _ in amountError = nil }
+                        .onChange(of: amount) { _, value in
+                            amountError = nil
+                            // A pasted signed amount should agree with the direction control.
+                            if let sign = value.trimmed.first, sign == "+" || sign == "-" {
+                                let rest = String(value.trimmed.dropFirst())
+                                if !rest.hasPrefix("+") && !rest.hasPrefix("-") {
+                                    inTheRed = sign == "-"
+                                    amount = rest
+                                }
+                            }
+                        }
                     Picker("Currency", selection: $currency) {
                         ForEach(Self.currencies(including: currency), id: \.self) { Text($0).tag($0) }
                     }
                     .labelsHidden()
                     .frame(width: 90)
                 }
-                Text("You can add bills, subscriptions and paychecks right after.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text("Leave the amount empty to start at zero.").font(.caption).foregroundStyle(.secondary)
+                Text("Use the money you have now. Leave this empty to start at zero.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if let amountError { Text(amountError).font(.caption).foregroundStyle(Palette.negative) }
             }
-            Toggle("Open Pocket when I log in, so my balance is always in the menubar", isOn: $openAtLogin)
-                .toggleStyle(.checkbox)
-                .font(.callout)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: start) { Text("Start").frame(maxWidth: .infinity) }
+            Button(action: start) { Text("Set My Balance").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
+            Text("Saved on this Mac. An account is optional.")
+                .font(.caption).foregroundStyle(.secondary)
             Button(AccountKeyStore.pocketSyncKey() != nil ? "Use your Pocket Sync account instead" : "Already use Pocket on your phone? Connect") {
                 connecting = true
             }
@@ -212,21 +225,38 @@ struct Onboarding: View {
 
     private var done: some View {
         VStack(spacing: 14) {
-            Text("All set!").font(.display(28, .heavy))
-            Text("Your balance now lives in the menubar at the top of your screen. Click it any time to add something.")
+            Text("Your balance is ready").font(.display(28, .heavy))
+            VStack(spacing: 8) {
+                Text("In your menu bar").font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Image(systemName: "menubar.rectangle")
+                    Text(store.money.string(store.balance))
+                        .font(.display(30, .semibold)).monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                        .foregroundStyle(store.balance < 0 ? Palette.negative : Color.primary)
+                }
+                .padding(.horizontal, 20).padding(.vertical, 12)
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.line))
+            }
+            Text(store.hasRecordedEntries
+                 ? "Click your balance at the top of your screen whenever you spend or receive money."
+                 : "Add an expense to see your balance update. After that, click the balance at the top of your screen for quick entries.")
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Button("Done") { dismissWindow(id: "welcome") }.controlSize(.large)
-                Button("Open Pocket") {
-                    dismissWindow(id: "welcome")
-                    openWindow(id: "main")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .keyboardShortcut(.defaultAction)
+            Button(store.hasRecordedEntries ? "Open Pocket" : "Add My First Expense") {
+                store.windowRequest = store.hasRecordedEntries ? .section(.overview) : .firstEntry
+                dismissWindow(id: "welcome")
+                openWindow(id: "main")
+                NSApp.activate(ignoringOtherApps: true)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            Button(store.hasRecordedEntries ? "Done" : "I’ll Add One Later") { dismissWindow(id: "welcome") }
+                .buttonStyle(.link)
+            Text("You can enable Open at login in Settings.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -236,7 +266,8 @@ struct Onboarding: View {
             focused = true
             return
         }
-        guard store.start(currency: currency, cents: inTheRed ? -cents : cents, openAtLogin: openAtLogin) else { return }
-        withAnimation(.snappy) { step = 1 }
+        // Login behavior can be chosen later, once a useful balance is visible.
+        guard store.start(currency: currency, cents: inTheRed ? -cents : cents, openAtLogin: false) else { return }
+        withAnimation(reduceMotion ? nil : .snappy) { step = 1 }
     }
 }
