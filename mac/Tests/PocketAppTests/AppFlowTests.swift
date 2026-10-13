@@ -157,8 +157,10 @@ final class AppFlowTests: XCTestCase {
             try capture(MainWindow().environmentObject(store), size: NSSize(width: 780, height: 560), path: output + "/minimum-\(name).png")
             try capture(MenuPanel().environmentObject(store), size: NSSize(width: 380, height: 640), path: output + "/menu-\(name).png")
             try capture(PlanView(onEdit: { _ in }).environmentObject(store), size: NSSize(width: 820, height: 900), path: output + "/plan-\(name).png")
+            try capture(PlanView(onEdit: { _ in }).environmentObject(store), size: NSSize(width: 580, height: 560), path: output + "/plan-minimum-\(name).png")
             try capture(InsightsView(onShow: { _, _ in }).environmentObject(store), size: NSSize(width: 820, height: 640), path: output + "/insights-\(name).png")
             try capture(SettingsView().environmentObject(store), size: NSSize(width: 820, height: 760), path: output + "/settings-\(name).png")
+            try capture(SettingsView().environmentObject(store), size: NSSize(width: 580, height: 560), path: output + "/settings-minimum-\(name).png")
             try capture(EditSheet(target: EditTarget(kind: .new(nil))).environmentObject(store), size: NSSize(width: 460, height: 460), path: output + "/new-entry-\(name).png")
         }
         let state = EditorState(); state.store = store; state.showDetails = true
@@ -170,6 +172,7 @@ final class AppFlowTests: XCTestCase {
         XCTAssertTrue(empty.start(currency: "USD", cents: 0, openAtLogin: false))
         try capture(MainWindow().environmentObject(empty), size: NSSize(width: 780, height: 560), path: output + "/minimum-zero.png")
         try capture(MenuPanel().environmentObject(empty), size: NSSize(width: 380, height: 420), path: output + "/menu-empty.png")
+        try capture(Onboarding().environmentObject(empty), size: NSSize(width: 470, height: 680), path: output + "/onboarding.png")
         try capture(WaitingCard(occurrence: payment, initiallyExpanded: true,
                                 initialError: "Couldn't skip this payment. Try again.").environmentObject(store),
                     size: NSSize(width: 380, height: 200), path: output + "/waiting-skip-failure.png")
@@ -180,6 +183,121 @@ final class AppFlowTests: XCTestCase {
         _ = store.addEntry(cents: -store.balance - 125_000_000, label: "Large negative balance", day: .today, category: nil)
         try capture(MainWindow().environmentObject(store), size: NSSize(width: 780, height: 560), path: output + "/minimum-large-negative.png")
         try capture(MenuPanel().environmentObject(store), size: NSSize(width: 380, height: 640), path: output + "/menu-large-negative.png")
+    }
+
+    func testEditingStartingBalanceKeepsItOutOfIncomeAndAllowsZero() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 10000, openAtLogin: false))
+        let state = EditorState(); state.store = store
+        state.load(try XCTUnwrap(store.ledger.entries.first))
+        state.amount = "125"
+        XCTAssertTrue(state.save())
+        XCTAssertEqual(store.balance, 12500)
+        XCTAssertEqual(store.ledger.summary(nil).income, 0)
+        XCTAssertEqual(store.ledger.entries.first?.category, Categories.start)
+        state.load(try XCTUnwrap(store.ledger.entries.first))
+        state.amount = "0"
+        XCTAssertTrue(state.save())
+        XCTAssertEqual(store.balance, 0)
+        XCTAssertEqual(store.ledger.summary(nil).income, 0)
+    }
+
+    func testPresetEditingRejectsInvalidInputAndRetainsFailedDraft() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 10000, openAtLogin: false))
+        let preset = Preset(label: "Coffee", cents: 650, sign: -1, category: "food")
+        XCTAssertTrue(store.savePreset(preset))
+        let state = PresetEditorState(preset)
+        state.amount = "oops"
+        XCTAssertFalse(state.save(in: store))
+        XCTAssertEqual(store.ledger.presets.first?.cents, 650)
+        state.label = "Lunch"; state.amount = "8.50"; state.category = "food"
+        let backup = try blockWrites(store)
+        XCTAssertFalse(state.save(in: store))
+        XCTAssertEqual(state.amount, "8.50")
+        XCTAssertEqual(store.ledger.presets.first?.label, "Coffee")
+        try unblockWrites(store, backup: backup)
+        XCTAssertTrue(state.save(in: store))
+        XCTAssertFalse(state.hasChanges)
+        XCTAssertEqual(store.ledger.presets.first?.cents, 850)
+        XCTAssertEqual(store.ledger.presets.first?.label, "Lunch")
+        state.amount = ""
+        XCTAssertTrue(state.save(in: store))
+        XCTAssertNil(store.ledger.presets.first?.cents)
+    }
+
+    func testUnreadableLedgerCannotBeOverwrittenAndCanRecover() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 10000, openAtLogin: false))
+        let saved = try Data(contentsOf: store.fileURL)
+        let damaged = Data("damaged JSON".utf8)
+        try damaged.write(to: store.fileURL)
+        let reloaded = Store(directory: store.fileURL.deletingLastPathComponent(), servicesEnabled: false)
+        XCTAssertNotNil(reloaded.loadError)
+        XCTAssertEqual(reloaded.menuTitle, "Pocket ⚠︎")
+        XCTAssertNil(reloaded.addEntry(cents: -100, label: "Coffee", day: .today, category: nil))
+        XCTAssertEqual(try Data(contentsOf: store.fileURL), damaged)
+        try saved.write(to: store.fileURL)
+        reloaded.retryLoadingData()
+        XCTAssertNil(reloaded.loadError)
+        XCTAssertEqual(reloaded.balance, 10000)
+    }
+
+    func testInvalidImportKeepsExistingDiskAndBalance() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 10000, openAtLogin: false))
+        let before = try Data(contentsOf: store.fileURL)
+        let entry = try XCTUnwrap(store.ledger.entries.first)
+        let invalid = Ledger(currency: "USD", entries: [entry, entry])
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let url = store.fileURL.deletingLastPathComponent().appendingPathComponent("invalid.json")
+        try encoder.encode(invalid).write(to: url)
+        XCTAssertThrowsError(try store.importFile(url))
+        XCTAssertEqual(store.balance, 10000)
+        XCTAssertEqual(try Data(contentsOf: store.fileURL), before)
+    }
+
+    func testStalePaymentActionsCannotSettleOrSkipAPausedRule() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 10000, openAtLogin: false))
+        XCTAssertTrue(store.addRule(Rule(cents: 20000, label: "Client", cadence: .monthly, anchor: .today, auto: false)))
+        let payment = try XCTUnwrap(store.waiting.first)
+        XCTAssertTrue(store.setActive(payment.ruleID, false))
+        XCTAssertFalse(store.settle(payment, cents: 20000, on: .today))
+        XCTAssertFalse(store.skip(payment))
+        XCTAssertEqual(store.balance, 10000)
+        XCTAssertEqual(store.ledger.rules.first?.posted, 0)
+    }
+
+    func testSignedAmountsChooseTheSameDirectionInEveryEditor() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 10000, openAtLogin: false))
+        let state = EditorState(); state.store = store
+        state.amount = "+20.50"; state.label = "Gift"
+        XCTAssertFalse(state.spent)
+        XCTAssertEqual(state.amount, "20.50")
+        XCTAssertTrue(state.save())
+        XCTAssertEqual(store.balance, 12050)
+        state.amount = "-6.50"; state.label = "Coffee"
+        XCTAssertTrue(state.spent)
+        XCTAssertTrue(state.save())
+        XCTAssertEqual(store.balance, 11400)
+        state.amount = "--12"; state.label = "Invalid"
+        XCTAssertFalse(state.save())
+        XCTAssertEqual(store.balance, 11400)
+    }
+
+    func testSavingPresetNamePreservesAnAmountUpdatedElsewhere() throws {
+        let store = try isolatedStore()
+        let preset = Preset(label: "Coffee", cents: 650, sign: -1, category: "food")
+        XCTAssertTrue(store.savePreset(preset))
+        let state = PresetEditorState(preset)
+        state.label = "Lunch"
+        var newer = preset; newer.cents = 850
+        XCTAssertTrue(store.savePreset(newer))
+        XCTAssertTrue(state.save(in: store))
+        XCTAssertEqual(store.ledger.presets.first?.label, "Lunch")
+        XCTAssertEqual(store.ledger.presets.first?.cents, 850)
     }
 
     private func capture<V: View>(_ view: V, size: NSSize, path: String) throws {
