@@ -347,12 +347,14 @@ h2 { font: 750 clamp(32px, 4.4vw, 52px)/1.04 var(--display); letter-spacing: -0.
 /* tour: tabbed views on a wallpaper */
 .tour { margin-top: 36px; }
 .tour-stage { position: relative; aspect-ratio: 16 / 10; border-radius: 24px; overflow: hidden; background: var(--wall); display: grid; place-items: center; }
-.tour-shot { height: 97%; width: auto; max-width: 100%; display: block; animation: fade-up 420ms cubic-bezier(.16, 1, .3, 1); }
-.tour-menu { position: absolute; inset: 0; animation: fade-up 420ms cubic-bezier(.16, 1, .3, 1); }
+.tour-shot { height: 97%; width: auto; max-width: 100%; display: block; animation: tour-in 480ms cubic-bezier(.16, 1, .3, 1); }
+.tour-menu { position: absolute; inset: 0; animation: tour-in 480ms cubic-bezier(.16, 1, .3, 1); }
 .tour-behind { position: absolute; left: 2%; top: 13%; width: 62%; height: auto; }
 .tour-menu .mb { border-radius: 0; height: 34px; padding: 0 18px; font-size: 14px; box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 10%, transparent), 0 6px 20px rgb(0 0 0 / .06); }
 .tour-menu .mp { position: absolute; top: 42px; right: 12%; }
 @keyframes fade-up { from { opacity: 0; transform: translateY(10px); } }
+/* in from the side of the tab that was chosen (--dir, set by Tour); straight up on first paint */
+@keyframes tour-in { from { opacity: 0; transform: translate(calc(var(--dir, 0) * 28px), calc((1 - var(--dir, 0) * var(--dir, 0)) * 10px)); } }
 .tour-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px 24px; margin-top: 18px; }
 .tour-caption { margin: 0; }
 .tour-caption b { font: 650 20px/1 var(--display); color: var(--accent); margin-right: 6px; }
@@ -513,9 +515,7 @@ h2 { font: 750 clamp(32px, 4.4vw, 52px)/1.04 var(--display); letter-spacing: -0.
   border: none; padding: 0; border-radius: 28px; width: min(1000px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
   background: var(--bg); color: var(--ink); box-shadow: 0 40px 120px rgb(0 0 0 / .35);
 }
-.dl[open] { animation: dl-in 380ms cubic-bezier(.16, 1, .3, 1); }
 .dl::backdrop { background: rgb(18 20 18 / .45); backdrop-filter: blur(6px); }
-@keyframes dl-in { from { opacity: 0; transform: translateY(16px) scale(.97); } }
 .dl-inner { padding: 40px 44px 44px; }
 .dl-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .dl h2 { font-size: clamp(34px, 5vw, 56px); letter-spacing: -0.04em; margin: 0 0 10px; }
@@ -563,7 +563,8 @@ h2 { font: 750 clamp(32px, 4.4vw, 52px)/1.04 var(--display); letter-spacing: -0.
     display: flex; flex-direction: column; position: absolute; left: 16px; right: 16px; top: calc(100% + 8px); padding: 8px;
     border-radius: 28px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 86%, transparent);
     backdrop-filter: blur(22px) saturate(1.8); box-shadow: 0 1px 2px rgb(0 0 0 / .05), 0 28px 60px -20px rgb(0 0 0 / .28);
-    transform-origin: 50% 0; opacity: 0; translate: 0 -10px; scale: .96; visibility: hidden;
+    /* grows out of the toggle at the pill's right end */
+    transform-origin: calc(100% - 28px) 0; opacity: 0; translate: 0 -10px; scale: .96; visibility: hidden;
     transition: opacity 200ms, translate 500ms var(--out), scale 500ms var(--out), visibility 0s 500ms;
   }
   .nav-shell[data-menu] .nav-menu { opacity: 1; translate: none; scale: 1; visibility: visible; transition-delay: 0s; }
@@ -604,9 +605,19 @@ h2 { font: 750 clamp(32px, 4.4vw, 52px)/1.04 var(--display); letter-spacing: -0.
   .meta li + li::before { content: none; }
   .faq summary { font-size: 18px; }
 }
+/* Frosted surfaces go solid when transparency is turned down, and get a firm edge with more contrast. */
+@media (prefers-reduced-transparency: reduce) {
+  .nav, .nav-shell[data-scrolled] .nav, .nav-menu, .mp, .mb { background: var(--surface); backdrop-filter: none; }
+  .dl::backdrop { background: rgb(18 20 18 / .6); backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .nav, .nav-shell[data-scrolled] .nav, .nav-menu, .mp { background: var(--surface); backdrop-filter: none; border-color: var(--ink); }
+  .dl { outline: 1px solid var(--ink); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stage .coin, .stage .bubble, .typed-caret, .live-dot,
-  .bento-demo *, .tour-shot, .tour-menu, .dl[open] { animation: none !important; }
+  .bento-demo *, .tour-shot, .tour-menu { animation: none !important; }
   .pill, .bento-card, .nav-cta, .faq-icon, .faq-icon::before, .faq-icon::after,
   .announce, .announce-arrow, .tour-tabs button, .dl-close, .dl-close svg { transition: none; }
   .i-arrow, .nav, .nav-links a, .nav-chip-dot, .nav-chip-tx { animation: none !important; }
