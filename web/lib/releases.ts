@@ -3,7 +3,7 @@ export type Release = {
   date: string;
   title: string;
   summary: string;
-  theme: "sync" | "launch";
+  theme: "sync" | "launch" | "findable";
   highlights: { title: string; description: string }[];
   detailsTitle: string;
   details: string[];
@@ -13,6 +13,26 @@ export type Release = {
 // Curated from the published GitHub releases. Add a new entry here when shipping,
 // and update VERSION in site.ts. Dates are publication dates, not commit dates.
 export const RELEASES: Release[] = [
+  {
+    version: "1.2.0",
+    date: "2026-10-13",
+    title: "Everything in reach.",
+    summary: "The things Pocket could already do are now where you'd look for them: money you're waiting for, quick-add buttons, and your daily backups.",
+    theme: "findable",
+    highlights: [
+      { title: "Got it, right there", description: "Payments you're waiting for sit in Overview with Got it and Skip buttons. Mark money someone already owes you as still waiting, and your balance only moves once it arrives." },
+      { title: "Buttons from what you buy", description: "Choose Save as Button after adding an entry. The new Quick Add menu gives ⌘1 to ⌘9 on every page of the window." },
+      { title: "Restore a daily backup", description: "Settings → Daily backups restores any of the last seven days. A file Pocket can't open is kept, never overwritten." },
+    ],
+    detailsTitle: "Also in this release",
+    details: [
+      "A ⋯ button on every planned payment in Plan to skip the next one, pause it or stop it.",
+      "Categories shows where your money came from, not just where it went.",
+      "No instant reminder for a payment added after its reminder time.",
+      "The sidebar's keyboard focus follows the page you're on.",
+    ],
+    source: "https://github.com/orlandoascanio/pocketleft/releases/tag/v1.2.0",
+  },
   {
     version: "1.1.0",
     date: "2026-10-12",

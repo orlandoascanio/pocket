@@ -29,7 +29,7 @@ struct PlanView: View {
         }
         .confirmationDialog("Stop “\(pendingStop?.label ?? "")”?", isPresented: Binding(
             get: { pendingStop != nil }, set: { if !$0 { pendingStop = nil } }), presenting: pendingStop) { r in
-            Button(r.isOnce ? "Remove" : "Stop repeating", role: .destructive) { store.removeRule(r.id) }
+            Button(r.isOnce ? "Remove" : "Stop Repeating", role: .destructive) { store.removeRule(r.id) }
         } message: { _ in
             Text("Payments already logged stay in your history.")
         }
@@ -110,8 +110,12 @@ struct PlanView: View {
         return VStack(alignment: .leading, spacing: 8) {
             SectionTitle(title: "Repeating & expected", meta: parts.isEmpty ? nil : "≈ " + parts.joined(separator: " · ") + " a month")
             if rules.isEmpty {
-                Text("Nothing planned yet. Add something with Weekly, Monthly or Yearly, or a date in the future.")
-                    .foregroundStyle(.secondary).padding(.vertical, 16)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Nothing planned yet. Add your bills, subscriptions and paychecks with a repeat schedule, or money you expect on a later date.")
+                        .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Button("Plan a Payment…") { onEdit(EditTarget(kind: .new(nil))) }
+                }
+                .padding(.vertical, 12)
             } else {
                 Card {
                     ForEach(rules) { r in
@@ -119,24 +123,45 @@ struct PlanView: View {
                             ? "One time · \(r.next.localDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))"
                             : "\(r.cadence.name) · next \(r.next.localDate.formatted(.dateTime.month(.abbreviated).day()))"
                                 + (r.remaining.map { $0 == 1 ? " · last one" : " · \($0) left" } ?? "")
-                        Button { onEdit(EditTarget(kind: .rule(r))) } label: {
-                            MoneyRow(category: r.category, symbol: r.isOnce ? "clock" : (r.category == nil ? "repeat" : nil), title: r.label,
-                                 tag: !r.active ? "paused" : !r.auto ? "you confirm" : nil,
-                                 note: when, cents: r.cents,
-                                 rightNote: r.isOnce ? "expected" : "per \(r.cadence.unit)", dimmed: !r.active)
-                        }
-                            .buttonStyle(.plain)
-                            .help("Edit \(r.label)")
-                            .accessibilityHint("Open to edit this scheduled payment")
-                            .contextMenu {
-                                Button("Edit…") { onEdit(EditTarget(kind: .rule(r))) }
-                                if !r.isOnce { Button(r.active ? "Pause" : "Resume") { store.setActive(r.id, !r.active) } }
-                                Button(r.isOnce ? "Remove…" : "Stop repeating…", role: .destructive) { pendingStop = r }
+                        HStack(spacing: 2) {
+                            Button { onEdit(EditTarget(kind: .rule(r))) } label: {
+                                MoneyRow(category: r.category, symbol: r.isOnce ? "clock" : (r.category == nil ? "repeat" : nil), title: r.label,
+                                     tag: !r.active ? "paused" : !r.auto ? "you confirm" : nil,
+                                     note: when, cents: r.cents,
+                                     rightNote: r.isOnce ? "expected" : "per \(r.cadence.unit)", dimmed: !r.active)
                             }
+                                .buttonStyle(.plain)
+                                .help("Edit \(r.label)")
+                                .accessibilityHint("Open to edit this scheduled payment")
+                                .contextMenu { actions(r) }
+                            Menu { actions(r) } label: {
+                                Image(systemName: "ellipsis").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
+                            }
+                            .menuStyle(.button).buttonStyle(RoundButtonStyle(size: 28)).menuIndicator(.hidden).fixedSize()
+                            .help("Skip, pause or stop \(r.label)")
+                            .accessibilityLabel("Actions for \(r.label)")
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+extension PlanView {
+    /// Edit, skip the next one, pause or stop: the same actions in the ⋯ menu and on right-click.
+    @ViewBuilder
+    func actions(_ r: Rule) -> some View {
+        Button("Edit…") { onEdit(EditTarget(kind: .rule(r))) }
+        if !r.isOnce {
+            Button("Skip \(r.next.localDate.formatted(.dateTime.month(.abbreviated).day()))") {
+                store.skip(r.nextOccurrence(today: store.today))
+            }
+            .disabled(!r.active)
+            Button(r.active ? "Pause" : "Resume") { store.setActive(r.id, !r.active) }
+        }
+        Divider()
+        Button(r.isOnce ? "Remove…" : "Stop Repeating…", role: .destructive) { pendingStop = r }
     }
 }
 

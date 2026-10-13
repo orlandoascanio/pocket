@@ -15,6 +15,8 @@ final class ReminderTests: XCTestCase {
     private func date(_ iso: String) -> Date { ISO8601DateFormatter().date(from: iso)! }
 
     private let dueDay = Day(iso: "2026-10-13")!
+    /// Fixture payments were added days before they came due.
+    private let addedEarlier = ISO8601DateFormatter().date(from: "2026-10-01T12:00:00Z")!
 
     private func localDate(hour: Int, on day: Day = Day(iso: "2026-10-13")!) -> Date {
         Calendar.current.date(from: DateComponents(year: day.year, month: day.month, day: day.day, hour: hour))!
@@ -35,7 +37,7 @@ final class ReminderTests: XCTestCase {
 
     func testDueDayRefreshKeepsTodaysReminderBeforeTen() {
         let rule = Rule(cents: 45000, label: "Client", cadence: .monthly,
-                        anchor: Day(iso: "2026-10-13")!, auto: false)
+                        anchor: Day(iso: "2026-10-13")!, auto: false, created: addedEarlier)
         let plans = PaymentReminders.plans(for: [rule], now: date("2026-10-13T09:00:00Z"), calendar: calendar)
         XCTAssertEqual(plans.count, 1, "Refreshing on the due date must retain the reminder scheduled for 10 AM.")
         XCTAssertEqual(plans.first?.date, date("2026-10-13T10:00:00Z"))
@@ -45,14 +47,25 @@ final class ReminderTests: XCTestCase {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York")!
         let rule = Rule(cents: -2500, label: "Phone", cadence: .monthly,
-                        anchor: Day(iso: "2026-03-08")!, auto: false)
+                        anchor: Day(iso: "2026-03-08")!, auto: false, created: date("2026-03-01T12:00:00Z"))
         let plan = PaymentReminders.plans(for: [rule], now: date("2026-03-08T06:30:00Z"), calendar: calendar)
         XCTAssertEqual(plan.first?.date, date("2026-03-08T14:00:00Z"))
         XCTAssertEqual(plan.first?.title, "Was Phone paid?")
     }
 
+    func testPaymentAddedAfterItsReminderTimeIsNotRemindedRightAway() {
+        let late = Rule(cents: 5000, label: "Sam", cadence: .monthly, anchor: dueDay, total: 1, auto: false,
+                        created: date("2026-10-13T15:00:00Z"))
+        let earlier = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)
+        let plans = PaymentReminders.plans(for: [late, earlier], now: date("2026-10-13T15:00:05Z"), calendar: calendar)
+        XCTAssertEqual(plans.map(\.title), ["Did Client pay?"], "Marking money as still waiting shouldn't notify about it seconds later.")
+        let tomorrow = Rule(cents: 5000, label: "Sam", cadence: .monthly, anchor: dueDay.adding(days: 1), total: 1, auto: false,
+                            created: date("2026-10-13T15:00:00Z"))
+        XCTAssertEqual(PaymentReminders.plans(for: [tomorrow], now: date("2026-10-13T15:00:05Z"), calendar: calendar).count, 1)
+    }
+
     func testOnlyActiveUnfinishedConfirmationPaymentsAreScheduled() {
-        let valid = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false)
+        let valid = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)
         var paused = valid; paused.active = false
         var automatic = valid; automatic.auto = true
         var finished = valid; finished.total = 1; finished.posted = 1
@@ -66,7 +79,7 @@ final class ReminderTests: XCTestCase {
         let backend = FakeReminderClient()
         let clock = ReminderClock(localDate(hour: 23, on: dueDay.adding(days: -1)))
         let (store, _, _) = try fixture(backend, clock: clock)
-        let rule = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false)
+        let rule = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)
         XCTAssertTrue(store.addRule(rule))
         await store.refreshReminders()
         let request = try XCTUnwrap(backend.requests.values.first)
@@ -85,7 +98,7 @@ final class ReminderTests: XCTestCase {
         let backend = FakeReminderClient()
         let clock = ReminderClock(localDate(hour: 11))
         let (store, directory, defaults) = try fixture(backend, clock: clock)
-        XCTAssertTrue(store.addRule(Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false)))
+        XCTAssertTrue(store.addRule(Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)))
         await store.refreshReminders()
         XCTAssertEqual(backend.added.count, 1)
         let request = try XCTUnwrap(backend.requests.values.first)
@@ -103,7 +116,7 @@ final class ReminderTests: XCTestCase {
         let backend = FakeReminderClient()
         let clock = ReminderClock(localDate(hour: 9))
         let (store, _, _) = try fixture(backend, clock: clock)
-        XCTAssertTrue(store.addRule(Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false)))
+        XCTAssertTrue(store.addRule(Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)))
         await store.refreshReminders()
         backend.requests.removeAll()
         clock.now = localDate(hour: 11)
@@ -115,7 +128,7 @@ final class ReminderTests: XCTestCase {
         let backend = FakeReminderClient()
         let clock = ReminderClock(localDate(hour: 9))
         let (store, _, _) = try fixture(backend, clock: clock)
-        let rule = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false)
+        let rule = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)
         XCTAssertTrue(store.addRule(rule))
         await store.refreshReminders()
         XCTAssertTrue(store.setActive(rule.id, false))
@@ -161,7 +174,7 @@ final class ReminderTests: XCTestCase {
         let backend = FakeReminderClient()
         backend.failAdds = true
         let (store, _, _) = try fixture(backend, clock: ReminderClock(localDate(hour: 11)))
-        XCTAssertTrue(store.addRule(Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false)))
+        XCTAssertTrue(store.addRule(Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)))
         await store.refreshReminders()
         XCTAssertTrue(backend.requests.isEmpty)
         XCTAssertTrue(store.reminderMessage?.contains("Couldn't schedule") == true)
@@ -179,7 +192,7 @@ final class ReminderTests: XCTestCase {
         let (store, _, _) = try fixture(backend, clock: ReminderClock(localDate(hour: 9)))
         await store.refreshReminders()
         backend.blockNextPending = true
-        let rule = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false)
+        let rule = Rule(cents: 45000, label: "Client", cadence: .monthly, anchor: dueDay, auto: false, created: addedEarlier)
         XCTAssertTrue(store.addRule(rule))
         for _ in 0..<100 {
             if backend.pendingContinuation != nil { break }

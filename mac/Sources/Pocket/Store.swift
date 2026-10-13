@@ -27,8 +27,17 @@ enum WindowRequest: Equatable {
     case editRule(UUID)
     case section(AppSection)
     case newEntry(EntryDraft)
+    /// A quick-add button that asks for its amount: fill the Overview entry and wait for the amount.
+    case quickAdd(Preset)
     case waiting
     case history
+}
+
+/// One of the daily copies kept next to the data file.
+struct Backup: Identifiable, Equatable {
+    let day: Day
+    let url: URL
+    var id: URL { url }
 }
 
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
@@ -226,7 +235,8 @@ final class Store: ObservableObject {
     private func persist(_ candidate: Ledger, replacingUnreadableData: Bool = false) -> Bool {
         guard loadError == nil || replacingUnreadableData else { saveError = loadError; return false }
         do {
-            backupOncePerDay()
+            // An unreadable file is set aside rather than overwritten, and never enters the daily backups.
+            if loadError != nil { try setAsideUnreadableFile() } else { backupOncePerDay() }
             try Store.encoder().encode(candidate).write(to: fileURL, options: .atomic)
             loadError = nil
             saveError = nil
@@ -250,11 +260,45 @@ final class Store: ObservableObject {
         }
     }
 
+    private var backupsDirectory: URL {
+        fileURL.deletingLastPathComponent().appendingPathComponent("Backups", isDirectory: true)
+    }
+
+    /// The daily copies, newest first.
+    var backups: [Backup] {
+        let files = (try? FileManager.default.contentsOfDirectory(at: backupsDirectory, includingPropertiesForKeys: nil)) ?? []
+        return files.compactMap { url -> Backup? in
+            let name = url.deletingPathExtension().lastPathComponent
+            guard url.pathExtension == "json", name.hasPrefix("ledger-"),
+                  let day = Day(iso: String(name.dropFirst("ledger-".count))) else { return nil }
+            return Backup(day: day, url: url)
+        }
+        .sorted { $0.day > $1.day }
+    }
+
+    func showBackupsInFinder() {
+        let dir = backupsDirectory
+        if FileManager.default.fileExists(atPath: dir.path) { NSWorkspace.shared.open(dir) }
+        else { NSWorkspace.shared.activateFileViewerSelecting([fileURL]) }
+    }
+
+    /// Replaces the local data with one of the daily copies (local mode only, like Import).
+    func restore(_ backup: Backup) throws { try importFile(backup.url) }
+
+    /// Keeps the file that couldn't be opened, next to it, before anything replaces it.
+    private func setAsideUnreadableFile() throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: fileURL.path) else { return }
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let name = "\(fileURL.deletingPathExtension().lastPathComponent) (couldn't open) \(stamp).json"
+        try fm.copyItem(at: fileURL, to: fileURL.deletingLastPathComponent().appendingPathComponent(name))
+    }
+
     /// Keeps a copy per day for the last 7 days, next to the data file.
     private func backupOncePerDay() {
         let fm = FileManager.default
         guard fm.fileExists(atPath: fileURL.path) else { return }
-        let dir = fileURL.deletingLastPathComponent().appendingPathComponent("Backups", isDirectory: true)
+        let dir = backupsDirectory
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         let target = dir.appendingPathComponent("ledger-\(Day.today.iso).json")
         guard !fm.fileExists(atPath: target.path) else { return }
@@ -427,6 +471,35 @@ final class Store: ObservableObject {
         guard mutate({ $0.presets.removeAll { $0.id == id } }) else { return }
         send("pocket_preset_delete", ["p_id": id.uuidString], label: label)
     }
+    /// An entry that could become a quick-add button: logged by hand and not already a button.
+    func canSaveAsPreset(_ entry: Entry) -> Bool {
+        entry.ruleID == nil && entry.category != Categories.start
+            && !ledger.presets.contains { $0.label.caseInsensitiveCompare(entry.label) == .orderedSame && ($0.sign < 0) == (entry.cents < 0) }
+    }
+
+    /// Turns a logged entry into a quick-add button with the same amount, description and category.
+    @discardableResult
+    func saveAsPreset(_ entryID: UUID) -> Bool {
+        guard let e = ledger.entries.first(where: { $0.id == entryID }), canSaveAsPreset(e) else { return false }
+        let preset = Preset(label: e.label, cents: abs(e.cents), sign: e.cents < 0 ? -1 : 1, category: e.category)
+        guard savePreset(preset) else { return false }
+        let index = ledger.presets.firstIndex { $0.id == preset.id } ?? 9
+        receipt = EntryReceipt(text: "“\(e.label)” is now a quick-add button" + (index < 9 ? " · ⌘\(index + 1)" : ""),
+                               target: .section(.settings))
+        say(Lines.shared.line("planned"), face: .happy)
+        return true
+    }
+
+    /// A quick-add button from anywhere (the Quick Add menu): fixed amounts log at once, the rest ask.
+    func useQuickAdd(_ preset: Preset) {
+        guard loadError == nil else { return }
+        if let cents = preset.cents {
+            addEntry(cents: preset.sign * cents, label: preset.label, day: today, category: preset.category)
+        } else {
+            windowRequest = .quickAdd(preset)
+        }
+    }
+
     func movePresets(from: IndexSet, to: Int) { mutate { $0.presets.move(fromOffsets: from, toOffset: to) } }
     func setCurrency(_ code: String) { mutate { $0.currency = code } }
 

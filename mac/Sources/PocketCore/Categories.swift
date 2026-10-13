@@ -32,6 +32,8 @@ public enum Categories {
     public static let all = spending + income + [.init(id: start, name: "Starting balance", symbol: "banknote")]
 
     public static func find(_ id: String?) -> Category? { all.first { $0.id == id } }
+    /// The category an entry is counted under: uncategorized money goes to Other (in or out).
+    public static func key(_ id: String?, cents: Cents) -> String { id ?? (cents > 0 ? "otherin" : "other") }
     public static func name(_ id: String?) -> String { find(id)?.name ?? "Uncategorized" }
     public static func symbol(_ id: String?, cents: Cents) -> String {
         find(id)?.symbol ?? (cents > 0 ? "arrow.down.left" : "arrow.up.right")

@@ -32,10 +32,8 @@ export const GUIDES: Guide[] = [
     category: "Start here",
     minutes: 4,
     updated: "2026-10-13",
-    image: "/media/overview-2026-10-13.png",
-    imageAlt: "Pocket Overview with the recorded balance and money entries",
-    imageWidth: 2128,
-    imageHeight: 1692,
+    image: "/screenshot-overview.png",
+    imageAlt: "Pocket Overview with the recorded balance, the entry field, a payment waiting for confirmation and history",
     related: ["quick-add-spending", "expected-income", "back-up-your-data"],
     sections: [
       {
@@ -68,8 +66,8 @@ export const GUIDES: Guide[] = [
         id: "first-plan",
         title: "Add one upcoming bill",
         paragraphs: [
-          "Click the sliders icon to the right of the amount field. It opens the full entry form, where you can set the date, category and repeat schedule. Enter the bill's amount, description and next date. Choose Repeat for a weekly, every-two-weeks, monthly or yearly payment. Leave the number of payments empty if it has no end date.",
-          "An automatic payment counts on its date. Turn on Confirm each payment if you want to record the actual amount and date yourself. Those payments wait for confirmation in Overview.",
+          "Click Date & repeat under the description, or press Command-N in the Pocket window. It opens the full entry form, where you can set the date, category and repeat schedule. Enter the bill's amount, description and next date. Choose Repeat for a weekly, every-two-weeks, monthly or yearly payment. Leave the number of payments empty if it has no end date.",
+          "An automatic payment counts on its date. Turn on Confirm each payment if you want to record the actual amount and date yourself. Those payments wait under Waiting for you in Overview, with Paid and Skip buttons.",
           "Open Plan to see your projected balance after each scheduled payment. The chart includes only the money you have recorded or planned.",
         ],
       },
@@ -77,8 +75,8 @@ export const GUIDES: Guide[] = [
         id: "keep-current",
         title: "Check for missing or duplicate entries",
         paragraphs: [
-          "Compare Pocket's balance with the account you used for your starting amount. If they differ, check for missing entries, duplicates and incorrect dates. Use Edit on an entry to correct it.",
-          "Save a quick-add button for purchases you make often, then add your remaining upcoming bills and income.",
+          "Compare Pocket's balance with the account you used for your starting amount. If they differ, check for missing entries, duplicates and incorrect dates. Click an entry in History to edit or delete it.",
+          "When you add a purchase you make often, choose Save as Button in the confirmation under the entry field. Then add your remaining upcoming bills and income.",
         ],
       },
     ],
@@ -86,7 +84,7 @@ export const GUIDES: Guide[] = [
   {
     slug: "quick-add-spending",
     title: "Track everyday spending with quick-add buttons",
-    description: "Save a frequent purchase in Pocket, use Command-1 through Command-9 and choose when a button should ask for the amount.",
+    description: "Turn a frequent purchase into a quick-add button in Pocket, use Command-1 through Command-9 and choose when a button should ask for the amount.",
     category: "Everyday spending",
     minutes: 3,
     updated: "2026-10-13",
@@ -104,11 +102,11 @@ export const GUIDES: Guide[] = [
           "A Coffee button with an amount of 4.50 records a 4.50 purchase each time you use it. Create it when you record your next coffee.",
         ],
         steps: [
-          "Click the sliders icon to the right of the amount field. In the full entry form, choose Spent and enter the purchase's amount and description.",
-          "Choose a category and turn on Save as a quick-add button. Save the entry. This records the purchase and creates its button.",
-          "Use the saved button for the next purchase. A button with a fixed amount adds another entry immediately.",
+          "Record the purchase as usual: enter 4.50, describe it as Coffee, choose a category from the icon to the left of the description and press Return.",
+          "In the confirmation under the entry field, choose Save as Button. Pocket makes a Coffee button with the same amount and category.",
+          "Use the button for your next coffee. A button with a fixed amount adds the entry immediately.",
         ],
-        note: "Saving the first entry already counts it. Pressing its new button immediately afterward records a second purchase.",
+        note: "Save as Button doesn't record another purchase. You can also right-click an entry in History and choose Save as Quick-Add Button, or turn on Also save as a quick-add button in the full entry form.",
       },
       {
         id: "variable-amount",
@@ -116,15 +114,15 @@ export const GUIDES: Guide[] = [
         paragraphs: [
           "For groceries, rides or anything with a changing price, open Settings and edit its quick-add button. Leave the amount empty and save the button.",
           "The next time you use it, Pocket fills in the description and category and asks you for the amount. Enter what you actually spent, then save the entry.",
-          "You can also create a Money Out or Money In button in Settings. Use Money In for income such as client payments whose amounts vary.",
+          "To make a button from scratch, open Settings, find Quick-add buttons and choose Add Button, then Spending Button or Money In Button. Use a Money In button for income such as client payments whose amounts vary.",
         ],
       },
       {
         id: "keyboard",
         title: "Use Command-1 through Command-9",
         paragraphs: [
-          "With Pocket's window or menu open, Command-1 through Command-9 use the first nine quick-add buttons. The shortcuts work while you are in Pocket.",
-          "Check the button order before using a number. If you press the wrong shortcut, find the new entry in your history and edit or delete it.",
+          "Command-1 through Command-9 use the first nine quick-add buttons, from the menu bar panel or any page of the Pocket window. The Quick Add menu at the top of the screen lists every button with its shortcut.",
+          "Drag buttons in Settings to change their order. If you press the wrong shortcut, click Edit in the confirmation, or find the new entry in History and edit or delete it.",
         ],
       },
       {
@@ -132,7 +130,7 @@ export const GUIDES: Guide[] = [
         title: "Review the entries behind the total",
         paragraphs: [
           "A quick-add button records one entry per use. If the price changes, update its saved amount in Settings.",
-          "In Categories, review income and spending by category. The breakdown uses the categories you assigned to your entries.",
+          "In Categories, Where it went breaks down your spending and Where it came from breaks down your income. Click a category to see its entries. The breakdown uses the categories you assigned.",
         ],
       },
     ],
@@ -159,21 +157,29 @@ export const GUIDES: Guide[] = [
       {
         id: "schedule-income",
         title: "Schedule a payment that needs confirmation",
-        paragraphs: ["Click the sliders icon to the right of the amount field to open the full entry form. Set a future date or choose a repeating schedule to see the confirmation setting."],
+        paragraphs: ["Click Date & repeat under the description to open the full entry form. Set a future date or choose a repeating schedule to see the confirmation setting."],
         steps: [
           "Choose Got money and enter the expected amount, such as 300.00, with a description such as Client payment.",
           "Set the expected date. Leave Repeat at Once for a single payment, or choose how often it repeats.",
-          "Turn on Confirm when money arrives and save. Check Plan for the scheduled payment.",
-          "When the payment is due, find it waiting in Overview. Leave it waiting until you receive the money.",
+          "Check that Confirm when money arrives is on. It starts on for new income. Save, then check Plan for the scheduled payment.",
+          "When the payment is due, it appears under Waiting for you in Overview, and the menu bar panel shows how many payments are waiting. Leave it there until you receive the money.",
         ],
         note: "If confirmation is turned off, Pocket counts the scheduled amount automatically on its date. Choose confirmation for payments whose arrival or amount is uncertain.",
+      },
+      {
+        id: "already-due",
+        title: "Track money that is already owed",
+        paragraphs: [
+          "Some money has no future date: a friend who owes you, or a refund that should have arrived. Open the full entry form, choose Got money, keep today's date (or the day it was due) and turn on I'm still waiting for this money. Choose Add to Waiting.",
+          "It goes straight to Waiting for you, and your recorded balance stays the same until you confirm it. For a bill you owe but haven't paid yet, choose Spent and turn on I haven't paid this yet.",
+        ],
       },
       {
         id: "late-payment",
         title: "Confirm what actually arrived",
         paragraphs: [
           "Suppose you start with $500 and expect $300 on October 20. With confirmation enabled and no other entries, your recorded balance stays at $500 until you confirm the payment.",
-          "If $280 arrives on October 23, click Got it for the waiting payment. Enter 280.00 and October 23, then confirm. Pocket records the actual amount and date.",
+          "If $280 arrives on October 23, click Got it on the waiting payment in Overview. Change the amount to 280.00 and the date to October 23, then click Log It. Pocket records the actual amount and date. If the money never comes, click Skip instead.",
         ],
         table: {
           label: "Recorded balance before and after confirming income",
@@ -186,7 +192,7 @@ export const GUIDES: Guide[] = [
         id: "forecast-limits",
         title: "Update the plan when expectations change",
         paragraphs: [
-          "If a payment will come later, edit its planned date. You can skip a payment, or pause or stop a repeating one, from its controls.",
+          "If a payment will come later, click it in Plan and change its date. To skip the next payment, pause a repeating one or stop it, use the ⋯ button next to it in Plan.",
           "Check uncertain income and missing bills before relying on the forecast. Pocket projects the amounts and dates you enter; purchases you have not recorded or planned are left out.",
         ],
       },
@@ -195,7 +201,7 @@ export const GUIDES: Guide[] = [
   {
     slug: "back-up-your-data",
     title: "Back up Pocket and move to a new Mac",
-    description: "Find Pocket's data file, export a JSON backup and import it on another Mac. See where daily backups are stored and how optional sync changes the setup.",
+    description: "Find Pocket's data file, restore a daily backup, export a JSON backup and import it on another Mac. See how optional sync changes the setup.",
     category: "Your data",
     minutes: 3,
     updated: "2026-10-13",
@@ -211,6 +217,17 @@ export const GUIDES: Guide[] = [
           "Open Settings and click Show in Finder next to Data file. In local mode, the file is normally ~/Library/Application Support/Pocket/ledger.json.",
           "Pocket keeps seven daily backups in its data folder on the same Mac. Keep an exported copy elsewhere so you can recover it if you lose the computer or its drive.",
         ],
+      },
+      {
+        id: "restore",
+        title: "Restore a daily backup",
+        paragraphs: ["Use a daily backup to undo a mistake, such as an import or an erase you didn't mean to do. Each backup is a copy of your data from the first change Pocket saved that day."],
+        steps: [
+          "Open Settings and find Daily backups under Your data.",
+          "Click Restore… and choose a day. Show Backups in Finder opens the folder.",
+          "Review the prompt, then confirm Restore. Check your balance and recent entries afterward.",
+        ],
+        note: "Restoring replaces what's in Pocket now. If Pocket couldn't open its data file, it keeps that file next to the new one, with “couldn't open” in its name, instead of overwriting it.",
       },
       {
         id: "export",
@@ -240,7 +257,7 @@ export const GUIDES: Guide[] = [
         title: "Use sync for a shared balance across devices",
         paragraphs: [
           "With optional self-hosted sync, your chosen server stores the shared main copy. Your Mac keeps a copy in account-ledger.json and queues changes while offline.",
-          "You can export while connected. Import is available only in local mode and replaces only the local data.",
+          "You can export while connected. Import and Restore are available only in local mode and replace only the local data.",
           "To use the same balance on your phone or another computer, follow the self-hosting guide and pair devices in Settings under Sync. You will need a server you run.",
         ],
       },

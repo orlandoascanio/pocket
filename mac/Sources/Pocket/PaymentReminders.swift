@@ -28,6 +28,8 @@ enum PaymentReminders {
             var components = DateComponents(year: day.year, month: day.month, day: day.day, hour: 10)
             components.timeZone = calendar.timeZone
             guard let date = calendar.date(from: components) else { return nil }
+            // Added after its reminder time had already passed (like money marked as still waiting today): no catch-up.
+            if date <= now && rule.created > date && rule.posted == 0 { return nil }
             return PaymentReminder(identifier: "pocket.\(rule.id.uuidString).\(rule.posted).\(day.iso)",
                                    day: day, date: date,
                                    title: rule.cents > 0 ? "Did \(rule.label) pay?" : "Was \(rule.label) paid?")

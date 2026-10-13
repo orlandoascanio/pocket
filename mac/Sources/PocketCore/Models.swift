@@ -109,6 +109,11 @@ public struct Rule: Codable, Identifiable, Equatable, Sendable {
     public var remaining: Int? { total.map { max(0, $0 - posted) } }
     public func occurrence(_ n: Int) -> Day { cadence.step(from: anchor, n) }
     public var next: Day { occurrence(posted) }
+
+    /// The next payment, the one "Got it" and "Skip" act on.
+    public func nextOccurrence(today: Day) -> Occurrence {
+        Occurrence(ruleID: id, label: label, cents: cents, category: category, day: next, overdue: next <= today, isNext: true)
+    }
 }
 
 /// A quick-add button. `cents == nil` means "ask for the amount each time".

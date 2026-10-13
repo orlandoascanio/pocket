@@ -147,6 +147,8 @@ final class AppFlowTests: XCTestCase {
         _ = store.addEntry(cents: -1599, label: "A very long purchase description that should still fit in the menu", day: .today, category: "games")
         store.savePreset(Preset(label: "Coffee", cents: 650, sign: -1, category: "food"))
         store.savePreset(Preset(label: "Gift", cents: nil, sign: 1, category: "gift"))
+        _ = store.addEntry(cents: 2_500, label: "Refund", day: .today, category: "refund")
+        _ = store.addRule(Rule(cents: -2_000, label: "AI subscription", cadence: .monthly, anchor: Day.today.adding(days: 5), category: "subscriptions"))
         for i in 1...12 {
             _ = store.addRule(Rule(cents: i * 10000, label: "Client \(i) · monthly work", cadence: .monthly, anchor: .today, auto: false))
         }
@@ -163,11 +165,18 @@ final class AppFlowTests: XCTestCase {
             try capture(SettingsView().environmentObject(store), size: NSSize(width: 580, height: 560), path: output + "/settings-minimum-\(name).png")
             try capture(EditSheet(target: EditTarget(kind: .new(nil))).environmentObject(store), size: NSSize(width: 460, height: 460), path: output + "/new-entry-\(name).png")
         }
+        NSApp.appearance = NSAppearance(named: .aqua)
+        try capture(PlanView(onEdit: { _ in }).environmentObject(store), size: NSSize(width: 820, height: 2_300), path: output + "/plan-full.png")
+        try capture(SettingsView().environmentObject(store), size: NSSize(width: 820, height: 1_500), path: output + "/settings-full.png")
         let state = EditorState(); state.store = store; state.showDetails = true
         state.label = "Rent"; state.amount = "850"; state.frequency = .monthly
         try capture(EntryEditor(state: state).frame(width: 460).environmentObject(store), size: NSSize(width: 460, height: 600), path: output + "/entry-options.png")
         let payment = try XCTUnwrap(store.waiting.first)
-        try capture(WaitingCard(occurrence: payment, initiallyExpanded: true).environmentObject(store), size: NSSize(width: 380, height: 200), path: output + "/waiting.png")
+        try capture(WaitingCard(occurrence: payment, initiallyExpanded: true).environmentObject(store), size: NSSize(width: 560, height: 130), path: output + "/waiting.png")
+        try capture(WaitingCard(occurrence: payment).environmentObject(store), size: NSSize(width: 560, height: 80), path: output + "/waiting-card.png")
+        let owed = EditorState(); owed.store = store; owed.showDetails = true
+        owed.spent = false; owed.label = "Sam owes me"; owed.amount = "50"; owed.awaiting = true
+        try capture(EntryEditor(state: owed).frame(width: 460).environmentObject(store), size: NSSize(width: 460, height: 560), path: output + "/entry-waiting.png")
         let empty = try isolatedStore()
         XCTAssertTrue(empty.start(currency: "USD", cents: 0, openAtLogin: false))
         try capture(MainWindow().environmentObject(empty), size: NSSize(width: 780, height: 560), path: output + "/minimum-zero.png")
@@ -176,6 +185,8 @@ final class AppFlowTests: XCTestCase {
         try capture(WaitingCard(occurrence: payment, initiallyExpanded: true,
                                 initialError: "Couldn't skip this payment. Try again.").environmentObject(store),
                     size: NSSize(width: 380, height: 200), path: output + "/waiting-skip-failure.png")
+        _ = store.addEntry(cents: -1_450, label: "Lunch", day: .today, category: "food")
+        try capture(MenuPanel().environmentObject(store), size: NSSize(width: 380, height: 640), path: output + "/menu-receipt.png")
         let blocked = try blockWrites(store)
         _ = store.addEntry(cents: -100, label: "Failed", day: .today, category: nil)
         try capture(MenuPanel().environmentObject(store), size: NSSize(width: 380, height: 640), path: output + "/menu-save-failure.png")

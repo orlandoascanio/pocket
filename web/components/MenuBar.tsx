@@ -18,62 +18,75 @@ export function MenuBarStrip({ amount, children }: { amount?: string; children?:
   );
 }
 
-// The panel that drops from the menu bar, rebuilt in HTML from the app's layout.
+// The panel that drops from the menu bar, rebuilt in HTML from the app's layout (MenuPanel.swift).
 export function MenuPanel() {
   return (
     <div className="mp">
-      <div className="mp-top">
-        <div>
-          <div className="mp-label">Money left</div>
-          <div className="mp-amount">$337.03</div>
-          <div className="mp-sub">This month: $127.98 spent</div>
-          <div className="mp-lasts">
-            <svg viewBox="0 0 20 16" aria-hidden="true">
-              <path d="M2 14h16M3 11l4-4 3 3 7-7" />
-            </svg>
-            Lasts past <b>Jan 10</b>
-          </div>
-        </div>
+      <div className="mp-label">Money left</div>
+      <div className="mp-amount">$337.03</div>
+      <div className="mp-lasts">
+        <svg viewBox="0 0 20 16" aria-hidden="true">
+          <path d="M2 14h16M3 11l4-4 3 3 7-7" />
+        </svg>
+        Lasts past <b>Jan 10</b>
+        <span className="mp-chev" aria-hidden="true">›</span>
       </div>
       <div className="mp-chips">
         <span className="chip">Coffee <span className="muted">−$6.50</span></span>
         <span className="chip">Gift</span>
       </div>
-      <div className="mp-seg">
-        <span className="on">Spent</span>
-        <span>Got money</span>
-      </div>
-      <div className="mp-entry">
-        <span className="mp-field mp-amt">0.00</span>
-        <span className="mp-field">What was it?</span>
-        <span className="mp-add">Add</span>
+      <div className="mp-composer">
+        <div className="mp-amount-row">
+          <span className="mp-sign" aria-hidden="true">−</span>
+          <span className="mp-zero">$ 0.00</span>
+        </div>
+        <div className="mp-what-row">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2.5 8.6V3.2a.7.7 0 0 1 .7-.7h5.4l5 5a.9.9 0 0 1 0 1.3l-4.1 4.1a.9.9 0 0 1-1.3 0Z" />
+            <circle cx="5.6" cy="5.6" r=".9" />
+          </svg>
+          What was it for?
+        </div>
+        <div className="mp-more">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="2.5" y="3.5" width="11" height="10" rx="2" />
+            <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" />
+          </svg>
+          Date &amp; repeat
+        </div>
       </div>
       <div className="mp-notice">
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <circle cx="8" cy="8" r="6.5" />
           <path d="M8 4.5V8l2.2 1.6" />
         </svg>
-        1 payment waiting for you
+        1 payment is waiting for you
+        <span className="mp-chev" aria-hidden="true">›</span>
       </div>
-      <div className="mp-head">Recent</div>
+      <div className="mp-head">
+        <span>Recent</span>
+        <span className="mp-all">See All</span>
+      </div>
       <div className="mp-row">
         <span className="mp-ic">☕</span>
         <span className="mp-what">
-          Coffee<small>Today</small>
+          Coffee<small>Food · Today</small>
         </span>
         <span className="mp-val">−$6.50</span>
       </div>
       <div className="mp-row">
         <span className="mp-ic mp-ic-in">↓</span>
         <span className="mp-what">
-          Paycheck<small>Fri, Oct 9</small>
+          Paycheck<small>Pay · Oct 9</small>
         </span>
         <span className="mp-val mp-in">+$1,200.00</span>
       </div>
       <div className="mp-foot">
-        <span>Open Pocket</span>
-        <span>Settings</span>
-        <span className="mp-quit">Quit</span>
+        <span>$127.98 spent this month</span>
+        <span className="mp-foot-icons" aria-hidden="true">
+          <svg viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" /></svg>
+          <svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.1" /><circle cx="8" cy="8" r="1.1" /><circle cx="12.5" cy="8" r="1.1" /></svg>
+        </span>
       </div>
     </div>
   );

@@ -47,12 +47,39 @@ struct PocketApp: App {
                 .frame(minWidth: 780, minHeight: 560)
         }
         .defaultSize(width: 1000, height: 780)
+        .commands { QuickAddCommands(store: store) }
 
         Window("Welcome to Pocket", id: "welcome") {
             Onboarding().environmentObject(store)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+    }
+}
+
+/// The Quick Add menu: the buttons with ⌘1 to ⌘9 on every page of the window, not only next to the row.
+struct QuickAddCommands: Commands {
+    @ObservedObject var store: Store
+
+    var body: some Commands {
+        CommandMenu("Quick Add") {
+            let presets = store.ledger.presets
+            if presets.isEmpty {
+                Text("No quick-add buttons yet")
+            }
+            ForEach(Array(presets.enumerated()), id: \.element.id) { i, p in
+                let title = p.cents.map { "\(p.label)  \(store.money.string(p.sign * $0, signed: p.sign > 0))" } ?? "\(p.label)…"
+                if i < 9 {
+                    Button(title) { store.useQuickAdd(p) }
+                        .keyboardShortcut(KeyEquivalent(Character(String(i + 1))), modifiers: .command)
+                } else {
+                    Button(title) { store.useQuickAdd(p) }
+                }
+            }
+            .disabled(store.loadError != nil)
+            Divider()
+            Button("Edit Quick-Add Buttons…") { store.windowRequest = .section(.settings) }
+        }
     }
 }
 

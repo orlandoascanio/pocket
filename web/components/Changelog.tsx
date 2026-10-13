@@ -95,13 +95,15 @@ export function Changelog() {
         <div className="release-meta"><a className="release-version" href={`#${releaseId(release.version)}`}>v{release.version}</a>{i === 0 && <span className="release-latest"><span aria-hidden="true" />Latest release</span>}<time dateTime={release.date}>{releaseDate(release.date)}</time><Permalink id={releaseId(release.version)} version={release.version} /></div>
         <h2 id={`${releaseId(release.version)}-title`}>{release.title}</h2>
         <p className="release-summary">{release.summary}</p>
-        {release.theme === "sync" && <figure className="release-visual">
-          <div className="release-visual-copy"><span className="release-visual-mark"><img src="/pocket-icon.webp" alt="" width={32} height={32} />Pocket 1.1</span><p>Your Mac.<br />Your phone.<br /><span>Your server.</span></p><span className="release-visual-note">Sync is optional. You’re in control.</span></div>
+        {release.theme !== "launch" && <figure className="release-visual">
+          {release.theme === "sync"
+            ? <div className="release-visual-copy"><span className="release-visual-mark"><img src="/pocket-icon.webp" alt="" width={32} height={32} />Pocket 1.1</span><p>Your Mac.<br />Your phone.<br /><span>Your server.</span></p><span className="release-visual-note">Sync is optional. You’re in control.</span></div>
+            : <div className="release-visual-copy"><span className="release-visual-mark"><img src="/pocket-icon.webp" alt="" width={32} height={32} />Pocket 1.2</span><p>Got it.<br />Skip it.<br /><span>Save it.</span></p><span className="release-visual-note">Every action, one click away.</span></div>}
           <div className="release-visual-screen"><Image src="/screenshot-overview.png" alt="Pocket for Mac’s Overview window with balance, history and quick-add buttons" width={1600} height={1283} sizes="(max-width: 700px) 80vw, 440px" /></div>
         </figure>}
         <ul className="release-highlights">{release.highlights.map(item => <li key={item.title}><span className="release-bullet" aria-hidden="true" /><div><h3>{item.title}</h3><p>{item.description}</p></div></li>)}</ul>
         <ReleaseDetails title={release.detailsTitle} items={release.details} />
-        <div className="release-actions">{i === 0 ? <><a className="pill pill-dark" href={DOWNLOAD_URL} data-download><DownloadIcon />Download v{release.version}</a><a className="release-text-link" href={SELF_HOSTING_URL}>Set up sync <span aria-hidden="true">↗</span></a></> : <span className="release-first">The first chapter.</span>}<a className="release-source" href={release.source}>On GitHub <span aria-hidden="true">↗</span></a></div>
+        <div className="release-actions">{i === 0 ? <><a className="pill pill-dark" href={DOWNLOAD_URL} data-download><DownloadIcon />Download v{release.version}</a><a className="release-text-link" href={SELF_HOSTING_URL}>Set up sync <span aria-hidden="true">↗</span></a></> : i === RELEASES.length - 1 ? <span className="release-first">The first chapter.</span> : null}<a className="release-source" href={release.source}>On GitHub <span aria-hidden="true">↗</span></a></div>
       </article>)}
       <div className="release-end"><span aria-hidden="true" /><p>You’re all caught up.</p><span>That’s every release of Pocket for Mac.</span></div>
     </div>

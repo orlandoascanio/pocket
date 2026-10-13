@@ -171,17 +171,25 @@ extension Ledger {
     public func summary(_ month: YearMonth?) -> Summary {
         var spent: Cents = 0
         var income: Cents = 0
-        var by: [String: (Cents, Int)] = [:]
+        var out: [String: (Cents, Int)] = [:]
+        var into: [String: (Cents, Int)] = [:]
         for e in entries where e.category != Categories.start && (month?.contains(e.day) ?? true) {
-            if e.cents > 0 { income += e.cents; continue }
-            spent -= e.cents
-            let c = e.category ?? "other"
-            let cur = by[c] ?? (0, 0)
-            by[c] = (cur.0 - e.cents, cur.1 + 1)
+            let c = Categories.key(e.category, cents: e.cents)
+            if e.cents > 0 {
+                income += e.cents
+                let cur = into[c] ?? (0, 0)
+                into[c] = (cur.0 + e.cents, cur.1 + 1)
+            } else {
+                spent -= e.cents
+                let cur = out[c] ?? (0, 0)
+                out[c] = (cur.0 - e.cents, cur.1 + 1)
+            }
         }
-        let rows = by.map { CategoryTotal(category: $0.key, cents: $0.value.0, count: $0.value.1) }
-            .sorted { ($0.cents, $1.category) > ($1.cents, $0.category) }
-        return Summary(spent: spent, income: income, byCategory: rows)
+        func rows(_ by: [String: (Cents, Int)]) -> [CategoryTotal] {
+            by.map { CategoryTotal(category: $0.key, cents: $0.value.0, count: $0.value.1) }
+                .sorted { ($0.cents, $1.category) > ($1.cents, $0.category) }
+        }
+        return Summary(spent: spent, income: income, byCategory: rows(out), incomeByCategory: rows(into))
     }
 
     /// The category most often used with labels starting like `prefix` (so "valo" picks Games).
@@ -256,6 +264,9 @@ public struct CategoryTotal: Identifiable, Equatable, Sendable {
 public struct Summary: Equatable, Sendable {
     public var spent: Cents
     public var income: Cents
+    /// Spending by category, biggest first.
     public var byCategory: [CategoryTotal]
+    /// Money in by category, biggest first.
+    public var incomeByCategory: [CategoryTotal]
     public var net: Cents { income - spent }
 }

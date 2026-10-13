@@ -218,6 +218,7 @@ struct SaveFailureView: View {
     }
 }
 
+/// "Added −$6.50 · Coffee", with Edit, and Save as Button while it isn't one yet.
 struct EntryReceiptView: View {
     @EnvironmentObject var store: Store
     var onEdit: (WindowRequest) -> Void
@@ -227,9 +228,17 @@ struct EntryReceiptView: View {
                 Label(receipt.text, systemImage: "checkmark.circle")
                     .font(.callout).lineLimit(2)
                 Spacer(minLength: 0)
+                if case .editEntry(let id) = receipt.target,
+                   let entry = store.ledger.entries.first(where: { $0.id == id }), store.canSaveAsPreset(entry) {
+                    Button("Save as Button") { store.saveAsPreset(id) }
+                        .buttonStyle(.link)
+                        .fixedSize()
+                        .help("Make a quick-add button for “\(entry.label)”, so next time it's one click or ⌘-number")
+                }
                 Button("Edit") { onEdit(receipt.target) }
                     .buttonStyle(.link)
-                    .accessibilityLabel("Edit the entry just saved")
+                    .fixedSize()
+                    .accessibilityLabel(receipt.target == .section(.settings) ? "Edit quick-add buttons" : "Edit the entry just saved")
             }
             .foregroundStyle(Palette.accent)
         }

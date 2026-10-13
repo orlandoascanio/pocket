@@ -137,6 +137,12 @@ struct MainWindow: View {
         }
         .onDisappear { NSApp.setActivationPolicy(.accessory) }
         .onChange(of: store.windowRequest) { _, r in handle(r) }
+        // Focus entering the sidebar lands on the selected page, as in a native sidebar, and navigation
+        // from the menu, a link or Categories moves it along with the selection.
+        .onChange(of: focusedSection) { old, new in
+            if old == nil, let new, new != section { focusedSection = section }
+        }
+        .onChange(of: section) { _, s in if focusedSection != nil { focusedSection = s } }
     }
 
     private func sidebarRow(_ item: AppSection) -> some View {
@@ -185,6 +191,11 @@ struct MainWindow: View {
         case .section(let s): section = s
         case .newEntry(let draft):
             editTarget = EditTarget(kind: .new(draft))
+        case .quickAdd(let preset):
+            section = .overview
+            scrollTarget = "entry"
+            // After the switch, so the Overview's amount field exists to take focus.
+            DispatchQueue.main.async { editor.start(from: preset) }
         case .waiting:
             section = .overview
             waitingExpanded = true
@@ -247,21 +258,6 @@ struct OverviewView: View {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     hero
                     if store.saveError != nil { SaveFailureView() }
-                    if !store.waiting.isEmpty {
-                        DisclosureGroup(isExpanded: $waitingExpanded) {
-                            VStack(spacing: 8) {
-                                ForEach(store.waiting) { WaitingCard(occurrence: $0) }
-                            }.padding(.top, 10)
-                        } label: {
-                            Label {
-                                Text("\(store.waiting.count) payment\(store.waiting.count == 1 ? " is" : "s are") waiting for you")
-                            } icon: {
-                                Image(systemName: "clock.badge.exclamationmark").foregroundStyle(.orange)
-                            }
-                            .font(.callout.weight(.medium))
-                        }
-                        .id("waiting")
-                    }
                     VStack(alignment: .leading, spacing: 10) {
                         if !store.ledger.presets.isEmpty { QuickBar(onAsk: { editor.start(from: $0) }) }
                         Composer(state: editor, amountSize: 30, onMore: {
@@ -276,6 +272,7 @@ struct OverviewView: View {
                     }
                     .frame(maxWidth: 520, alignment: .leading)
                     .id("entry")
+                    if !store.waiting.isEmpty { waiting.id("waiting") }
                     history.id("history")
                 }
                 .frame(maxWidth: 700)
@@ -344,10 +341,29 @@ struct OverviewView: View {
         }
     }
 
+    /// Money that was due and needs a "Got it" or a "Skip". A long list shows the oldest few first.
+    private var waiting: some View {
+        let all = store.waiting
+        let shown = waitingExpanded ? all : Array(all.prefix(3))
+        return VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(title: "Waiting for you", meta: all.count == 1 ? "Did it arrive?" : "\(all.count) payments")
+            ForEach(shown) { WaitingCard(occurrence: $0) }
+            if all.count > 3 {
+                Button(waitingExpanded ? "Show less" : "Show all \(all.count)") {
+                    withAnimation(reduceMotion ? nil : .snappy) { waitingExpanded.toggle() }
+                }
+                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(.top, 6)
+    }
+
     private var shownEntries: [Entry] {
         let all = store.ledger.sortedEntries
         guard let f = filter else { return all }
-        return all.filter { ($0.category ?? "other") == f.category && (f.month?.contains($0.day) ?? true) }
+        return all.filter { Categories.key($0.category, cents: $0.cents) == f.category && (f.month?.contains($0.day) ?? true) }
     }
 
     private var history: some View {
@@ -403,6 +419,10 @@ struct OverviewView: View {
                                 .accessibilityHint("Open to edit this entry")
                                 .contextMenu {
                                     Button("Edit…") { onEdit(EditTarget(kind: .entry(e))) }
+                                    if store.canSaveAsPreset(e) {
+                                        Button("Save as Quick-Add Button") { store.saveAsPreset(e.id) }
+                                    }
+                                    Divider()
                                     Button("Delete…", role: .destructive) { pendingDelete = e }
                                 }
                                 .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
@@ -415,63 +435,92 @@ struct OverviewView: View {
     }
 }
 
-/// A payment that was due but hasn't been confirmed: log it (with the real amount) or skip it.
+/// A payment that was due but hasn't been confirmed. "Got it" (or "Paid") asks what actually
+/// happened, prefilled with what was expected; "Skip" drops this one.
 struct WaitingCard: View {
     @EnvironmentObject var store: Store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let occurrence: Occurrence
     var compact = false
-    @State private var expanded = false
+    @State private var confirming = false
     @State private var amount = ""
     @State private var date = Date()
     @State private var error: String?
+    @FocusState private var amountFocused: Bool
 
     init(occurrence: Occurrence, compact: Bool = false, initiallyExpanded: Bool = false, initialError: String? = nil) {
         self.occurrence = occurrence
         self.compact = compact
-        _expanded = State(initialValue: initiallyExpanded)
+        _confirming = State(initialValue: initiallyExpanded)
         _error = State(initialValue: initialError)
     }
 
+    private var income: Bool { occurrence.cents > 0 }
+    private var confirmTitle: String { income ? "Got it" : "Paid" }
+
+    private var due: String {
+        let d = occurrence.day.localDate.formatted(.dateTime.month(.abbreviated).day())
+        if occurrence.day == store.today { return "Due today" }
+        return "Was due \(d)"
+    }
+
     var body: some View {
-        DisclosureGroup(isExpanded: $expanded) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    TextField("Amount", text: $amount)
-                        .textFieldStyle(.roundedBorder).frame(width: 100)
-                        .accessibilityLabel("Actual payment amount")
-                        .onSubmit(confirm)
-                    DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: .date)
-                        .labelsHidden().accessibilityLabel("Actual payment date")
-                }
-                HStack {
-                    Button("Skip this payment") {
-                        if !store.skip(occurrence) { error = "Couldn't skip this payment. Try again." }
-                    }
-                    Spacer()
-                    Button(occurrence.cents > 0 ? "Got it" : "Paid", action: confirm)
-                        .buttonStyle(.borderedProminent)
-                }
-                if let error { Text(error).font(.caption).foregroundStyle(Palette.negative) }
-            }.padding(.top, 10)
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                CategoryIcon(category: occurrence.category, cents: occurrence.cents, size: 32,
+                             symbol: occurrence.category == nil ? "clock" : nil)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(occurrence.label).fontWeight(.medium).lineLimit(2)
-                    Text("Due \(occurrence.day.localDate.formatted(.dateTime.month(.abbreviated).day()))")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(due).font(.caption).foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 4)
+                .layoutPriority(1)
+                Spacer(minLength: 8)
                 Text(store.money.string(occurrence.cents, signed: true))
-                    .monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
-                    .foregroundStyle(occurrence.cents > 0 ? Palette.accent : Color.primary)
+                    .fontWeight(.medium).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
+                    .foregroundStyle(income ? Palette.accent : Color.primary)
+                if !confirming {
+                    Button("Skip", action: skip)
+                        .help("Skip this payment. It won't count.")
+                        .accessibilityLabel("Skip \(occurrence.label)")
+                    Button(confirmTitle) { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { confirming = true } }
+                        .buttonStyle(.borderedProminent)
+                        .help(income ? "Log it with the amount and date it actually arrived" : "Log it with the amount and date you actually paid")
+                        .accessibilityLabel("\(confirmTitle): \(occurrence.label)")
+                }
             }
+            if confirming {
+                HStack(spacing: 8) {
+                    Text(income ? "Arrived" : "Paid").foregroundStyle(.secondary)
+                    TextField("Amount", text: $amount, prompt: Text(store.money.placeholder))
+                        .textFieldStyle(.roundedBorder).frame(width: 110).monospacedDigit()
+                        .focused($amountFocused)
+                        .accessibilityLabel(income ? "Amount that arrived" : "Amount paid")
+                        .onSubmit(confirm)
+                    Text("on").foregroundStyle(.secondary)
+                    DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: .date)
+                        .labelsHidden().accessibilityLabel(income ? "Date it arrived" : "Date paid")
+                    Spacer(minLength: 4)
+                    Button("Cancel") {
+                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { confirming = false }
+                        error = nil
+                    }
+                    Button("Log It", action: confirm).buttonStyle(.borderedProminent)
+                }
+                .controlSize(.regular)
+                .transition(.opacity)
+                .onAppear { amountFocused = true }
+            }
+            if let error { Text(error).font(.caption).foregroundStyle(Palette.negative) }
         }
         .padding(compact ? 10 : 12)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.line))
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: expanded)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.line))
+        .accessibilityElement(children: .contain)
         .onAppear { amount = Money.edit(occurrence.cents) }
+    }
+
+    private func skip() {
+        if !store.skip(occurrence) { error = "Couldn't skip this payment. Try again." }
     }
 
     private func confirm() {

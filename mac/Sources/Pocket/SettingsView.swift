@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var confirmErase = false
     @State private var pendingImport: URL?
+    @State private var pendingRestore: Backup?
     @State private var message: String?
 
     private static let currencies: [String] = {
@@ -34,13 +35,17 @@ struct SettingsView: View {
             }
 
             Section {
+                if store.ledger.presets.isEmpty {
+                    Text("No buttons yet. Add one here, or choose Save as Button after you add an entry.")
+                        .foregroundStyle(.secondary)
+                }
                 ForEach(store.ledger.presets) { p in PresetRow(preset: p) }
                     .onMove(perform: store.connected ? nil : { store.movePresets(from: $0, to: $1) })
                 HStack {
                     Spacer()
                     Menu("Add Button") {
-                        Button("Spending") { store.savePreset(Preset(label: "New button", cents: nil, sign: -1, category: nil)) }
-                        Button("Money In") { store.savePreset(Preset(label: "Got paid", cents: nil, sign: 1, category: "pay")) }
+                        Button("Spending Button") { store.savePreset(Preset(label: "New button", cents: nil, sign: -1, category: nil)) }
+                        Button("Money In Button") { store.savePreset(Preset(label: "Got paid", cents: nil, sign: 1, category: "pay")) }
                     }
                     .fixedSize()
                 }
@@ -79,6 +84,24 @@ struct SettingsView: View {
                         if !store.connected { Button("Import…", action: chooseImport) }
                     }
                 }
+                if !store.connected {
+                    LabeledContent {
+                        let backups = store.backups
+                        Menu("Restore…") {
+                            ForEach(backups) { b in
+                                Button(b.day.localDate.formatted(.dateTime.weekday(.wide).month(.wide).day())) { pendingRestore = b }
+                            }
+                            Divider()
+                            Button("Show Backups in Finder") { store.showBackupsInFinder() }
+                        }
+                        .fixedSize()
+                        .disabled(backups.isEmpty)
+                    } label: {
+                        Text("Daily backups")
+                        Text(store.backups.isEmpty ? "The first one is made the next time something changes."
+                             : "Pocket keeps a copy from each of the last 7 days it was used.")
+                    }
+                }
                 LabeledContent("Data file") {
                     Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([store.fileURL]) }
                 }
@@ -112,6 +135,12 @@ struct SettingsView: View {
         } message: {
             Text("All entries, repeating payments and buttons are deleted from this Mac. Export first if you want a copy.")
         }
+        .confirmationDialog("Restore the backup from \(pendingRestore?.day.localDate.formatted(.dateTime.month(.wide).day()) ?? "")?", isPresented: Binding(
+            get: { pendingRestore != nil }, set: { if !$0 { pendingRestore = nil } }), presenting: pendingRestore) { backup in
+            Button("Restore") { runRestore(backup) }
+        } message: { _ in
+            Text("What's in Pocket now is replaced by that day's copy. Export first if you want to keep it.")
+        }
         .confirmationDialog("Replace your data with this file?", isPresented: Binding(
             get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }), presenting: pendingImport) { url in
             Button("Replace") { runImport(url) }
@@ -139,6 +168,15 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         pendingImport = url
+    }
+
+    private func runRestore(_ backup: Backup) {
+        do {
+            try store.restore(backup)
+            message = "Restored the backup from \(backup.day.localDate.formatted(.dateTime.month(.wide).day()))."
+        } catch {
+            message = "Couldn't restore: \(error.localizedDescription) Your saved data is unchanged."
+        }
     }
 
     private func runImport(_ url: URL) {

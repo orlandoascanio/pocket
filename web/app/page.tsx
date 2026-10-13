@@ -31,7 +31,7 @@ const FAQ: { q: string; a: string; link?: { href: string; label: string } }[] = 
   },
   {
     q: "Where is my money data stored?",
-    a: "In one file on your Mac (~/Library/Application Support/Pocket/ledger.json), with seven daily backups. From Settings you can export it as JSON, import it again, or erase it.",
+    a: "In one file on your Mac (~/Library/Application Support/Pocket/ledger.json), with seven daily backups. From Settings you can restore one of those backups, export your data as JSON, import it again, or erase it.",
   },
   {
     q: "Can I see my balance on my phone?",
@@ -211,6 +211,8 @@ export default function Home() {
                 lands, click “Got it” and type what actually arrived, even if it came late or smaller.
               </p>
               <ul className="dots">
+                <li>Waiting payments sit in Overview with Got it and Skip buttons</li>
+                <li>Your balance only changes once you confirm</li>
                 <li>A reminder on the day it&apos;s due</li>
               </ul>
             </div>
@@ -221,8 +223,8 @@ export default function Home() {
             <div className="copy">
               <h2>Quick-add for everyday spending.</h2>
               <p>
-                Save buttons for the things you buy often. Press ⌘1 to ⌘9 to add a saved entry, and see your
-                balance update in the menu bar and the main window.
+                Add a coffee once, then choose Save as Button. From then on it&apos;s one click, or ⌘1 to ⌘9 from the
+                menu bar panel or anywhere in the Pocket window, and your balance updates right away.
               </p>
             </div>
             <figure className="quick-add-recording">
@@ -246,8 +248,8 @@ export default function Home() {
             <div className="copy">
               <h2>Categories, month by month.</h2>
               <p>
-                See how much went to food, bills and other categories. Switch between Month and All time,
-                or click a category to see its purchases.
+                See how much went to food, bills and other categories, and where your money came from. Switch
+                between Month and All time, or click a category to see its entries.
               </p>
             </div>
             <figure className="categories-recording">
@@ -281,7 +283,7 @@ export default function Home() {
               <ul className="checks">
                 <Check>Everything in one file on your Mac</Check>
                 <Check>Nothing is sent anywhere</Check>
-                <Check>Seven daily backups</Check>
+                <Check>Seven daily backups you can restore</Check>
                 <Check>Export, import or erase any time</Check>
               </ul>
               <DownloadButton wide />

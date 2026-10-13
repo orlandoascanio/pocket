@@ -57,23 +57,10 @@ struct InsightsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    SectionTitle(title: "Where it went", meta: "Click one to see its purchases")
-                    if s.byCategory.isEmpty {
-                        Text(allTime ? "No spending yet." : "No spending this month.")
-                            .foregroundStyle(.secondary).padding(.vertical, 16)
-                    } else {
-                        Card {
-                            let max = s.byCategory.first?.cents ?? 1
-                            ForEach(Array(s.byCategory.enumerated()), id: \.element.id) { i, c in
-                                Button { onShow(c.category, allTime ? nil : month) } label: {
-                                    CategoryBar(total: c, share: Double(c.cents) / Double(max), percent: Int((Double(c.cents) / Double(s.spent) * 100).rounded()),
-                                                grown: grown, delay: Double(min(i, 8)) * 0.05)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
+                breakdown(title: "Where it went", rows: s.byCategory, total: s.spent, income: false,
+                          empty: allTime ? "No spending yet." : "No spending this month.")
+                if !s.incomeByCategory.isEmpty {
+                    breakdown(title: "Where it came from", rows: s.incomeByCategory, total: s.income, income: true, empty: "")
                 }
             }
             .frame(maxWidth: 760)
@@ -81,6 +68,27 @@ struct InsightsView: View {
             .frame(maxWidth: .infinity)
         }
         .onAppear { regrow() }
+    }
+
+    private func breakdown(title: String, rows: [CategoryTotal], total: Cents, income: Bool, empty: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(title: title, meta: rows.isEmpty ? nil : "Click one to see its \(income ? "payments" : "purchases")")
+            if rows.isEmpty {
+                Text(empty).foregroundStyle(.secondary).padding(.vertical, 16)
+            } else {
+                Card {
+                    let top = max(rows.first?.cents ?? 1, 1)
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { i, c in
+                        Button { onShow(c.category, allTime ? nil : month) } label: {
+                            CategoryBar(total: c, share: Double(c.cents) / Double(top), percent: Int((Double(c.cents) / Double(max(total, 1)) * 100).rounded()),
+                                        income: income, grown: grown, delay: Double(min(i, 8)) * 0.05)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Show these in History")
+                    }
+                }
+            }
+        }
     }
 
     private func regrow() {
@@ -108,19 +116,22 @@ struct CategoryBar: View {
     let total: CategoryTotal
     let share: Double
     let percent: Int
+    var income = false
     let grown: Bool
     let delay: Double
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let tint = Categories.tint(total.category, cents: -1)
+        let sign: Cents = income ? 1 : -1
+        let noun = income ? (total.count == 1 ? "payment" : "payments") : (total.count == 1 ? "purchase" : "purchases")
+        let tint = Categories.tint(total.category, cents: sign)
         HStack(spacing: 12) {
-            CategoryIcon(category: total.category, cents: -1)
+            CategoryIcon(category: total.category, cents: sign)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(Categories.name(total.category)).fontWeight(.medium)
-                    Text("\(percent)% · \(total.count) \(total.count == 1 ? "purchase" : "purchases")")
+                    Text("\(percent)% · \(total.count) \(noun)")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Text(store.money.string(total.cents)).fontWeight(.medium).monospacedDigit()
@@ -140,6 +151,6 @@ struct CategoryBar: View {
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hovering ? Color.primary.opacity(0.05) : .clear))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .accessibilityLabel("\(Categories.name(total.category)): \(store.money.string(total.cents)), \(percent)% of spending")
+        .accessibilityLabel("\(Categories.name(total.category)): \(store.money.string(total.cents)), \(percent)% of \(income ? "money in" : "spending")")
     }
 }

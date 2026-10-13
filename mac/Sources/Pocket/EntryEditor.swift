@@ -58,6 +58,8 @@ final class EditorState: ObservableObject {
     @Published var times = ""
     @Published var confirm = false
     @Published var confirmTouched = false
+    /// A one-time payment that is already due but hasn't arrived (or hasn't been paid) yet.
+    @Published var awaiting = false
     @Published var savePreset = false
     @Published var error: String?
     @Published var saved = 0
@@ -68,7 +70,9 @@ final class EditorState: ObservableObject {
 
     var day: Day { Day(date) }
     var isFuture: Bool { day > Day.today }
-    var isPlanned: Bool { frequency != .once || isFuture }
+    /// "Still waiting for it": saved as a payment that waits in Overview from today on.
+    var waitsNow: Bool { mode == .new && frequency == .once && !isFuture && awaiting }
+    var isPlanned: Bool { frequency != .once || isFuture || waitsNow }
     var editingEntry: Bool { if case .entry = mode { return true } else { return false } }
     var editingRule: Rule? { if case .rule(let r) = mode { return r } else { return nil } }
 
@@ -84,6 +88,7 @@ final class EditorState: ObservableObject {
         times = ""
         confirm = false
         confirmTouched = false
+        awaiting = false
         savePreset = false
         error = nil
         showDetails = false
@@ -169,7 +174,7 @@ final class EditorState: ObservableObject {
             if isPlanned {
                 // A one-time entry in the future is a rule with a single payment, so it counts on its day.
                 success = store.addRule(Rule(cents: signed, label: l, cadence: frequency.cadence ?? .monthly, anchor: day,
-                                   total: frequency == .once ? 1 : count, auto: !confirm, category: category))
+                                   total: frequency == .once ? 1 : count, auto: waitsNow ? false : !confirm, category: category))
             } else {
                 let preset = savePreset ? Preset(label: l, cents: cents, sign: spent ? -1 : 1, category: category) : nil
                 success = store.addEntry(cents: signed, label: l, day: day, category: category, preset: preset) != nil
@@ -337,7 +342,16 @@ struct EntryEditor: View {
                 }
             }
 
-            if state.isPlanned && !state.editingEntry {
+            if state.mode == .new && state.frequency == .once && !state.isFuture {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(state.spent ? "I haven't paid this yet" : "I'm still waiting for this money", isOn: $state.awaiting)
+                        .toggleStyle(.checkbox)
+                    Text(state.awaiting ? "Waits in Overview until you confirm the real amount and date. Your balance doesn't change until then."
+                                        : state.spent ? "For a bill you owe but haven't paid." : "For money someone owes you, like a client payment or a refund.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else if state.isPlanned && !state.editingEntry {
                 VStack(alignment: .leading, spacing: 6) {
                     Toggle(state.spent ? "Confirm each payment" : "Confirm when money arrives",
                            isOn: Binding(get: { state.confirm }, set: { state.confirm = $0; state.confirmTouched = true }))
@@ -349,7 +363,7 @@ struct EntryEditor: View {
             }
             if state.mode == .new && !state.isPlanned {
                 VStack(alignment: .leading, spacing: 6) {
-                    Toggle("Save as a quick-add button", isOn: $state.savePreset).toggleStyle(.checkbox)
+                    Toggle("Also save as a quick-add button", isOn: $state.savePreset).toggleStyle(.checkbox)
                     Text("Use ⌘1 to ⌘9 for the first nine buttons.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -369,7 +383,7 @@ struct EntryEditor: View {
 
     private var title: String {
         switch state.mode {
-        case .new: return state.isPlanned ? "New payment" : "New entry"
+        case .new: return state.waitsNow ? (state.spent ? "Not paid yet" : "Waiting for money") : state.isPlanned ? "New payment" : "New entry"
         case .entry: return "Edit entry"
         case .rule: return "Edit payment"
         }
@@ -382,13 +396,14 @@ struct EntryEditor: View {
 
     private var dateCaption: String {
         if state.editingRule != nil { return state.frequency == .once ? "Expected on" : "Next payment" }
-        if state.frequency == .once { return state.isFuture ? (state.spent ? "Planned for" : "Expected on") : "Date" }
+        if state.frequency == .once { return state.isFuture ? (state.spent ? "Planned for" : "Expected on") : state.awaiting ? "Due" : "Date" }
         return state.spent ? "First payment" : "First payday"
     }
 
     private var buttonTitle: String {
         if state.mode != .new { return "Save" }
         if state.frequency != .once { return "Add Repeating" }
+        if state.waitsNow { return "Add to Waiting" }
         return state.isFuture ? (state.spent ? "Add Planned" : "Add Expected") : (state.spent ? "Add Spending" : "Add Money In")
     }
 
