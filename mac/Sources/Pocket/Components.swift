@@ -364,6 +364,7 @@ struct Composer: View {
     @EnvironmentObject var store: Store
     @ObservedObject var state: EditorState
     var amountSize: CGFloat = 28
+    var showSaveTitle = false
     var onMore: (() -> Void)? = nil
     @State private var amountFocused = false
     @FocusState private var labelFocused: Bool
@@ -395,7 +396,7 @@ struct Composer: View {
                     if state.label.trimmed.isEmpty { labelFocused = true } else { save() }
                 }
                 .frame(height: (amountSize * 1.4).rounded())
-                if canSave {
+                if canSave && !showSaveTitle {
                     Button(action: save) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: amountSize * 0.93))
@@ -421,6 +422,14 @@ struct Composer: View {
                     .accessibilityLabel("Description")
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
+            if showSaveTitle {
+                Button(state.spent ? "Add expense" : "Add money in", action: save)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canSave)
+                    .padding(.horizontal, 12).padding(.bottom, 9)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let onMore {
                 HStack {
                     Spacer()
