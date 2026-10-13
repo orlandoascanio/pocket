@@ -34,6 +34,7 @@ enum WindowRequest: Equatable {
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
     case overview = "Overview", plan = "Plan", insights = "Insights", settings = "Settings"
     var id: String { rawValue }
+    var title: String { self == .insights ? "Categories" : rawValue }
     var symbol: String {
         switch self {
         case .overview: "house"
@@ -59,16 +60,21 @@ final class Store: ObservableObject {
     @Published private(set) var speech: Speech?
     @Published var windowRequest: WindowRequest?
     @Published private(set) var saveError: String?
+    @Published private(set) var loadError: String?
     @Published private(set) var receipt: EntryReceipt?
     @Published var onboarded: Bool { didSet { defaults.set(onboarded, forKey: "onboarded") } }
     @Published var range: Int { didSet { defaults.set(range, forKey: "range") } }
     @Published var reminders: Bool {
         didSet {
             defaults.set(reminders, forKey: "reminders")
+            reminderMessage = nil
             if reminders { requestNotificationPermission() }
             scheduleReminders()
         }
     }
+    @Published private(set) var reminderMessage: String?
+    @Published private(set) var sendingTestReminder = false
+    var notificationServicesAvailable: Bool { reminderClient != nil }
 
     /// The ledger file in use: the local one, or this Mac's copy of the account.
     var fileURL: URL { accountKey == nil ? localURL : accountURL }
@@ -77,6 +83,10 @@ final class Store: ObservableObject {
     private let journalURL: URL
     private let defaults: UserDefaults
     private let servicesEnabled: Bool
+    private let reminderClient: ReminderClient?
+    private let reminderNow: () -> Date
+    private var reminderRefreshNeeded = false
+    private var reminderTask: Task<Void, Never>?
     private var timer: Timer?
     private var syncTimer: Timer?
 
@@ -100,6 +110,7 @@ final class Store: ObservableObject {
     var waiting: [Occurrence] { ledger.waiting(today: today) }
     var projection: Projection { ledger.project(today: today, days: range) }
     var menuTitle: String {
+        if loadError != nil { return "Pocket ⚠︎" }
         guard onboarded else { return "Pocket" }
         return money.string(balance) + (syncState == .badKey ? " ⚠︎" : "")
     }
@@ -113,10 +124,16 @@ final class Store: ObservableObject {
     }
 
     init(directory: URL? = nil, defaults suppliedDefaults: UserDefaults? = nil, servicesEnabled: Bool = true,
-         session: URLSession = .shared, keyStore: AccountKeyStore? = nil) {
+         session: URLSession = .shared, keyStore: AccountKeyStore? = nil,
+         reminderClient: ReminderClient? = nil, reminderNow: @escaping () -> Date = Date.init) {
         // POCKET_DATA_DIR (development only) points the app at a separate folder, e.g. demo data.
         let env = ProcessInfo.processInfo.environment
         self.servicesEnabled = servicesEnabled && directory == nil && env["POCKET_DATA_DIR"] == nil
+        // An explicit recording opt-in enables only notifications, keeping demo data, login and keys isolated.
+        let notificationsEnabled = servicesEnabled && directory == nil
+            && (env["POCKET_DATA_DIR"] == nil || env["POCKET_DEMO_NOTIFICATIONS"] == "1")
+        self.reminderClient = reminderClient ?? (notificationsEnabled ? .system : nil)
+        self.reminderNow = reminderNow
         self.defaults = suppliedDefaults ?? env["POCKET_DATA_DIR"].flatMap { UserDefaults(suiteName: "com.orlandoascanio.pocket.preview." + URL(fileURLWithPath: $0).lastPathComponent) } ?? .standard
         let dir = directory ?? env["POCKET_DATA_DIR"].map { URL(fileURLWithPath: $0, isDirectory: true) }
             ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -132,17 +149,28 @@ final class Store: ObservableObject {
         let key = self.keyStore.load()
         accountKey = key
         let fresh = Ledger(currency: Locale.current.currency?.identifier ?? "USD")
-        let loaded = Store.read(key == nil ? localURL : accountURL) ?? fresh
+        let loaded: Ledger
+        let initialLoadError: String?
+        do {
+            loaded = try Store.read(key == nil ? localURL : accountURL) ?? fresh
+            initialLoadError = nil
+        }
+        catch {
+            loaded = fresh
+            initialLoadError = "Couldn't open your saved data: \(error.localizedDescription)"
+        }
         ledger = loaded
         if key != nil {
             journal = (try? Data(contentsOf: journalURL)).flatMap { try? Store.decoder().decode(SyncJournal.self, from: $0) } ?? SyncJournal()
         }
         let hasDemoData = env["POCKET_DATA_DIR"] != nil && !loaded.entries.isEmpty
         let wasOnboarded = defaults.bool(forKey: "onboarded")
-        onboarded = wasOnboarded || hasDemoData || key != nil
+        onboarded = wasOnboarded || hasDemoData || key != nil || initialLoadError != nil
         let r = defaults.integer(forKey: "range")
         range = [30, 91, 182, 365].contains(r) ? r : 91
         reminders = defaults.object(forKey: "reminders") as? Bool ?? true
+        loadError = initialLoadError
+        saveError = initialLoadError
 
         if self.servicesEnabled && env["POCKET_LOGIN"] == "off" { try? SMAppService.mainApp.unregister() }
         // Repeating money is logged on its day even if the app just sits in the menubar.
@@ -165,6 +193,11 @@ final class Store: ObservableObject {
                 Task { @MainActor in await self?.syncNow() }
             }
         }
+        if notificationsEnabled {
+            NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.scheduleReminders() }
+            }
+        }
         tick()
     }
 
@@ -183,20 +216,37 @@ final class Store: ObservableObject {
         return e
     }
 
-    private static func read(_ url: URL) -> Ledger? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? decoder().decode(Ledger.self, from: data)
+    private static func read(_ url: URL) throws -> Ledger? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let ledger = try decoder().decode(Ledger.self, from: Data(contentsOf: url))
+        try ledger.validate()
+        return ledger
     }
 
-    private func persist(_ candidate: Ledger) -> Bool {
+    private func persist(_ candidate: Ledger, replacingUnreadableData: Bool = false) -> Bool {
+        guard loadError == nil || replacingUnreadableData else { saveError = loadError; return false }
         do {
             backupOncePerDay()
             try Store.encoder().encode(candidate).write(to: fileURL, options: .atomic)
+            loadError = nil
             saveError = nil
             return true
         } catch {
             saveError = "Couldn't save: \(error.localizedDescription)"
             return false
+        }
+    }
+
+    func retryLoadingData() {
+        do {
+            guard let saved = try Store.read(fileURL) else { throw CocoaError(.fileReadNoSuchFile) }
+            ledger = saved
+            loadError = nil
+            saveError = nil
+            tick()
+        } catch {
+            loadError = "Couldn't open your saved data: \(error.localizedDescription)"
+            saveError = loadError
         }
     }
 
@@ -333,7 +383,7 @@ final class Store: ObservableObject {
     @discardableResult
     func settle(_ occurrence: Occurrence, cents: Cents, on day: Day) -> Bool {
         guard let rule = ledger.rules.first(where: { $0.id == occurrence.ruleID }),
-              occurrence.isNext, !rule.finished, rule.next == occurrence.day else { return false }
+              occurrence.isNext, rule.active, !rule.finished, rule.next == occurrence.day else { return false }
         guard mutate(category: occurrence.category, { $0.settle(occurrence.ruleID, cents: cents, on: day, today: today) }) else { return false }
         send("pocket_recurring_settle", ["p_id": occurrence.ruleID.uuidString, "p_amount": dollars(cents), "p_on": day.iso,
                                          "p_today": today.iso], label: occurrence.label)
@@ -343,7 +393,7 @@ final class Store: ObservableObject {
     @discardableResult
     func skip(_ occurrence: Occurrence) -> Bool {
         guard let rule = ledger.rules.first(where: { $0.id == occurrence.ruleID }),
-              occurrence.isNext, !rule.finished, rule.next == occurrence.day else { return false }
+              occurrence.isNext, rule.active, !rule.finished, rule.next == occurrence.day else { return false }
         guard mutate({ $0.skip(occurrence.ruleID) }) else { return false }
         send("pocket_recurring_skip", ["p_id": occurrence.ruleID.uuidString], label: occurrence.label)
         say(Lines.shared.line("skip"), face: .oof)
@@ -359,15 +409,17 @@ final class Store: ObservableObject {
         return true
     }
 
-    func savePreset(_ preset: Preset) {
+    @discardableResult
+    func savePreset(_ preset: Preset) -> Bool {
         let exists = ledger.presets.contains { $0.id == preset.id }
         guard mutate({
             if let i = $0.presets.firstIndex(where: { $0.id == preset.id }) { $0.presets[i] = preset } else { $0.presets.append(preset) }
-        }) else { return }
+        }) else { return false }
         var args: [String: Any] = ["p_label": preset.label, "p_sign": preset.sign, "p_amount": preset.cents.map(dollars) ?? NSNull(),
                                    "p_category": preset.category ?? ""]
         if exists { args["p_id"] = preset.id.uuidString }
         send("pocket_preset_save", args, label: preset.label, localID: exists ? nil : preset.id)
+        return true
     }
 
     func deletePreset(_ id: UUID) {
@@ -399,14 +451,24 @@ final class Store: ObservableObject {
         guard !connected else { throw CocoaError(.featureUnsupported) }
         let data = try Data(contentsOf: url)
         let l = try Store.decoder().decode(Ledger.self, from: data)
-        guard mutate({ $0 = l }) else { throw CocoaError(.fileWriteUnknown) }
+        try l.validate()
+        var candidate = l
+        candidate.postDue(today: today)
+        guard persist(candidate, replacingUnreadableData: true) else { throw CocoaError(.fileWriteUnknown) }
+        ledger = candidate
+        receipt = nil
+        scheduleReminders()
         onboarded = true
     }
 
     func eraseEverything() {
         guard !connected else { return }
         let currency = ledger.currency
-        guard mutate({ $0 = Ledger(currency: currency) }) else { return }
+        let empty = Ledger(currency: currency)
+        guard persist(empty, replacingUnreadableData: true) else { return }
+        ledger = empty
+        receipt = nil
+        scheduleReminders()
         onboarded = false
     }
 
@@ -446,7 +508,7 @@ final class Store: ObservableObject {
                 guard key == accountKey else { return }
                 // A change made while the request was out goes first; the next round picks up the result.
                 if journal.outbox.contains(where: { !$0.needsReview }) { syncAgain = true; continue }
-                adopt(state.ledger(currency: ledger.currency))
+                guard adopt(state.ledger(currency: ledger.currency)) else { syncState = .offline; return }
                 journal.lastSync = Date()
                 if journal.outbox.isEmpty { journal.ids = [:] }
                 saveJournal()
@@ -462,9 +524,10 @@ final class Store: ObservableObject {
     }
 
     /// Takes the account's ledger as this Mac's copy, so edits from the phone show up (and the pocket reacts).
-    private func adopt(_ next: Ledger) {
+    private func adopt(_ next: Ledger) -> Bool {
         let before = ledger.balance
-        guard next != ledger else { return }
+        if next == ledger && loadError == nil { return true }
+        guard persist(next) else { return false }
         if let r = receipt {
             switch r.target {
             case .editEntry(let id): if let mapped = journal.ids[id] { receipt = EntryReceipt(text: r.text, target: .editEntry(mapped)) }
@@ -472,12 +535,12 @@ final class Store: ObservableObject {
             default: break
             }
         }
-        guard persist(next) else { return }
         ledger = next
         if next.balance != before {
             announce(diff: next.balance - before, before: before, category: nil, deleted: false)
         }
         scheduleReminders()
+        return true
     }
 
     private func flush(_ key: String) async throws {
@@ -552,6 +615,8 @@ final class Store: ObservableObject {
         saveJournal()
         receipt = nil
         ledger = copy
+        loadError = nil
+        saveError = nil
         syncState = .ok(Date())
         onboarded = true
         scheduleReminders()
@@ -613,13 +678,22 @@ final class Store: ObservableObject {
     }
 
     /// Stops syncing. This Mac keeps everything as its local ledger; changes not yet sent are dropped.
-    func disconnect() {
-        guard connected else { return }
+    @discardableResult
+    func disconnect() -> Bool {
+        guard connected else { return true }
+        guard loadError == nil else { saveError = loadError; return false }
         let copy = ledger
         if FileManager.default.fileExists(atPath: localURL.path) {
             let backups = localURL.deletingLastPathComponent().appendingPathComponent("Backups", isDirectory: true)
             try? FileManager.default.createDirectory(at: backups, withIntermediateDirectories: true)
             try? FileManager.default.copyItem(at: localURL, to: backups.appendingPathComponent("ledger-before-disconnect-\(Int(Date().timeIntervalSince1970)).json"))
+        }
+        // Keep account access and its outbox until the local copy is safely on disk.
+        do {
+            try Store.encoder().encode(copy).write(to: localURL, options: .atomic)
+        } catch {
+            saveError = "Couldn't keep a local copy: \(error.localizedDescription)"
+            return false
         }
         keyStore.save(nil)
         accountKey = nil
@@ -627,8 +701,11 @@ final class Store: ObservableObject {
         try? FileManager.default.removeItem(at: journalURL)
         syncState = .offline
         receipt = nil
-        _ = persist(copy)
+        loadError = nil
+        saveError = nil
         ledger = copy
+        scheduleReminders()
+        return true
     }
 
     func retry(_ id: UUID) {
@@ -670,33 +747,134 @@ final class Store: ObservableObject {
     // MARK: reminders
 
     private func requestNotificationPermission() {
-        guard servicesEnabled && reminders else { return }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
-            Task { @MainActor in self.scheduleReminders() }
+        guard reminderClient != nil && reminders else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                if try await !self.notificationPermission(), self.reminders {
+                    self.reminderMessage = "Allow Pocket in System Settings → Notifications to receive reminders."
+                }
+            } catch {
+                self.reminderMessage = "Couldn't enable notifications: \(error.localizedDescription)"
+            }
+            self.scheduleReminders()
         }
     }
 
-    /// One reminder per payment that waits for confirmation: "Did Client pay?" at 10:00 on its day.
-    private func scheduleReminders() {
-        guard servicesEnabled else { return }
-        let center = UNUserNotificationCenter.current()
-        let rules = ledger.liveRules.filter { $0.active && !$0.auto }
-        let enabled = reminders
-        let today = self.today
-        center.getPendingNotificationRequests { pending in
-            let ours = pending.map(\.identifier).filter { $0.hasPrefix("pocket.") }
-            center.removePendingNotificationRequests(withIdentifiers: ours)
-            guard enabled else { return }
-            for r in rules where r.next > today {
-                let content = UNMutableNotificationContent()
-                content.title = r.cents > 0 ? "Did \(r.label) pay?" : "Was \(r.label) paid?"
-                content.body = "Open Pocket to log it, with the real amount if it changed."
-                content.sound = .default
-                var when = DateComponents(year: r.next.year, month: r.next.month, day: r.next.day)
-                when.hour = 10
-                let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)
-                center.add(UNNotificationRequest(identifier: "pocket.\(r.id.uuidString)", content: content, trigger: trigger))
-            }
+    private func notificationPermission() async throws -> Bool {
+        guard let client = reminderClient else { return false }
+        let status = await client.authorization()
+        if status == .notDetermined { return try await client.requestAuthorization() }
+        return status == .authorized || status == .provisional
+    }
+
+    func sendTestReminder() async {
+        guard let client = reminderClient else {
+            reminderMessage = "Notifications are disabled in this demo."
+            return
         }
+        guard reminders else { reminderMessage = "Turn reminders on first."; return }
+        guard !sendingTestReminder else { return }
+        sendingTestReminder = true
+        reminderMessage = nil
+        defer { sendingTestReminder = false }
+        do {
+            guard try await notificationPermission() else {
+                reminderMessage = "Allow Pocket in System Settings → Notifications, then try again."
+                return
+            }
+            guard reminders else { return }
+            let content = UNMutableNotificationContent()
+            if let rule = ledger.liveRules.first(where: { !$0.auto }) {
+                content.title = rule.cents > 0 ? "Did \(rule.label) pay?" : "Was \(rule.label) paid?"
+            } else {
+                content.title = "Payment reminder"
+            }
+            content.body = "Open Pocket to log it, with the real amount if it changed."
+            content.sound = .default
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+            try await client.add(UNNotificationRequest(identifier: PaymentReminders.testIdentifier,
+                                                      content: content, trigger: trigger))
+            reminderMessage = "Test reminder scheduled for five seconds from now."
+            scheduleReminders()
+        } catch {
+            reminderMessage = "Couldn't send the test reminder: \(error.localizedDescription)"
+        }
+    }
+
+    /// Serialize refreshes so an edit, wake or permission callback cannot restore an obsolete reminder.
+    private func scheduleReminders() {
+        guard let client = reminderClient else { return }
+        reminderRefreshNeeded = true
+        guard reminderTask == nil else { return }
+        reminderTask = Task { [weak self] in
+            guard let self else { return }
+            while self.reminderRefreshNeeded {
+                self.reminderRefreshNeeded = false
+                let now = self.reminderNow()
+                let plans = PaymentReminders.plans(for: self.ledger.liveRules, now: now)
+                let enabled = self.reminders && self.loadError == nil
+                let status = await client.authorization()
+                let pending = await client.pending()
+                if self.reminderRefreshNeeded { continue }
+                let allowed = status == .authorized || status == .provisional
+                let ids = Set(plans.map(\.identifier))
+                let canceled = pending.filter {
+                    ($0.identifier.hasPrefix("pocket.") && (!enabled || !allowed || !ids.contains($0.identifier)))
+                        || ($0.identifier == PaymentReminders.testIdentifier && (!enabled || !allowed))
+                }.map(\.identifier)
+                client.remove(canceled)
+                let today = Day(now).iso
+                var requested = Set((self.defaults.stringArray(forKey: "reminderRequestedOccurrences") ?? [])
+                    .filter { String($0.suffix(10)) >= today })
+                requested.subtract(canceled)
+                self.defaults.set(requested.sorted(), forKey: "reminderRequestedOccurrences")
+                guard enabled && allowed else {
+                    if enabled {
+                        self.reminderMessage = "Allow Pocket in System Settings → Notifications to receive reminders."
+                    }
+                    continue
+                }
+                var failed = false
+                for plan in plans {
+                    if self.reminderRefreshNeeded { break }
+                    let existing = pending.first { $0.identifier == plan.identifier }
+                    let trigger: UNNotificationTrigger
+                    if plan.date <= now {
+                        // Preserve a queued due-day reminder; after delivery/dismissal, don't post it again.
+                        if existing != nil || requested.contains(plan.identifier) { continue }
+                        trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+                    } else {
+                        let calendarTrigger = PaymentReminders.calendarTrigger(for: plan)
+                        if let existing,
+                           existing.content.title == plan.title, existing.content.body == plan.body,
+                           let previous = existing.trigger as? UNCalendarNotificationTrigger,
+                           previous.dateComponents == calendarTrigger.dateComponents { continue }
+                        trigger = calendarTrigger
+                    }
+                    do {
+                        try await client.add(UNNotificationRequest(identifier: plan.identifier,
+                                                                  content: plan.content, trigger: trigger))
+                        requested.insert(plan.identifier)
+                        self.defaults.set(requested.sorted(), forKey: "reminderRequestedOccurrences")
+                    } catch {
+                        failed = true
+                        self.reminderMessage = "Couldn't schedule a payment reminder: \(error.localizedDescription)"
+                    }
+                }
+                if !failed && !self.reminderRefreshNeeded,
+                   let message = self.reminderMessage,
+                   message.hasPrefix("Couldn't schedule a payment reminder") || message.hasPrefix("Allow Pocket") {
+                    self.reminderMessage = nil
+                }
+            }
+            self.reminderTask = nil
+        }
+    }
+
+    /// Wait for the same scheduler used by the app (also used for regression tests).
+    func refreshReminders() async {
+        scheduleReminders()
+        await reminderTask?.value
     }
 }
