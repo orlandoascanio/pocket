@@ -226,7 +226,7 @@ a { color: var(--accent); text-underline-offset: 3px; }
 .announce { transition: border-color 160ms, box-shadow 250ms, scale 500ms var(--spring); }
 .announce:hover { border-color: var(--line-strong); box-shadow: 0 6px 18px -8px rgb(0 0 0 / .12); }
 .announce:active { scale: .97; transition-duration: 160ms, 250ms, 120ms; }
-.announce-tag { background: color-mix(in srgb, var(--gold) 20%, var(--surface)); color: #a5621a; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.announce-tag { background: color-mix(in srgb, var(--gold) 20%, var(--surface)); color: #8b5014; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
 .announce b { font-weight: 600; }
 .announce-text { color: var(--muted); }
 .announce-arrow { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); font-size: 13px; transition: transform 400ms var(--spring), background-color 200ms, color 200ms; }
@@ -390,7 +390,7 @@ h2 { font: 750 clamp(32px, 4.4vw, 52px)/1.04 var(--display); letter-spacing: -0.
 .mp-seg span { padding: 5px 16px; text-align: center; border-radius: 7px; }
 .mp-seg .on { background: color-mix(in srgb, var(--ink) 13%, var(--surface)); font-weight: 500; }
 .mp-entry { display: flex; gap: 8px; margin-top: 10px; }
-.mp-field { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--faint); }
+.mp-field { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
 .mp-amt { flex: 0 0 84px; }
 .mp-add { padding: 8px 14px; border-radius: 8px; background: var(--surface-2); font-weight: 500; }
 .mp-notice { display: flex; align-items: center; gap: 8px; color: var(--accent); font-weight: 500; margin: 16px 0 4px; }
