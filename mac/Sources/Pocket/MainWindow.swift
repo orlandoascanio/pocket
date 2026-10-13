@@ -58,43 +58,75 @@ struct MainWindow: View {
     @State private var filter: HistoryFilter?
     @State private var waitingExpanded = false
     @State private var scrollTarget: String?
+    @State private var hoveredSection: AppSection?
+    @FocusState private var focusedSection: AppSection?
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationSplitView {
-            List(selection: Binding(get: { section }, set: { if let s = $0 { section = s } })) {
-                Section {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(spacing: 4) {
                     ForEach([AppSection.overview, .plan, .insights]) { s in
-                        Label(s.rawValue, systemImage: s.symbol)
-                            .badge(s == .overview ? store.waiting.count : 0)
-                            .tag(s)
+                        sidebarRow(s)
                     }
                 }
-                Section {
-                    Label(AppSection.settings.rawValue, systemImage: AppSection.settings.symbol).tag(AppSection.settings)
+                sidebarRow(.settings)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Palette.bg)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Sidebar")
+            .focusSection()
+            .onMoveCommand { direction in
+                let step: Int
+                switch direction {
+                case .up: step = -1
+                case .down: step = 1
+                default: return
                 }
+                let sections = AppSection.allCases
+                guard let current = sections.firstIndex(of: focusedSection ?? section),
+                      sections.indices.contains(current + step) else { return }
+                section = sections[current + step]
+                focusedSection = section
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } detail: {
             Group {
+                if store.loadError != nil && section != .settings {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Your balance is unavailable").font(.title2.weight(.semibold))
+                        SaveFailureView()
+                        Button("Open Settings to Restore a Backup") { section = .settings }
+                    }
+                    .padding(32)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                } else {
                 switch section {
                 case .overview: OverviewView(editor: editor, filter: $filter, waitingExpanded: $waitingExpanded, scrollTarget: $scrollTarget, onEdit: { editTarget = $0 })
                 case .plan: PlanView(onEdit: { editTarget = $0 })
                 case .insights: InsightsView(onShow: { cat, month in
                         filter = HistoryFilter(category: cat, month: month)
-                        withAnimation(.snappy) { section = .overview }
+                        withAnimation(reduceMotion ? nil : .snappy) { section = .overview }
                     })
                 case .settings: SettingsView()
+                }
                 }
             }
             .background(Palette.bg)
             .tint(Palette.accent)
-            .navigationTitle(section.rawValue)
+            .navigationTitle(section.title)
         }
-        // The sidebar keeps the system accent for selection, like every Mac sidebar.
+        .tint(Palette.accent)
+        .toolbarBackground(Palette.bg, for: .windowToolbar)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .toolbar {
             Button { editTarget = EditTarget(kind: .new(nil)) } label: { Label("New Entry", systemImage: "plus") }
                 .keyboardShortcut("n", modifiers: .command)
                 .help("New entry with date, category and repeat · ⌘N")
+                .disabled(store.loadError != nil)
         }
         .sheet(item: $editTarget) { EditSheet(target: $0) }
         .onAppear {
@@ -105,6 +137,45 @@ struct MainWindow: View {
         }
         .onDisappear { NSApp.setActivationPolicy(.accessory) }
         .onChange(of: store.windowRequest) { _, r in handle(r) }
+    }
+
+    private func sidebarRow(_ item: AppSection) -> some View {
+        let selected = section == item
+        let foreground = selected ? (colorScheme == .dark ? Color.black : Color.white)
+                                  : (colorScheme == .dark ? Color.white : Color.black)
+        return Button {
+            section = item
+            focusedSection = item
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: item.symbol).font(.system(size: 15, weight: .medium)).frame(width: 20)
+                    .symbolRenderingMode(.monochrome).foregroundStyle(foreground)
+                Text(item.title).font(.system(size: 14, weight: selected ? .semibold : .regular)).lineLimit(1)
+                    .foregroundStyle(foreground)
+                Spacer(minLength: 4)
+                if item == .overview && !store.waiting.isEmpty {
+                    Text("\(store.waiting.count)")
+                        .font(.caption.weight(.semibold)).monospacedDigit()
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(foreground.opacity(selected ? 0.16 : 0.08), in: Capsule())
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(foreground)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(selected ? Palette.accent : hoveredSection == item ? Color.primary.opacity(0.05) : .clear))
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focusedSection, equals: item)
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(Palette.accent, lineWidth: focusedSection == item ? 2 : 0)
+            .padding(-3))
+        .onHover { hoveredSection = $0 ? item : nil }
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func handle(_ r: WindowRequest?) {
@@ -141,7 +212,7 @@ struct EditSheet: View {
             SaveFailureView().padding(.horizontal, 20).padding(.top, 16)
             EntryEditor(state: state, onClose: { dismiss() })
         }
-            .frame(width: 460)
+            .frame(width: 440)
             .fixedSize(horizontal: false, vertical: true)
             .tint(Palette.accent)
             .onAppear {
@@ -232,36 +303,45 @@ struct OverviewView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Money left").font(.title3).foregroundStyle(.secondary)
-                Text(store.money.string(store.balance))
+                Text(store.loadError == nil ? store.money.string(store.balance) : "—")
                     .font(.display(60, .bold)).tracking(-1.2)
                     .monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.45)
                     .accessibilityLabel("Money left")
-                    .accessibilityValue(store.money.string(store.balance))
+                    .accessibilityValue(store.loadError == nil ? store.money.string(store.balance) : "Unavailable until your saved data can be opened")
                     .contentTransition(.numericText(value: Double(store.balance)))
                     .foregroundStyle(store.balance < 0 ? Palette.negative : Color.primary)
                     .animation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0), value: store.balance)
-                HStack(spacing: 14) {
-                    Text("\(store.money.string(store.spentThisMonth)) spent this month")
-                        .foregroundStyle(.secondary).monospacedDigit()
-                    if let runway = store.runway {
-                        Button { store.windowRequest = .section(.plan) } label: {
-                            HStack(spacing: 4) {
-                                RunwayLine(runway: runway, range: store.range)
-                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .help("Open Plan to see the forecast")
+                if store.loadError == nil {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 14) { balanceContext }
+                        VStack(alignment: .leading, spacing: 6) { balanceContext }
                     }
+                    .padding(.top, 2)
                 }
-                .padding(.top, 2)
             }
-            Spacer()
+            .layoutPriority(1)
+            Spacer(minLength: 12)
             PocketStage(width: 96)
         }
         .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private var balanceContext: some View {
+        Text("\(store.money.string(store.spentThisMonth)) spent this month")
+            .foregroundStyle(.secondary).monospacedDigit().fixedSize()
+        if let runway = store.runway {
+            Button { store.windowRequest = .section(.plan) } label: {
+                HStack(spacing: 4) {
+                    RunwayLine(runway: runway, range: store.range)
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Open Plan to see the forecast")
+        }
     }
 
     private var shownEntries: [Entry] {
