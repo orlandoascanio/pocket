@@ -9,6 +9,8 @@ export const VERSION = "1.2.3";
 export const DMG_SIZE = "3.5 MB";
 export const RELEASE_URL = `${REPO_URL}/releases/tag/v${VERSION}`;
 export const RELEASES_URL = `${REPO_URL}/releases`;
+// The on-site guide is where visitors go; the GitHub file stays the full technical reference.
+export const SELF_HOSTING_GUIDE_URL = "/guides/self-hosting/";
 export const SELF_HOSTING_URL = `${REPO_URL}/blob/main/SELF-HOSTING.md`;
 export const ISSUES_URL = `${REPO_URL}/issues`;
 export const WEB_APP_URL = "/app/";
