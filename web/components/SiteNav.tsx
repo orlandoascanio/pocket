@@ -4,15 +4,15 @@ import { gsap } from "gsap";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BalanceChip } from "@/components/BalanceChip";
-import { DOWNLOAD_URL, REPO_URL } from "@/lib/site";
+import { DOWNLOAD_URL } from "@/lib/site";
 
 const LINKS = [
   { href: "#tour", label: "Features" },
   { href: "#plan", label: "Plan ahead" },
+  { href: "/guides/", label: "Guides" },
   { href: "#private", label: "Privacy" },
   { href: "#faq", label: "FAQ" },
   { href: "/changelog/", label: "Changelog" },
-  { href: REPO_URL, label: "Source" },
 ];
 
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -200,7 +200,7 @@ export function SiteNav() {
     >
       <nav className="nav" aria-label="Main">
         <a className="brand" href="/" onPointerEnter={() => sweep(false)}>
-          <img src="/apple-touch-icon.png" alt="" width={28} height={28} />
+          <img src="/pocket-icon.webp" alt="" width={28} height={28} />
           <span className="brand-name" ref={name}>
             <span className="brand-was" aria-hidden="true">
               $337.03
