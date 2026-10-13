@@ -237,7 +237,7 @@ export const GUIDES: Guide[] = [
         title: "What the menu bar number counts",
         paragraphs: [
           "Pocket is a free Mac app that shows your balance as a number in the menu bar, next to the clock. The number is your recorded balance: the starting amount you entered, plus income and minus spending you have recorded since.",
-          "Repeating bills and paychecks that you set to count automatically are added on their day. Payments that wait for confirmation leave the number unchanged until you click Got it. Pocket never reads your bank account, so the number only knows what you tell it.",
+          "Repeating bills and paychecks that you set to count automatically are added on their day. Payments that wait for confirmation leave the number unchanged until you click Got it. Pocket never reads your bank account, so the number includes only what you record.",
         ],
         note: "If Pocket can't open its data file, the menu bar shows “Pocket ⚠︎” instead of an amount. Open Settings to restore a daily backup.",
       },
@@ -302,12 +302,12 @@ export const GUIDES: Guide[] = [
         id: "difference",
         title: "What's the difference?",
         paragraphs: [
-          "A bank-sync money app connects to your bank, usually through a third-party data provider, and imports transactions automatically. A manual money tracker has no bank connection: you record each purchase and payment yourself, and the balance comes from those entries. Pocket for Mac is a manual tracker.",
-          "Neither is more accurate by default. Bank sync is as complete as its connection. A manual tracker is as complete as your entries.",
+          "A bank-sync app connects to your bank, usually through a third-party data provider, and imports transactions automatically. A manual money tracker has no bank connection: you record each purchase and payment yourself, and the balance comes from those entries. Pocket for Mac is a manual tracker.",
+          "Neither is more accurate by default. Bank sync misses what its connection misses; a manual tracker misses what you forget to enter.",
         ],
         table: {
           label: "Manual tracking compared with bank sync",
-          headings: ["What", "Manual tracking", "Bank sync"],
+          headings: ["Compared on", "Manual tracking", "Bank sync"],
           rows: [
             ["How transactions arrive", "You type them, or a saved button or repeating payment adds them", "Imported from the bank, often a day or more after the purchase"],
             ["What you share", "Nothing, unless you choose to", "Bank sign-in access or a token for your accounts, held by the app and its data provider"],
@@ -322,8 +322,8 @@ export const GUIDES: Guide[] = [
         id: "when-manual",
         title: "When manual tracking works better",
         paragraphs: [
-          "Manual tracking suits people who watch one balance, such as an everyday spending account, rather than every account they own. It also fits if you would rather not give a budgeting service access to your bank, if your bank or country isn't supported by sync providers, or if a lot of your money moves outside the bank: cash, transfers between friends, or client payments that arrive at unpredictable times.",
-          "There's a smaller benefit too: you see the new balance at the moment you spend, rather than when the transaction clears.",
+          "Manual tracking suits people who watch one balance, such as an everyday spending account, rather than every account they own. It also fits if you would rather not give a bank-sync app access to your bank, if bank-sync apps don't support your bank or country, or if a lot of your money moves outside the bank: cash, transfers between friends, or client payments that arrive at unpredictable times.",
+          "You also see the new balance the moment you spend, rather than when the transaction clears.",
         ],
       },
       {
@@ -331,7 +331,7 @@ export const GUIDES: Guide[] = [
         title: "When bank sync works better",
         paragraphs: [
           "Choose bank sync if you need a full history across many accounts and cards, if you make so many transactions that typing them would be a chore, or if you need categorized records for taxes or bookkeeping.",
-          "Be honest about effort. If you know you won't record purchases, a manual tracker's balance will drift from your bank's, and a synced app will serve you better.",
+          "If you know you won't record purchases, a manual tracker's balance will drift from your bank's, and a bank-sync app will serve you better.",
         ],
       },
       {
@@ -351,7 +351,7 @@ export const GUIDES: Guide[] = [
         title: "Where Pocket fits",
         paragraphs: [
           "Pocket is manual only. It keeps one balance in one currency, saves it in a file on your Mac and doesn't ask for an account. It shows that balance in the menu bar, and Plan forecasts when it would run out. It doesn't import bank statements, convert currencies or combine several accounts.",
-          "If that matches how you want to track money, [get started with Pocket](/guides/getting-started/). If you need automatic imports across many accounts, a bank-sync app is the better choice.",
+          "If that matches how you want to track money, [get started with Pocket](/guides/getting-started/).",
         ],
       },
     ],
@@ -372,7 +372,7 @@ export const GUIDES: Guide[] = [
         id: "two-numbers",
         title: "Keep two numbers: received and expected",
         paragraphs: [
-          "When income is irregular, the money you have and the money you're owed are different numbers. Spend from the first. Plan with both.",
+          "When income is irregular, the money you have and the money you're owed are different numbers. Spend only from money you've received, and plan with both.",
           "In Pocket, the menu bar shows only money you've recorded as received. Unpaid invoices go into Plan as expected payments, and they count toward your balance only after you confirm them.",
         ],
       },
@@ -409,11 +409,11 @@ export const GUIDES: Guide[] = [
       },
       {
         id: "weekly",
-        title: "A ten-minute weekly check",
+        title: "A weekly check",
         paragraphs: [],
         steps: [
           "Open Overview. For each payment under Waiting for you that has arrived, click Got it and enter the amount and date that actually landed. Click Skip for any that won't come.",
-          "An invoice that is past due stays under Waiting for you, and Plan counts it as arriving today. If you don't expect it soon, click Skip and add it again with the new expected date, so the forecast stops counting on it.",
+          "An invoice that is past due stays under Waiting for you, and Plan counts it as arriving today. If you don't expect it soon, click Skip and add it again with the new expected date, so the forecast no longer counts it as arriving today.",
           "Add any invoices you sent this week.",
           "Compare Pocket's balance with your bank. Fix missing or duplicate entries in History.",
           "Check the Plan header. If it says “Runs out on”, decide what to change before that date.",
