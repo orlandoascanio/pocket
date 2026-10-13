@@ -13,8 +13,8 @@ const VIEWS = [
   { id: "plan", label: "Plan", caption: "Where your balance is heading." },
 ] as const;
 
-export function Tour() {
-  const [view, setViewState] = useState<(typeof VIEWS)[number]["id"]>("menu");
+export function Tour({ initialView = "menu" }: { initialView?: (typeof VIEWS)[number]["id"] }) {
+  const [view, setViewState] = useState(initialView);
   // +1 when the new view is to the right of the old tab, -1 to the left: the content arrives
   // from that side, so the panel moves the way the selection did.
   const [dir, setDir] = useState(0);
