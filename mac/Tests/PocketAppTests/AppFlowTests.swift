@@ -30,6 +30,57 @@ final class AppFlowTests: XCTestCase {
         try FileManager.default.moveItem(at: backup, to: store.fileURL)
     }
 
+    func testStartingBalanceCannotBeAddedTwice() throws {
+        let store = try isolatedStore()
+        XCTAssertFalse(store.onboarded)
+        XCTAssertTrue(store.start(currency: "EUR", cents: -12_500, openAtLogin: false))
+        let saved = try Data(contentsOf: store.fileURL)
+        XCTAssertTrue(store.onboarded)
+        XCTAssertFalse(store.hasRecordedEntries, "A starting balance isn't a first expense")
+        XCTAssertFalse(store.start(currency: "USD", cents: 50_000, openAtLogin: false))
+        XCTAssertEqual(store.balance, -12_500)
+        XCTAssertEqual(store.ledger.currency, "EUR")
+        XCTAssertEqual(try Data(contentsOf: store.fileURL), saved)
+
+        let reopened = Store(directory: store.fileURL.deletingLastPathComponent(),
+                             defaults: UserDefaults(suiteName: "pocket-fresh-\(UUID())"), servicesEnabled: false)
+        XCTAssertTrue(reopened.onboarded, "Saved money must be recognized even if the welcome preference is missing")
+        XCTAssertFalse(reopened.start(currency: "USD", cents: 50_000, openAtLogin: false))
+        XCTAssertEqual(reopened.balance, -12_500)
+    }
+
+    func testFailedSetupCanRetryWithoutReportingAReadyBalance() throws {
+        let store = try isolatedStore()
+        try FileManager.default.createDirectory(at: store.fileURL, withIntermediateDirectories: false)
+        XCTAssertFalse(store.start(currency: "EUR", cents: 12_500, openAtLogin: false))
+        XCTAssertFalse(store.onboarded)
+        XCTAssertEqual(store.menuTitle, "Pocket")
+        XCTAssertEqual(store.balance, 0)
+        XCTAssertNotNil(store.saveError)
+        try FileManager.default.removeItem(at: store.fileURL)
+        XCTAssertTrue(store.start(currency: "EUR", cents: 12_500, openAtLogin: false))
+        XCTAssertNil(store.saveError)
+        XCTAssertEqual(store.balance, 12_500)
+        XCTAssertEqual(store.ledger.entries.count, 1)
+    }
+
+    func testZeroSetupStaysReadyAndFirstExpenseUpdatesBalance() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 0, openAtLogin: false))
+        XCTAssertTrue(store.onboarded)
+        XCTAssertFalse(store.hasRecordedEntries)
+        XCTAssertTrue(store.addRule(Rule(cents: -500, label: "Tomorrow", cadence: .monthly,
+                                         anchor: Day.today.adding(days: 1), auto: false)))
+        XCTAssertFalse(store.hasRecordedEntries, "A planned payment isn't money recorded yet")
+        let state = EditorState(); state.store = store
+        state.amount = "6.50"; state.label = "Coffee"
+        XCTAssertTrue(state.save())
+        XCTAssertEqual(store.balance, -650)
+        XCTAssertTrue(store.hasRecordedEntries)
+        XCTAssertNotNil(store.receipt)
+        XCTAssertFalse(store.start(currency: "USD", cents: 100, openAtLogin: false))
+    }
+
     func testFailedEntrySaveKeepsDraftAndRetryAddsExactlyOnce() throws {
         let store = try isolatedStore()
         XCTAssertTrue(store.start(currency: "USD", cents: 10_000, openAtLogin: false))
@@ -178,7 +229,18 @@ final class AppFlowTests: XCTestCase {
         owed.spent = false; owed.label = "Sam owes me"; owed.amount = "50"; owed.awaiting = true
         try capture(EntryEditor(state: owed).frame(width: 460).environmentObject(store), size: NSSize(width: 460, height: 560), path: output + "/entry-waiting.png")
         let empty = try isolatedStore()
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            NSApp.appearance = NSAppearance(named: appearance)
+            try capture(Onboarding().environmentObject(empty), size: NSSize(width: 470, height: 640), path: output + "/onboarding-start-\(name).png")
+        }
         XCTAssertTrue(empty.start(currency: "USD", cents: 0, openAtLogin: false))
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            NSApp.appearance = NSAppearance(named: appearance)
+            try capture(Onboarding().environmentObject(empty), size: NSSize(width: 470, height: 640), path: output + "/onboarding-ready-\(name).png")
+            try capture(MainWindow().environmentObject(empty), size: NSSize(width: 780, height: 560), path: output + "/first-entry-\(name).png")
+            try capture(MenuPanel().environmentObject(empty), size: NSSize(width: 340, height: 460), path: output + "/first-entry-menu-\(name).png")
+        }
+        NSApp.appearance = NSAppearance(named: .aqua)
         try capture(MainWindow().environmentObject(empty), size: NSSize(width: 780, height: 560), path: output + "/minimum-zero.png")
         try capture(MenuPanel().environmentObject(empty), size: NSSize(width: 380, height: 420), path: output + "/menu-empty.png")
         try capture(Onboarding().environmentObject(empty), size: NSSize(width: 470, height: 680), path: output + "/onboarding.png")
