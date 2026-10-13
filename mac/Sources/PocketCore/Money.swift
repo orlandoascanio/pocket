@@ -18,18 +18,21 @@ public struct Money: Sendable {
         return f
     }
 
-    /// Digits after the decimal point for this currency (2 for USD, 0 for JPY).
-    public var fractionDigits: Int { formatter.maximumFractionDigits }
+    /// Input precision follows the ledger's integer cents, regardless of display currency.
+    public var fractionDigits: Int { 2 }
 
     /// "$", "€", "¥": shown beside an amount while it's typed.
     public var symbol: String { formatter.currencySymbol ?? currency }
 
-    /// What an empty amount field shows: "0.00", or "0" for currencies without cents.
+    /// What an empty amount field shows, matching the precision that can be recorded.
     public var placeholder: String { fractionDigits == 0 ? "0" : "0." + String(repeating: "0", count: fractionDigits) }
 
     public func string(_ cents: Cents, signed: Bool = false) -> String {
         let value = Double(cents) / 100
-        let s = formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        let f = formatter
+        // Keep a fractional recorded amount visible even for a whole-unit currency.
+        if cents % 100 != 0 { f.maximumFractionDigits = max(2, f.maximumFractionDigits) }
+        let s = f.string(from: NSNumber(value: value)) ?? "\(value)"
         return signed && cents > 0 ? "+" + s : s
     }
 
@@ -54,18 +57,55 @@ public struct Money: Sendable {
     }
 
     /// Reads what someone typed ("9.99", "9,99", "$9.99", "1,234.50") as a positive amount in cents.
-    public static func parse(_ text: String) -> Cents? {
-        var s = text.trimmingCharacters(in: .whitespaces).filter { "0123456789.,-".contains($0) }
-        s = s.replacingOccurrences(of: "-", with: "")
-        guard !s.isEmpty else { return nil }
-        // The last separator is the decimal one when it has 1–2 digits after it.
-        if let last = s.lastIndex(where: { $0 == "." || $0 == "," }) {
-            let decimals = s[s.index(after: last)...]
-            let whole = s[..<last].filter(\.isNumber)
-            s = decimals.count <= 2 ? whole + "." + decimals : whole + decimals
+    public static func parse(_ text: String, allowZero: Bool = false) -> Cents? {
+        var s = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Accept a pasted currency symbol, but never silently discard arbitrary text or digits.
+        if let first = s.unicodeScalars.first, first.properties.generalCategory == .currencySymbol {
+            s.removeFirst()
+            s = s.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        guard let v = Double(s), v > 0, v < 1_000_000_000 else { return nil }
-        return Int((v * 100).rounded())
+        if let last = s.unicodeScalars.last, last.properties.generalCategory == .currencySymbol {
+            s.removeLast()
+            s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if s.hasPrefix("+") || s.hasPrefix("-") { s.removeFirst() }
+        guard s.contains(where: { "0123456789".contains($0) }),
+              s.allSatisfy({ "0123456789.,".contains($0) }) else { return nil }
+        let integer: String
+        let fraction: String
+        if s.contains("."), s.contains(",") {
+            let decimal = s.lastIndex(where: { $0 == "." || $0 == "," })!
+            let grouping: Character = s[decimal] == "." ? "," : "."
+            let whole = String(s[..<decimal])
+            guard validGroupedInteger(whole, separator: grouping) else { return nil }
+            integer = whole.replacingOccurrences(of: String(grouping), with: "")
+            fraction = String(s[s.index(after: decimal)...])
+            guard (1...2).contains(fraction.count), fraction.allSatisfy({ "0123456789".contains($0) }) else { return nil }
+        } else if let separator = s.first(where: { $0 == "." || $0 == "," }) {
+            let parts = s.split(separator: separator, omittingEmptySubsequences: false)
+            if parts.count == 2 && parts[1].count <= 2 {
+                integer = parts[0].isEmpty ? "0" : String(parts[0])
+                fraction = String(parts[1])
+            } else {
+                guard validGroupedInteger(s, separator: separator) else { return nil }
+                integer = parts.joined()
+                fraction = ""
+            }
+        } else {
+            integer = s
+            fraction = ""
+        }
+        guard let units = Int(integer), units < 1_000_000_000 else { return nil }
+        let cents = units * 100 + (Int(fraction.padding(toLength: 2, withPad: "0", startingAt: 0)) ?? 0)
+        return cents > 0 || allowZero ? cents : nil
+    }
+
+    private static func validGroupedInteger(_ text: String, separator: Character) -> Bool {
+        let parts = text.split(separator: separator, omittingEmptySubsequences: false)
+        guard let first = parts.first else { return false }
+        return (1...3).contains(first.count)
+            && parts.allSatisfy { $0.allSatisfy { "0123456789".contains($0) } }
+            && parts.dropFirst().allSatisfy { $0.count == 3 }
     }
 
     /// Cents as an editable string ("9.99").
