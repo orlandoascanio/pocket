@@ -14,7 +14,16 @@ const VIEWS = [
 ] as const;
 
 export function Tour() {
-  const [view, setView] = useState<(typeof VIEWS)[number]["id"]>("menu");
+  const [view, setViewState] = useState<(typeof VIEWS)[number]["id"]>("menu");
+  // +1 when the new view is to the right of the old tab, -1 to the left: the content arrives
+  // from that side, so the panel moves the way the selection did.
+  const [dir, setDir] = useState(0);
+  function setView(next: (typeof VIEWS)[number]["id"]) {
+    const from = VIEWS.findIndex((v) => v.id === view);
+    const to = VIEWS.findIndex((v) => v.id === next);
+    if (from !== to) setDir(Math.sign(to - from));
+    setViewState(next);
+  }
   const current = VIEWS.find((v) => v.id === view)!;
   const tabs = useRef<HTMLDivElement>(null);
   const ind = useRef<HTMLSpanElement>(null);
@@ -59,7 +68,13 @@ export function Tour() {
 
   return (
     <div className="tour">
-      <div className="tour-stage" id="tour-panel" role="tabpanel" aria-label={current.label}>
+      <div
+        className="tour-stage"
+        id="tour-panel"
+        role="tabpanel"
+        aria-label={current.label}
+        style={{ "--dir": dir } as React.CSSProperties}
+      >
         {view === "menu" && (
           <div className="tour-menu">
             <Image className="tour-behind" src={overview} sizes="(max-width: 720px) 0px, 620px" alt="" />
