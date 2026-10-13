@@ -1,3 +1,21 @@
+import { REPO_URL, SELF_HOSTING_GUIDE_URL, SELF_HOSTING_URL } from "@/lib/site";
+
+// Guide text can link with [label](/path/). Pages render real links; llms.txt spells out the URL.
+const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+export type TextPart = { text: string; href?: string };
+
+export function textParts(text: string): TextPart[] {
+  const parts: TextPart[] = [];
+  let last = 0;
+  for (const match of text.matchAll(LINK)) {
+    if (match.index > last) parts.push({ text: text.slice(last, match.index) });
+    parts.push({ text: match[1], href: match[2] });
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push({ text: text.slice(last) });
+  return parts;
+}
+
 export type GuideSection = {
   id: string;
   title: string;
@@ -13,6 +31,7 @@ export type Guide = {
   description: string;
   category: string;
   minutes: number;
+  published: string;
   updated: string;
   image: string;
   imageAlt: string;
@@ -31,6 +50,7 @@ export const GUIDES: Guide[] = [
     description: "Set your starting balance, record your first purchase and add a bill in Pocket for Mac.",
     category: "Start here",
     minutes: 4,
+    published: "2026-10-13",
     updated: "2026-10-13",
     image: "/screenshot-overview.png",
     imageAlt: "Pocket Overview with the recorded balance, the entry field, a payment waiting for confirmation and history",
@@ -67,7 +87,7 @@ export const GUIDES: Guide[] = [
         title: "Add one upcoming bill",
         paragraphs: [
           "Click Date & repeat under the description, or press Command-N in the Pocket window. It opens the full entry form, where you can set the date, category and repeat schedule. Enter the bill's amount, description and next date. Choose Repeat for a weekly, every-two-weeks, monthly or yearly payment. Leave the number of payments empty if it has no end date.",
-          "An automatic payment counts on its date. Turn on Confirm each payment if you want to record the actual amount and date yourself. Those payments wait under Waiting for you in Overview, with Paid and Skip buttons.",
+          "An automatic payment counts on its date. Turn on Confirm each payment if you want to record the actual amount and date yourself. Those payments wait under Waiting for you in Overview, with Paid and Skip buttons. For income that might arrive late or smaller, see [Track expected income before it arrives](/guides/expected-income/).",
           "Open Plan to see your projected balance after each scheduled payment. The chart includes only the money you have recorded or planned.",
         ],
       },
@@ -76,7 +96,7 @@ export const GUIDES: Guide[] = [
         title: "Check for missing or duplicate entries",
         paragraphs: [
           "Compare Pocket's balance with the account you used for your starting amount. If they differ, check for missing entries, duplicates and incorrect dates. Click an entry in History to edit or delete it.",
-          "When you add a purchase you make often, choose Save as Button in the confirmation under the entry field. Then add your remaining upcoming bills and income.",
+          "When you add a purchase you make often, choose Save as Button in the confirmation under the entry field. The [quick-add guide](/guides/quick-add-spending/) covers fixed and variable amounts. Then add your remaining upcoming bills and income.",
         ],
       },
     ],
@@ -87,6 +107,7 @@ export const GUIDES: Guide[] = [
     description: "Turn a frequent purchase into a quick-add button in Pocket, use Command-1 through Command-9 and choose when a button should ask for the amount.",
     category: "Everyday spending",
     minutes: 3,
+    published: "2026-10-13",
     updated: "2026-10-13",
     image: "/media/quick-add-2026-10-12.jpg",
     imageAlt: "Pocket quick-add buttons above the spending entry field",
@@ -114,7 +135,7 @@ export const GUIDES: Guide[] = [
         paragraphs: [
           "For groceries, rides or anything with a changing price, open Settings and edit its quick-add button. Leave the amount empty and save the button.",
           "The next time you use it, Pocket fills in the description and category and asks you for the amount. Enter what you actually spent, then save the entry.",
-          "To make a button from scratch, open Settings, find Quick-add buttons and choose Add Button, then Spending Button or Money In Button. Use a Money In button for income such as client payments whose amounts vary.",
+          "To make a button from scratch, open Settings, find Quick-add buttons and choose Add Button, then Spending Button or Money In Button. Use a Money In button for income such as client payments whose amounts vary. For a payment you expect on a particular date, [schedule it as expected income](/guides/expected-income/) instead.",
         ],
       },
       {
@@ -141,6 +162,7 @@ export const GUIDES: Guide[] = [
     description: "Schedule a client payment in Pocket, then confirm the amount and date when it arrives. Follow a $300 payment that arrives late as $280.",
     category: "Upcoming money",
     minutes: 4,
+    published: "2026-10-13",
     updated: "2026-10-13",
     image: "/screenshot-plan.png",
     imageAlt: "Pocket Plan with scheduled payments and a projected balance chart",
@@ -193,7 +215,216 @@ export const GUIDES: Guide[] = [
         title: "Update the plan when expectations change",
         paragraphs: [
           "If a payment will come later, click it in Plan and change its date. To skip the next payment, pause a repeating one or stop it, use the ⋯ button next to it in Plan.",
-          "Check uncertain income and missing bills before relying on the forecast. Pocket projects the amounts and dates you enter; purchases you have not recorded or planned are left out.",
+          "Check uncertain income and [missing or duplicate entries](/guides/getting-started/#keep-current) before relying on the forecast. Pocket projects the amounts and dates you enter; purchases you have not recorded or planned are left out.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "menu-bar-balance",
+    title: "Keep your money balance in the Mac menu bar",
+    description: "Pocket puts the money you have left in the Mac menu bar. See what the number counts, add spending from the menu bar panel and keep it visible on a Mac with a notch.",
+    category: "Start here",
+    minutes: 3,
+    published: "2026-10-13",
+    updated: "2026-10-13",
+    image: "/screenshot-overview.png",
+    imageAlt: "Pocket for Mac with the recorded balance that also appears in the menu bar",
+    related: ["getting-started", "quick-add-spending", "manual-vs-bank-sync"],
+    sections: [
+      {
+        id: "what-it-shows",
+        title: "What the menu bar number counts",
+        paragraphs: [
+          "Pocket is a free Mac app that shows your balance as a number in the menu bar, next to the clock. The number is your recorded balance: the starting amount you entered, plus income and minus spending you have recorded since.",
+          "Repeating bills and paychecks that you set to count automatically are added on their day. Payments that wait for confirmation leave the number unchanged until you click Got it. Pocket never reads your bank account, so the number only knows what you tell it.",
+        ],
+        note: "If Pocket can't open its data file, the menu bar shows “Pocket ⚠︎” instead of an amount. Open Settings to restore a daily backup.",
+      },
+      {
+        id: "panel",
+        title: "Add spending from the menu bar",
+        paragraphs: [
+          "Click the number to open the menu bar panel. The amount field is ready as soon as it opens: type the amount, a description and press Return. Your quick-add buttons sit above it, and Command-1 through Command-9 use the first nine.",
+          "Under Money left, a forecast line says “Runs out on” or “Lasts past” a date, based on the payments you have scheduled. Click it to open Plan. The panel also shows how many payments are waiting for you and your three most recent entries.",
+        ],
+        table: {
+          label: "Keyboard shortcuts in the menu bar panel",
+          headings: ["Shortcut", "What it does"],
+          rows: [
+            ["Command-1 to Command-9", "Use one of the first nine quick-add buttons"],
+            ["Command-N", "Clear the entry field to start a new entry"],
+            ["Command-O", "Open the Pocket window"],
+            ["Command-comma", "Open Settings"],
+            ["Command-Q", "Quit Pocket"],
+          ],
+        },
+      },
+      {
+        id: "login",
+        title: "Keep the balance there after a restart",
+        paragraphs: ["Pocket asks whether to open at login the first time you start it. To change your answer later:"],
+        steps: [
+          "Click the number in the menu bar, then press Command-O to open the Pocket window.",
+          "Open Settings and turn Open at login on or off.",
+        ],
+      },
+      {
+        id: "notch",
+        title: "If the number is hidden behind the notch",
+        paragraphs: [
+          "On MacBooks with a camera notch, macOS hides menu bar items that don't fit, starting with the ones furthest from the right. Pocket keeps running; you just can't see it.",
+          "Hold Command and drag menu bar items to reorder them. Move Pocket closer to Control Center, or remove items you don't use, until the number fits. Recent versions of macOS also let you switch items off in System Settings → Menu Bar.",
+        ],
+      },
+      {
+        id: "screen-sharing",
+        title: "When other people can see your screen",
+        paragraphs: [
+          "The amount is visible to anyone who can see your menu bar. Pocket has no setting to hide it. Before presenting or sharing your screen, choose Quit Pocket from the ⋯ menu in the panel. Your entries are saved, and the balance comes back when you open Pocket again.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "manual-vs-bank-sync",
+    title: "Manual money tracking vs bank sync: which one fits",
+    description: "Bank-sync apps import transactions for you. Manual trackers like Pocket count only what you enter. When each works better, and how to keep a manual budget accurate without a bank connection.",
+    category: "Choosing an approach",
+    minutes: 5,
+    published: "2026-10-13",
+    updated: "2026-10-13",
+    image: "/screenshot-overview.png",
+    imageAlt: "Pocket for Mac Overview, where every entry was typed by hand",
+    related: ["getting-started", "quick-add-spending", "expected-income"],
+    sections: [
+      {
+        id: "difference",
+        title: "What's the difference?",
+        paragraphs: [
+          "A bank-sync money app connects to your bank, usually through a third-party data provider, and imports transactions automatically. A manual money tracker has no bank connection: you record each purchase and payment yourself, and the balance comes from those entries. Pocket for Mac is a manual tracker.",
+          "Neither is more accurate by default. Bank sync is as complete as its connection. A manual tracker is as complete as your entries.",
+        ],
+        table: {
+          label: "Manual tracking compared with bank sync",
+          headings: ["What", "Manual tracking", "Bank sync"],
+          rows: [
+            ["How transactions arrive", "You type them, or a saved button or repeating payment adds them", "Imported from the bank, often a day or more after the purchase"],
+            ["What you share", "Nothing, unless you choose to", "Bank sign-in access or a token for your accounts, held by the app and its data provider"],
+            ["When it goes wrong", "A forgotten or duplicate entry", "A broken connection, a missing account or a misread category"],
+            ["Cash and informal money", "Recorded like anything else", "Not seen unless you add it by hand"],
+            ["Money not yet received", "Can be marked as waiting", "Usually appears only once it clears"],
+            ["Effort", "A few seconds per purchase", "Mostly reviewing and fixing categories"],
+          ],
+        },
+      },
+      {
+        id: "when-manual",
+        title: "When manual tracking works better",
+        paragraphs: [
+          "Manual tracking suits people who watch one balance, such as an everyday spending account, rather than every account they own. It also fits if you would rather not give a budgeting service access to your bank, if your bank or country isn't supported by sync providers, or if a lot of your money moves outside the bank: cash, transfers between friends, or client payments that arrive at unpredictable times.",
+          "There's a smaller benefit too: you see the new balance at the moment you spend, rather than when the transaction clears.",
+        ],
+      },
+      {
+        id: "when-sync",
+        title: "When bank sync works better",
+        paragraphs: [
+          "Choose bank sync if you need a full history across many accounts and cards, if you make so many transactions that typing them would be a chore, or if you need categorized records for taxes or bookkeeping.",
+          "Be honest about effort. If you know you won't record purchases, a manual tracker's balance will drift from your bank's, and a synced app will serve you better.",
+        ],
+      },
+      {
+        id: "keep-accurate",
+        title: "How to keep a manual tracker accurate with little effort",
+        paragraphs: ["Most of the work in manual tracking can be set up once. In Pocket:"],
+        steps: [
+          "Track one account. Start from that account's balance today and don't re-enter older transactions.",
+          "Schedule bills, subscriptions and paychecks as repeating payments, so they log themselves on their day.",
+          "Turn the purchases you make often into [quick-add buttons](/guides/quick-add-spending/), then use Command-1 to Command-9.",
+          "Mark uncertain money as waiting, so it only counts once you [confirm it arrived](/guides/expected-income/).",
+          "Once a week, compare Pocket's balance with your bank's. If they differ, look for a missing or duplicate entry and fix it in History.",
+        ],
+      },
+      {
+        id: "pocket",
+        title: "Where Pocket fits",
+        paragraphs: [
+          "Pocket is manual only. It keeps one balance in one currency, saves it in a file on your Mac and doesn't ask for an account. It shows that balance in the menu bar, and Plan forecasts when it would run out. It doesn't import bank statements, convert currencies or combine several accounts.",
+          "If that matches how you want to track money, [get started with Pocket](/guides/getting-started/). If you need automatic imports across many accounts, a bank-sync app is the better choice.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "freelance-income",
+    title: "Plan around irregular freelance income on a Mac",
+    description: "A weekly routine for irregular income: spend from money that has arrived, keep unpaid invoices in the forecast, and see the date your balance would run out if a client pays late.",
+    category: "Upcoming money",
+    minutes: 5,
+    published: "2026-10-13",
+    updated: "2026-10-13",
+    image: "/screenshot-plan.png",
+    imageAlt: "Pocket Plan with expected client payments, bills and a projected balance chart",
+    related: ["expected-income", "manual-vs-bank-sync", "quick-add-spending"],
+    sections: [
+      {
+        id: "two-numbers",
+        title: "Keep two numbers: received and expected",
+        paragraphs: [
+          "When income is irregular, the money you have and the money you're owed are different numbers. Spend from the first. Plan with both.",
+          "In Pocket, the menu bar shows only money you've recorded as received. Unpaid invoices go into Plan as expected payments, and they count toward your balance only after you confirm them.",
+        ],
+      },
+      {
+        id: "set-up",
+        title: "Set up your bills and invoices",
+        paragraphs: [],
+        steps: [
+          "Start Pocket with the balance of the account your clients pay into.",
+          "Add rent, subscriptions and other fixed costs as repeating payments. Leave Confirm each payment off for bills that are always the same.",
+          "For each invoice you send, open the full entry form with Date & repeat, choose Got money, enter the amount and the date you expect it, and keep Confirm when money arrives on.",
+          "For a retainer, choose Repeat → Monthly with confirmation on, so each month's payment waits for you to confirm the actual amount.",
+        ],
+      },
+      {
+        id: "read-plan",
+        title: "Read the forecast, then test a late payment",
+        paragraphs: [
+          "Plan's header says “Runs out on” a date if your balance would drop below zero in the range you chose, or “Lasts past” a date if it wouldn't. The line below it shows the balance at the end of the range and the lowest point on the way. Choose 3M or 6M for freelance work.",
+          "The forecast assumes every invoice arrives on time. To see what a late client would do, click an upcoming payment in Plan and move its date. In this example, it's early October, the balance is $700 and Client A's $1,200 invoice is due October 15:",
+        ],
+        table: {
+          label: "Forecast balance when one client pays late",
+          headings: ["Date and payment", "Client A pays Oct 15", "Client A pays Nov 20"],
+          rows: [
+            ["Oct 15: Client A due, +$1,200", "$1,900.00", "$700.00"],
+            ["Oct 28: Software −$30", "$1,870.00", "$670.00"],
+            ["Nov 1: Rent −$900", "$970.00", "−$230.00"],
+            ["Nov 5: Client B +$800", "$1,770.00", "$570.00"],
+            ["Nov 20: Client A +$1,200 (late)", "$1,770.00", "$1,770.00"],
+          ],
+        },
+        note: "With the late date, Plan says “Runs out on Nov 1”. That gives you time to chase the invoice, move a bill or hold off on spending. Set the date back if the client confirms they'll pay on time.",
+      },
+      {
+        id: "weekly",
+        title: "A ten-minute weekly check",
+        paragraphs: [],
+        steps: [
+          "Open Overview. For each payment under Waiting for you that has arrived, click Got it and enter the amount and date that actually landed. Click Skip for any that won't come.",
+          "An invoice that is past due stays under Waiting for you, and Plan counts it as arriving today. If you don't expect it soon, click Skip and add it again with the new expected date, so the forecast stops counting on it.",
+          "Add any invoices you sent this week.",
+          "Compare Pocket's balance with your bank. Fix missing or duplicate entries in History.",
+          "Check the Plan header. If it says “Runs out on”, decide what to change before that date.",
+        ],
+        note: "Pocket sends a reminder at 10 a.m. on the day a payment that needs confirmation is due, asking whether it paid. Allow notifications when Pocket asks, or turn reminders on in Settings.",
+      },
+      {
+        id: "limits",
+        title: "What the forecast leaves out",
+        paragraphs: [
+          "Pocket projects only what you've entered. Everyday spending you haven't planned, taxes you haven't scheduled and invoices you haven't added aren't in the chart. If you set money aside for taxes in another account, leave it out of the balance you track, or schedule the tax payment so the forecast includes it.",
         ],
       },
     ],
@@ -204,10 +435,11 @@ export const GUIDES: Guide[] = [
     description: "Find Pocket's data file, restore a daily backup, export a JSON backup and import it on another Mac. See how optional sync changes the setup.",
     category: "Your data",
     minutes: 3,
+    published: "2026-10-13",
     updated: "2026-10-13",
     image: "/screenshot-overview.png",
     imageAlt: "Pocket for Mac, whose local entries can be exported from Settings",
-    related: ["getting-started", "expected-income"],
+    related: ["getting-started", "self-hosting"],
     sections: [
       {
         id: "local-file",
@@ -258,8 +490,95 @@ export const GUIDES: Guide[] = [
         paragraphs: [
           "With optional self-hosted sync, your chosen server stores the shared main copy. Your Mac keeps a copy in account-ledger.json and queues changes while offline.",
           "You can export while connected. Import and Restore are available only in local mode and replace only the local data.",
-          "To use the same balance on your phone or another computer, follow the self-hosting guide and pair devices in Settings under Sync. You will need a server you run.",
+          "To use the same balance on your phone or another computer, [follow the self-hosting guide](/guides/self-hosting/) and pair devices in Settings under Sync. You will need a server you run.",
         ],
+      },
+    ],
+  },
+  {
+    slug: "self-hosting",
+    title: "Pair Pocket with your phone using your own server",
+    description: "Connect Pocket for Mac to a free Supabase project you run, then pair your phone with a 6-digit code to see the same balance in the Pocket web app.",
+    category: "Your data",
+    minutes: 6,
+    published: "2026-10-13",
+    updated: "2026-10-13",
+    image: "/screenshot-overview.png",
+    imageAlt: "Pocket for Mac Overview, the balance that sync shares with your other devices",
+    related: ["back-up-your-data", "getting-started"],
+    sections: [
+      {
+        id: "how-sync-works",
+        title: "How sync works",
+        paragraphs: [
+          "Pocket for Mac works fine on its own: your money stays in one file on your Mac. If you also want your balance on your phone or another computer, give Pocket a server of your own. It's a free Supabase project that only you can read, and setting it up takes about five minutes.",
+          "Your Mac keeps a full copy and keeps working offline. The server holds the main copy, so every device agrees.",
+          `The same steps, next to the files they refer to, are in the [technical reference on GitHub](${SELF_HOSTING_URL}).`,
+        ],
+      },
+      {
+        id: "supabase-project",
+        title: "Make a Supabase project",
+        paragraphs: [],
+        steps: [
+          "Create a free account at [supabase.com](https://supabase.com) and make a new project. Any name and region work.",
+          "Wait until it says the project is ready.",
+        ],
+        note: "You can also run Supabase yourself with Docker ([Supabase's self-hosting guide](https://supabase.com/docs/guides/self-hosting)). Pocket only needs the database and its REST API.",
+      },
+      {
+        id: "database",
+        title: "Load Pocket's database",
+        paragraphs: [
+          `Run the files in [supabase/migrations](${REPO_URL}/tree/main/supabase/migrations) in order, oldest first. Use either method:`,
+        ],
+        steps: [
+          "SQL editor: in your project, open SQL Editor, paste each file and click Run.",
+          "Supabase CLI: from a copy of the Pocket repository, run “supabase link --project-ref <your-project-ref>”, then “supabase db push”.",
+        ],
+        note: "All tables are locked. Apps can only call Pocket's pocket_* functions, and every function except setup and pairing needs a key that only your devices hold.",
+      },
+      {
+        id: "connect-mac",
+        title: "Set up the server from your Mac",
+        paragraphs: [],
+        steps: [
+          "In your Supabase project, open Project Settings → API and copy the Project URL and the publishable key (sb_publishable_…, also called the anon key). Never use the secret or service-role key.",
+          "In Pocket for Mac, open Settings → Sync → Connect…, expand Server, and paste both.",
+          "Click Set Up This Server.",
+        ],
+        note: "Pocket creates your account on that server with a random key that never leaves your Mac (it's stored in the Keychain), then uploads everything already on your Mac. Do this right after loading the database: until it's done, the first app to set up an empty server claims it. Once set up, a server refuses any other setup.",
+      },
+      {
+        id: "pair-phone",
+        title: "Add your phone",
+        paragraphs: [
+          "On the Mac, open Settings → Sync → Pair…. You get a 6-digit code and a link. Open the link on your phone: it opens the Pocket web app already pointed at your server, with the code filled in. Tap Pair, then Add to Home Screen so it works like an app.",
+          `You can also open the [Pocket web app](/app/) on any device, choose Use your own server, enter the same URL and publishable key, and type a code.`,
+          `To host the web app yourself as well, publish the [docs folder](${REPO_URL}/tree/main/docs) anywhere that serves static files, for example GitHub Pages on your fork.`,
+        ],
+      },
+      {
+        id: "keep-awake",
+        title: "Keep the project awake",
+        paragraphs: [
+          "Free Supabase projects pause after a week with no requests. Pocket for Mac checks in every 30 seconds while it's running, so a Mac that's on most days keeps the project awake.",
+          `For a safety net, copy [the keepalive workflow](${REPO_URL}/blob/main/.github/workflows/keepalive.yml) into your fork and change the URL and apikey to yours. It calls pocket_ping once a day, which reveals nothing.`,
+        ],
+      },
+      {
+        id: "remove-device",
+        title: "Remove a device or start over",
+        paragraphs: [],
+        table: {
+          label: "Removing devices and leaving a server",
+          headings: ["To", "Do this"],
+          rows: [
+            ["Remove a device", "Settings → Sync → Devices on the Mac, or Settings → Devices in the web app. A removed device is locked out right away."],
+            ["Leave the server", "On the Mac, Settings → Sync → Disconnect. The Mac keeps everything as a local copy."],
+            ["Start over", "Delete the Supabase project, or run the migrations on a new one, and set up again."],
+          ],
+        },
       },
     ],
   },
