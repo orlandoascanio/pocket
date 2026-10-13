@@ -44,6 +44,7 @@ final class PresetScrollTests: XCTestCase {
         XCTAssertTrue(state.canScrollForward)
         XCTAssertFalse(state.canScrollBack)
         state.page(1)
+        scroll.settle()
         XCTAssertGreaterThan(scroll.contentView.bounds.minX, 0)
         scroll.scrollHorizontally(to: .greatestFiniteMagnitude)
         state.refresh()
@@ -51,6 +52,7 @@ final class PresetScrollTests: XCTestCase {
         XCTAssertTrue(state.canScrollBack)
         XCTAssertFalse(state.canScrollForward)
         state.page(-1)
+        scroll.settle()
         XCTAssertLessThan(scroll.contentView.bounds.minX, scroll.maximumOffset)
         scroll.scrollHorizontally(to: -1000)
         state.refresh()
@@ -79,6 +81,7 @@ final class PresetScrollTests: XCTestCase {
             RunLoop.main.run(until: Date().addingTimeInterval(0.03))
         }
         XCTAssertGreaterThan(scroll.contentView.bounds.minX, 20)
+        scroll.settle()
         XCTAssertEqual(store.balance, 10000)
         XCTAssertEqual(store.ledger.entries.count, 1)
         let click = scroll.convert(NSPoint(x: 20, y: 17), to: nil)
@@ -111,5 +114,102 @@ final class PresetScrollTests: XCTestCase {
             return own + (element.accessibilityChildren() ?? []).reduce(0) { $0 + buttons(in: $1, depth: depth + 1) }
         }
         XCTAssertGreaterThan(buttons(in: scroll), 0, "the native bridge must expose its hosted preset buttons")
+    }
+
+    // MARK: Fluid behavior
+
+    private func drag(_ window: NSWindow, in scroll: PresetScrollView, from x: CGFloat, by step: CGFloat, moves: Int = 3, interval: Double = 0.016) throws {
+        let start = scroll.convert(NSPoint(x: x, y: 17), to: nil)
+        let types: [NSEvent.EventType] = [.leftMouseDown] + Array(repeating: .leftMouseDragged, count: moves) + [.leftMouseUp]
+        for (index, type) in types.enumerated() {
+            let moved = CGFloat(min(index, moves)) * step
+            let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: NSPoint(x: start.x + moved, y: start.y), modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 100 + index, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1))
+            window.sendEvent(event)
+            RunLoop.main.run(until: Date().addingTimeInterval(interval))
+        }
+    }
+
+    func testRubberbandResistsMoreTheFurtherItIsPulledAndInvertsExactly() {
+        XCTAssertEqual(rubberband(0, dimension: 340), 0)
+        let small = rubberband(-40, dimension: 340), large = rubberband(-400, dimension: 340)
+        XCTAssertLessThan(small, 0)
+        XCTAssertGreaterThan(abs(small), 40 * 0.4, "a short pull still follows the pointer closely")
+        XCTAssertLessThan(abs(large) / 400, abs(small) / 40, "a long pull follows proportionally less")
+        XCTAssertLessThan(abs(rubberband(-100_000, dimension: 340)), 340)
+        for raw in [-300.0, -25, 0, 25, 300] as [CGFloat] {
+            XCTAssertEqual(unrubberband(rubberband(raw, dimension: 340), dimension: 340), raw, accuracy: 0.01)
+        }
+    }
+
+    func testProjectionMatchesScrollDeceleration() {
+        XCTAssertEqual(projectedDistance(1000), 499, accuracy: 0.5)
+        XCTAssertEqual(projectedDistance(-500), -249.5, accuracy: 0.5)
+    }
+
+    func testAThrowKeepsGlidingAfterReleaseAndComesToRestInRange() throws {
+        let (window, store, scroll) = try mountRow()
+        try drag(window, in: scroll, from: min(220, scroll.frame.width - 10), by: -40)
+        let released = scroll.contentView.bounds.minX
+        XCTAssertTrue(scroll.isMoving, "a fast release should hand its velocity to a glide")
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertGreaterThan(scroll.contentView.bounds.minX, released + 5, "the row keeps moving the way it was thrown")
+        RunLoop.main.run(until: Date().addingTimeInterval(2.5))
+        XCTAssertFalse(scroll.isMoving)
+        XCTAssertGreaterThanOrEqual(scroll.contentView.bounds.minX, 0)
+        XCTAssertLessThanOrEqual(scroll.contentView.bounds.minX, scroll.maximumOffset + 0.5)
+        XCTAssertEqual(store.balance, 10000)
+    }
+
+    func testPullingPastTheStartResistsThenSpringsBack() throws {
+        let (window, _, scroll) = try mountRow()
+        // Drag right from the start: past the end, slowly enough that it's a pull, not a throw.
+        let start = scroll.convert(NSPoint(x: 40, y: 17), to: nil)
+        for (index, type) in [NSEvent.EventType.leftMouseDown, .leftMouseDragged, .leftMouseDragged, .leftMouseDragged].enumerated() {
+            let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: NSPoint(x: start.x + CGFloat(index) * 40, y: start.y), modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
+                eventNumber: 200 + index, clickCount: 1, pressure: 1))
+            window.sendEvent(event)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+        }
+        let pulled = scroll.contentView.bounds.minX
+        XCTAssertLessThan(pulled, -10, "the row follows a pull past its start")
+        XCTAssertGreaterThan(pulled, -120, "but less than the pointer moved")
+        let up = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseUp, location: NSPoint(x: start.x + 120, y: start.y), modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
+            eventNumber: 210, clickCount: 1, pressure: 0))
+        window.sendEvent(up)
+        RunLoop.main.run(until: Date().addingTimeInterval(1.2))
+        XCTAssertEqual(scroll.contentView.bounds.minX, 0, accuracy: 0.5, "and springs back to the start when let go")
+        XCTAssertFalse(scroll.isMoving)
+    }
+
+    func testClickingAMovingRowStopsItWithoutAddingMoney() throws {
+        let (window, store, scroll) = try mountRow()
+        scroll.state?.page(1)
+        XCTAssertTrue(scroll.isMoving)
+        let click = scroll.convert(NSPoint(x: 60, y: 17), to: nil)
+        for (index, type) in [NSEvent.EventType.leftMouseDown, .leftMouseUp].enumerated() {
+            let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: click, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 300 + index, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1))
+            window.sendEvent(event)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+        }
+        XCTAssertFalse(scroll.isMoving, "a click catches the row")
+        XCTAssertEqual(store.ledger.entries.count, 1, "and does not press the button under it")
+        XCTAssertEqual(store.balance, 10000)
+    }
+
+    func testPagingTwiceQuicklyLandsTwoPagesOn() throws {
+        let (_, _, scroll) = try mountRow()
+        let state = try XCTUnwrap(scroll.state)
+        let page = max(80, scroll.contentSize.width * 0.8)
+        state.page(1)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        state.page(1)
+        scroll.settle()
+        XCTAssertEqual(scroll.contentView.bounds.minX, min(scroll.maximumOffset, page * 2), accuracy: 1)
     }
 }
