@@ -53,15 +53,15 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             <figure className="guide-media">
               {guide.video ? <video controls muted playsInline preload="none" poster={guide.poster ?? guide.image} aria-label={guide.imageAlt}>
                 <source src={guide.video} type="video/mp4" /><a href={guide.video}>Watch the quick-add demonstration</a>
-              </video> : <Image src={guide.image} alt={guide.imageAlt} width={1600} height={1283} sizes="(max-width: 760px) calc(100vw - 48px), (max-width: 1100px) 65vw, 720px" />}
-              <figcaption>{guide.video ? "Recorded in Pocket for Mac." : "Pocket for Mac with example data."}</figcaption>
+              </video> : <Image src={guide.image} alt={guide.imageAlt} width={guide.imageWidth ?? 1600} height={guide.imageHeight ?? 1283} sizes="(max-width: 760px) calc(100vw - 48px), (max-width: 1100px) 65vw, 720px" />}
+              {guide.video && <figcaption>Recorded in Pocket for Mac.</figcaption>}
             </figure>
             {guide.sections.map((section) => <section id={section.id} key={section.id}>
               <h2>{section.title}</h2>
               {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
               {section.steps && <ol>{section.steps.map((step) => <li key={step}>{step}</li>)}</ol>}
-              {section.table && <div className="guide-table-wrap" tabIndex={0} role="region" aria-label={section.table.caption}>
-                <table><caption>{section.table.caption}</caption><thead><tr>{section.table.headings.map((heading) => <th scope="col" key={heading}>{heading}</th>)}</tr></thead><tbody>{section.table.rows.map((row) => <tr key={row[0]}>{row.map((cell, index) => index === 0 ? <th scope="row" key={index}>{cell}</th> : <td key={index}>{cell}</td>)}</tr>)}</tbody></table>
+              {section.table && <div className="guide-table-wrap" tabIndex={0} role="region" aria-label={section.table.label}>
+                <table><caption className="sr-only">{section.table.label}</caption><thead><tr>{section.table.headings.map((heading) => <th scope="col" key={heading}>{heading}</th>)}</tr></thead><tbody>{section.table.rows.map((row) => <tr key={row[0]}>{row.map((cell, index) => index === 0 ? <th scope="row" key={index}>{cell}</th> : <td key={index}>{cell}</td>)}</tr>)}</tbody></table>
               </div>}
               {section.note && <aside className="guide-note">{section.note}</aside>}
             </section>)}
@@ -71,7 +71,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
       </article>
       <section className="guide-related"><h2>Keep going</h2><GuideCards slugs={guide.related} /></section>
       <section className="guide-download">
-        <div><h2>Try it with your own entries.</h2><p>Free for macOS 14 or later. Your money stays on your Mac by default.</p></div>
+        <div><h2>Try it with your own entries.</h2><p>Free for macOS. Your money stays on your Mac by default.</p></div>
         <a className="pill pill-dark" href={DOWNLOAD_URL} data-download><DownloadIcon />Download for Mac</a>
       </section>
     </main>
