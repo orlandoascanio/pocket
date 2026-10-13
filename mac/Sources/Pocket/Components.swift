@@ -132,6 +132,7 @@ struct Chip: View {
     var symbol: String? = nil
     var on: Bool
     var action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -146,20 +147,8 @@ struct Chip: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .animation(.easeOut(duration: 0.15), value: on)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: on)
         .accessibilityAddTraits(on ? .isSelected : [])
-    }
-}
-
-/// ⌘1 … ⌘9 for the first nine quick-add buttons.
-struct NumberShortcut: ViewModifier {
-    let index: Int
-    func body(content: Content) -> some View {
-        if index < 9 {
-            content.keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
-        } else {
-            content
-        }
     }
 }
 
@@ -167,37 +156,33 @@ struct NumberShortcut: ViewModifier {
 struct QuickBar: View {
     @EnvironmentObject var store: Store
     var onAsk: (Preset) -> Void
+    @StateObject private var scroll = PresetScrollState()
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(Array(store.ledger.presets.enumerated()), id: \.element.id) { i, p in
-                    Button { use(p) } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: Categories.symbol(p.category, cents: p.sign))
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Categories.tint(p.category, cents: p.sign))
-                            Text(p.label)
-                            if let c = p.cents {
-                                Text(store.money.string(p.sign * c, signed: p.sign > 0)).foregroundStyle(.secondary).monospacedDigit()
-                            }
-                        }
-                        .font(.callout.weight(.medium))
-                        .padding(.horizontal, 11).padding(.vertical, 6)
-                        .background(Palette.surface, in: Capsule())
-                        .overlay(Capsule().strokeBorder(Palette.line))
-                        .contentShape(Capsule())
-                    }
-                    .buttonStyle(PressStyle())
-                    .modifier(NumberShortcut(index: i))
-                    .help(i < 9 ? "\(p.label) (⌘\(i + 1))" : p.label)
+        HStack(spacing: 4) {
+            PresetScroller(state: scroll, presets: store.ledger.presets, money: store.money, onUse: use)
+            .frame(height: 34)
+            if scroll.overflows {
+                Button { scroll.page(-1) } label: {
+                    Image(systemName: "chevron.left").foregroundStyle(Color.secondary.opacity(scroll.canScrollBack ? 1 : 0.35))
                 }
+                    .buttonStyle(RoundButtonStyle())
+                    .disabled(!scroll.canScrollBack)
+                    .help("Previous quick-add buttons")
+                    .accessibilityLabel("Previous quick-add buttons")
+                Button { scroll.page(1) } label: {
+                    Image(systemName: "chevron.right").foregroundStyle(Color.secondary.opacity(scroll.canScrollForward ? 1 : 0.35))
+                }
+                    .buttonStyle(RoundButtonStyle())
+                    .disabled(!scroll.canScrollForward)
+                    .help("Next quick-add buttons")
+                    .accessibilityLabel("Next quick-add buttons")
             }
-            .padding(1)
         }
     }
 
     private func use(_ p: Preset) {
+        guard !scroll.suppressActivation else { return }
         guard let c = p.cents else { onAsk(p); return }
         store.addEntry(cents: p.sign * c, label: p.label, day: store.today, category: p.category)
     }
@@ -213,15 +198,22 @@ struct SaveFailureView: View {
     var body: some View {
         if let error = store.saveError {
             VStack(alignment: .leading, spacing: 4) {
-                Label("Your last change wasn't saved", systemImage: "exclamationmark.triangle")
+                Label(store.loadError == nil ? "Your last change wasn't saved" : "Your saved data couldn't be opened", systemImage: "exclamationmark.triangle")
                     .font(.callout.weight(.semibold))
-                Text("Your saved balance is unchanged. Try the action again.")
+                Text(store.loadError == nil ? "Your saved balance is unchanged. Try the action again."
+                     : "Your file is preserved. Restore a backup in Settings, or repair the file and try opening it again.")
                     .font(.caption)
                 Text(error).font(.caption).textSelection(.enabled)
+                if store.loadError != nil {
+                    HStack {
+                        Button("Show Data in Finder") { NSWorkspace.shared.activateFileViewerSelecting([store.fileURL]) }
+                        Button("Try Again") { store.retryLoadingData() }
+                    }
+                }
             }
             .foregroundStyle(Palette.negative)
             .fixedSize(horizontal: false, vertical: true)
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
         }
     }
 }
@@ -246,10 +238,11 @@ struct EntryReceiptView: View {
 
 /// Shrinks a little while pressed. Feedback lands on mouse-down, not on release.
 struct PressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.spring(duration: 0.2, bounce: 0), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.94 : 1)
+            .animation(reduceMotion ? nil : .spring(duration: 0.2, bounce: 0), value: configuration.isPressed)
     }
 }
 
@@ -261,13 +254,14 @@ struct RoundButtonStyle: ButtonStyle {
         let configuration: Configuration
         let size: CGFloat
         @State private var hover = false
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
         var body: some View {
             configuration.label
                 .frame(width: size, height: size)
                 .background(Circle().fill(Color.primary.opacity(configuration.isPressed ? 0.14 : hover ? 0.07 : 0)))
                 .contentShape(Circle())
-                .scaleEffect(configuration.isPressed ? 0.92 : 1)
-                .animation(.spring(duration: 0.2, bounce: 0), value: configuration.isPressed)
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.92 : 1)
+                .animation(reduceMotion ? nil : .spring(duration: 0.2, bounce: 0), value: configuration.isPressed)
                 .onHover { hover = $0 }
         }
     }
@@ -305,16 +299,17 @@ struct AmountField: NSViewRepresentable {
         field.height = (size * 1.4).rounded()
         field.isBordered = false
         field.drawsBackground = false
-        field.focusRingType = .none
+        field.focusRingType = .exterior
         field.font = Self.font(size)
         field.textColor = .labelColor
         field.cell?.usesSingleLineMode = true
         field.cell?.isScrollable = true
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.placeholderAttributedString = NSAttributedString(string: placeholder, attributes: [
-            .font: field.font!, .foregroundColor: NSColor.tertiaryLabelColor
+            .font: field.font!, .foregroundColor: NSColor.secondaryLabelColor
         ])
         field.setAccessibilityLabel("Amount")
+        field.setAccessibilityHelp("Enter an amount with up to two decimal places. Return moves to the description or saves the entry.")
         field.delegate = context.coordinator
         return field
     }
@@ -386,7 +381,7 @@ struct Composer: View {
                 .accessibilityHint("Switches between money out and money in")
                 Text(store.money.symbol)
                     .font(.system(size: amountSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(state.spent ? AnyShapeStyle(.tertiary) : AnyShapeStyle(Palette.accent))
+                    .foregroundStyle(state.spent ? AnyShapeStyle(.secondary) : AnyShapeStyle(Palette.accent))
                 AmountField(text: $state.amount, focused: $amountFocused, size: amountSize, placeholder: store.money.placeholder) {
                     if state.label.trimmed.isEmpty { labelFocused = true } else { save() }
                 }
@@ -417,15 +412,24 @@ struct Composer: View {
                     .accessibilityLabel("Description")
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
+            if let onMore {
+                HStack {
+                    Spacer()
+                    Button(action: onMore) {
+                        Label("Date & repeat", systemImage: "calendar")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("Open the entry form to choose a date, category or repeat schedule")
+                    .accessibilityHint("Opens the full entry form and keeps what you have typed")
+                }
+                .padding(.horizontal, 12).padding(.bottom, 9)
+            }
         }
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.line))
-        .onChange(of: state.amount) { _, value in
-            // Typing a sign picks the direction, so the keyboard alone is enough.
-            if value.hasPrefix("+") { state.amount = String(value.dropFirst()); withAnimation(spring) { state.spent = false } }
-            else if value.hasPrefix("-") { state.amount = String(value.dropFirst()); withAnimation(spring) { state.spent = true } }
-            if state.error != nil { state.error = nil }
-        }
+        .animation(spring, value: state.spent)
         .onChange(of: state.focusAmount) { _, _ in amountFocused = true }
         .onAppear { state.store = store }
     }
