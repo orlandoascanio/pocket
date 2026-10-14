@@ -75,7 +75,7 @@
 #tour h2 { max-width: 650px; font-size: clamp(38px, 5vw, 60px); }
 #tour .tour-stage { background: #dce6d6; border-radius: 16px; }
 #tour .tour-behind { transform: rotate(-5deg); top: 17%; left: 5%; }
-#tour .tour-menu .mp { transform: rotate(3deg); right: 10%; top: 65px; }
+#tour .tour-panel { transform: rotate(3deg); right: 10%; top: 46px; }
 #plan .feature { padding-block: 36px 55px; }
 #plan .upcoming { transform: perspective(1100px) rotateY(-7deg) rotateZ(2deg); border: 0; border-radius: 16px; box-shadow: 8px 26px 60px -20px #1d44252b; }
 #plan .quick-add-feature, #plan .categories-feature { grid-template-columns: .7fr 1.3fr; gap: 40px; }
@@ -149,7 +149,7 @@
   #tour .tour { margin-top: 24px; }
   .local-default { grid-template-columns: 1fr; gap: 28px; }
   .tour-download { flex-direction: column; text-align: center; }
-  #tour .tour-menu .mp { transform: none; }
+  #tour .tour-panel { transform: none; }
   #plan .upcoming { transform: none; }
   #plan .quick-add-feature, #plan .categories-feature { grid-template-columns: 1fr; gap: 24px; }
   .home-closing { margin-inline: 24px; }

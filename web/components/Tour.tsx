@@ -1,17 +1,39 @@
 "use client";
 
 import { gsap } from "gsap";
-import Image from "next/image";
+import Image, { type StaticImageData } from "next/image";
 import { type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MenuBarStrip, MenuPanel } from "@/components/MenuBar";
-import overview from "@/public/screenshot-overview.png";
-import plan from "@/public/screenshot-plan.png";
+import { MenuBarStrip } from "@/components/MenuBar";
+import menuBarDark from "@/public/media/menu-bar-dark-2026-10-14.png";
+import menuBar from "@/public/media/menu-bar-2026-10-14.png";
+import overviewDark from "@/public/media/overview-dark-2026-10-14.png";
+import overview from "@/public/media/overview-2026-10-14.png";
+import planDark from "@/public/media/plan-dark-2026-10-14.png";
+import plan from "@/public/media/plan-2026-10-14.png";
 
 const VIEWS = [
   { id: "menu", label: "Menu bar", caption: "One click from anywhere, all day." },
   { id: "overview", label: "Overview", caption: "What came in, what went out." },
   { id: "plan", label: "Plan", caption: "Where your balance is heading." },
 ] as const;
+
+// A screenshot of the app in the visitor's appearance. CSS shows one of the two captures; the
+// other is display: none and lazy, so it's never downloaded. (Both stay direct children of the
+// stage, so the screenshot sizing rules apply to them.)
+function Shot({ light, dark, sizes, alt, className }: {
+  light: StaticImageData;
+  dark: StaticImageData;
+  sizes: string;
+  alt: string;
+  className: string;
+}) {
+  return (
+    <>
+      <Image className={`${className} shot-light`} src={light} sizes={sizes} alt={alt} />
+      <Image className={`${className} shot-dark`} src={dark} sizes={sizes} alt={alt} />
+    </>
+  );
+}
 
 export function Tour({ initialView = "menu" }: { initialView?: (typeof VIEWS)[number]["id"] }) {
   const [view, setViewState] = useState(initialView);
@@ -77,23 +99,31 @@ export function Tour({ initialView = "menu" }: { initialView?: (typeof VIEWS)[nu
       >
         {view === "menu" && (
           <div className="tour-menu">
-            <Image className="tour-behind" src={overview} sizes="(max-width: 720px) 0px, 620px" alt="" />
-            <MenuBarStrip amount="$337.03" />
-            <MenuPanel />
+            <Shot className="tour-behind" light={overview} dark={overviewDark} sizes="(max-width: 720px) 0px, 620px" alt="" />
+            <MenuBarStrip amount="$2,431.08" />
+            <Shot
+              className="tour-panel"
+              light={menuBar}
+              dark={menuBarDark}
+              sizes="(max-width: 720px) 100vw, 390px"
+              alt="Pocket's menu bar panel: the balance, quick-add buttons, a form to add an entry, a payment waiting to be confirmed, and recent entries."
+            />
           </div>
         )}
         {view === "overview" && (
-          <Image
+          <Shot
             className="tour-shot"
-            src={overview}
+            light={overview}
+            dark={overviewDark}
             sizes="(max-width: 1080px) 100vw, 1000px"
             alt="Pocket's main window: the balance, quick-add buttons, a form to add an entry, a payment waiting to be confirmed, and history."
           />
         )}
         {view === "plan" && (
-          <Image
+          <Shot
             className="tour-shot"
-            src={plan}
+            light={plan}
+            dark={planDark}
             sizes="(max-width: 1080px) 100vw, 1000px"
             alt="The Plan view: a step chart of the projected balance and the list of payments coming up."
           />
