@@ -22,7 +22,7 @@ export function SiteFooter() {
           </a>
           <p>Your balance in the menu bar, and how long it will last.</p>
           <a className="foot-ver" href="/changelog/">
-            v{VERSION} · Release notes <span className="live-dot" aria-hidden="true" />
+            v{VERSION} · Release notes
           </a>
           <span className="foot-badge">
             <svg viewBox="0 0 16 16" aria-hidden="true">

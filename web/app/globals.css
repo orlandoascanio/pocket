@@ -246,8 +246,6 @@ h1 { font: 800 clamp(40px, 7.4vw, 88px)/1.02 var(--display); letter-spacing: -0.
 .meta { list-style: none; padding: 0; margin: 28px 0 0; display: flex; flex-wrap: wrap; justify-content: center; row-gap: 6px; color: var(--muted); font-size: 14.5px; }
 .meta li + li::before { content: "·"; margin: 0 10px; opacity: .6; }
 .meta a { text-decoration: none; }
-.live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3fb27f; margin-left: 4px; vertical-align: 1px; box-shadow: 0 0 0 0 rgb(63 178 127 / .5); animation: live 2.4s ease-out infinite; }
-@keyframes live { 70%, 100% { box-shadow: 0 0 0 7px rgb(63 178 127 / 0); } }
 
 /* ── bento: three small live demos ── */
 .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -609,7 +607,7 @@ body:has(.dl[open]) .website-consent { visibility: hidden; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage .coin, .stage .bubble, .typed-caret, .live-dot,
+  .stage .coin, .stage .bubble, .typed-caret,
   .bento-demo *, .tour-shot, .tour-menu { animation: none !important; }
   .pill, .bento-card, .nav-cta, .faq-icon, .faq-icon::before, .faq-icon::after,
   .announce, .announce-arrow, .tour-tabs button, .dl-close, .dl-close svg { transition: none; }

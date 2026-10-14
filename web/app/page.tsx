@@ -123,7 +123,7 @@ export default function Home() {
               <li>Developer signed · Apple notarized</li>
               <li>
                 <a href="/changelog/">
-                  v{VERSION} <span className="live-dot" aria-hidden="true" />
+                  v{VERSION}
                 </a>
               </li>
             </ul>
