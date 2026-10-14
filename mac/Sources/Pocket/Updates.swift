@@ -121,9 +121,11 @@ enum AboutPanel {
         let credits = NSMutableAttributedString(
             string: "Your balance in the menu bar, and how long it will last.\n",
             attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor])
-        for (title, link) in [("pocketleft.app", "https://pocketleft.app"), ("Source code", "https://github.com/orlandoascanio/pocketleft")] {
+        let links = [("pocketleft.app", "https://pocketleft.app"), ("Source code", "https://github.com/orlandoascanio/pocketleft"),
+                     ("Star on GitHub", "https://github.com/orlandoascanio/pocketleft")]
+        for (i, (title, link)) in links.enumerated() {
             credits.append(NSAttributedString(string: title, attributes: [.font: NSFont.systemFont(ofSize: 11), .link: URL(string: link)!]))
-            credits.append(NSAttributedString(string: title == "pocketleft.app" ? " · " : ""))
+            if i < links.count - 1 { credits.append(NSAttributedString(string: " · ", attributes: [.font: NSFont.systemFont(ofSize: 11)])) }
         }
         let centered = NSMutableParagraphStyle()
         centered.alignment = .center
