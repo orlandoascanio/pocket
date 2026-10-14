@@ -7,6 +7,7 @@ import { GuideCards } from "@/components/GuideCards";
 import { PocketCharacter } from "@/components/PocketCharacter";
 import { DownloadIcon, SiteNav } from "@/components/SiteNav";
 import { Tour } from "@/components/Tour";
+import { HeroAnnounce } from "@/components/HeroAnnounce";
 import { HeroScene } from "@/components/HeroScene";
 import { SiteFooter } from "@/components/SiteFooter";
 import { FAQ } from "@/lib/faq";
@@ -100,14 +101,16 @@ export default function Home() {
       <main>
         <section className="hero hero-dimensional wrap">
           <div className="hero-copy">
-            <a className="announce" href="/changelog/">
-              <span className="announce-tag">New</span>
-              <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
-              <span className="announce-text">Check for updates from inside Pocket.</span>
-              <span className="announce-arrow" aria-hidden="true">
-                ↗
-              </span>
-            </a>
+            <HeroAnnounce>
+              <a className="announce" href="/changelog/">
+                <span className="announce-tag">New</span>
+                <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
+                <span className="announce-text">Check for updates from inside Pocket.</span>
+                <span className="announce-arrow" aria-hidden="true">
+                  ↗
+                </span>
+              </a>
+            </HeroAnnounce>
             <h1>How much money you have left,<br /><span>always in your menu bar.</span></h1>
             <p className="lead">Type in what you have today, then log what you spend and what comes in. Pocket keeps the number up to date at the top of your screen.</p>
             <div className="cta" id="hero-cta">

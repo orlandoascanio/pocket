@@ -29,7 +29,7 @@ export function WebsiteAnalytics() {
   const lastPage = useRef("");
   const opener = useRef<HTMLElement | null>(null);
   const firstChoice = useRef<HTMLButtonElement>(null);
-  const marketing = pathname === "/" || pathname === "/changelog/" || pathname === "/privacy/";
+  const marketing = pathname === "/" || pathname === "/changelog/" || pathname === "/privacy/" || pathname === "/share/";
 
   useEffect(() => {
     function refresh() {
