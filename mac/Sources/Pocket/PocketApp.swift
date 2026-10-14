@@ -51,6 +51,7 @@ struct PocketApp: App {
             CommandGroup(replacing: .appInfo) {
                 Button("About Pocket") { AboutPanel.show() }
                 Button("Check for Updates…") { UpdateChecker.shared.checkAndReport() }
+                Button("Share Pocket…") { SharePocket.show() }
             }
             QuickAddCommands(store: store)
         }

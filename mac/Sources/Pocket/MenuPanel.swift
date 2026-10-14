@@ -50,6 +50,7 @@ struct MenuPanel: View {
                 EntryReceiptView { request($0) }.padding(.horizontal, 16).padding(.top, 8)
                     .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
             }
+            if store.showSharePrompt { SharePromptView().padding(.horizontal, 10).padding(.top, 8) }
             if !store.waiting.isEmpty { waitingRow.padding(.horizontal, 10).padding(.top, 8) }
             recent.padding(.top, 14)
         }
@@ -64,6 +65,7 @@ struct MenuPanel: View {
             + (quick.error == nil ? 0 : 22)
             + (store.receipt == nil ? 0 : 30)
             + (store.saveError == nil ? 0 : 110)
+            + (store.showSharePrompt ? 46 : 0)
             + (store.waiting.isEmpty ? 0 : 44)
             + 40 + CGFloat(max(1, min(3, store.ledger.entries.count))) * 46
     }
@@ -194,6 +196,7 @@ struct MenuPanel: View {
                 Divider()
                 Button("About Pocket") { AboutPanel.show() }
                 Button("Check for Updates…") { UpdateChecker.shared.checkAndReport() }
+                Button("Share Pocket…") { SharePocket.show() }
                 Divider()
                 Button("Quit Pocket") { NSApp.terminate(nil) }
             } label: {

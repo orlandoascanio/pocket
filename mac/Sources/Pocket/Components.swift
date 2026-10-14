@@ -218,6 +218,26 @@ struct SaveFailureView: View {
     }
 }
 
+/// The one-time suggestion to tell someone about Pocket. "Not now" hides it for good;
+/// Share Pocket… in the menus stays available either way.
+struct SharePromptView: View {
+    @EnvironmentObject var store: Store
+    var body: some View {
+        if store.showSharePrompt {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Label("Know someone who'd like Pocket?", systemImage: "heart").font(.callout).lineLimit(2)
+                Spacer(minLength: 0)
+                Button("Not now") { store.dismissSharePrompt() }.buttonStyle(.link).foregroundStyle(.secondary).fixedSize()
+                Button("Share…") { store.shareFromPrompt() }.buttonStyle(.link).fixedSize()
+            }
+            .foregroundStyle(Palette.accent)
+            .padding(.horizontal, 12).padding(.vertical, 9)
+            .background(Palette.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityElement(children: .contain)
+        }
+    }
+}
+
 /// "Added −$6.50 · Coffee", with Edit, and Save as Button while it isn't one yet.
 struct EntryReceiptView: View {
     @EnvironmentObject var store: Store

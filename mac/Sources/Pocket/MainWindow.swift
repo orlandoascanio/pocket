@@ -288,6 +288,7 @@ struct OverviewView: View {
                     }
                     .frame(maxWidth: 520, alignment: .leading)
                     .id("entry")
+                    if store.showSharePrompt { SharePromptView().frame(maxWidth: 520, alignment: .leading) }
                     if !store.waiting.isEmpty { waiting.id("waiting") }
                     history.id("history")
                 }

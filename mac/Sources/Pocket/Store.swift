@@ -84,6 +84,9 @@ final class Store: ObservableObject {
         }
     }
     @Published private(set) var reminderMessage: String?
+    /// The one-time "Know someone who'd like Pocket?" note: nil until it's earned, then "due", then "done" for good.
+    @Published private(set) var sharePrompt: String? { didSet { defaults.set(sharePrompt, forKey: "sharePrompt") } }
+    var showSharePrompt: Bool { sharePrompt == "due" }
     @Published private(set) var sendingTestReminder = false
     var notificationServicesAvailable: Bool { reminderClient != nil }
 
@@ -181,6 +184,7 @@ final class Store: ObservableObject {
         let r = defaults.integer(forKey: "range")
         range = [30, 91, 182, 365].contains(r) ? r : 91
         reminders = defaults.object(forKey: "reminders") as? Bool ?? true
+        sharePrompt = defaults.string(forKey: "sharePrompt")
         loadError = initialLoadError
         saveError = initialLoadError
 
@@ -369,6 +373,7 @@ final class Store: ObservableObject {
                                         "p_category": preset.category ?? ""], label: preset.label, localID: preset.id)
         }
         receipt = EntryReceipt(text: "Added \(money.string(cents, signed: true)) · \(label)", target: .editEntry(entry.id))
+        earnSharePrompt(gotPaid: false)
         return entry.id
     }
 
@@ -434,8 +439,25 @@ final class Store: ObservableObject {
         guard mutate(category: occurrence.category, { $0.settle(occurrence.ruleID, cents: cents, on: day, today: today) }) else { return false }
         send("pocket_recurring_settle", ["p_id": occurrence.ruleID.uuidString, "p_amount": dollars(cents), "p_on": day.iso,
                                          "p_today": today.iso], label: occurrence.label)
+        earnSharePrompt(gotPaid: cents > 0)
         return true
     }
+
+    /// Pocket suggests sharing once, right after it has proved useful: the first "Got it" on money
+    /// that was expected, or about 30 entries recorded over at least two weeks. Never during first run.
+    private func earnSharePrompt(gotPaid: Bool) {
+        guard sharePrompt == nil, onboarded else { return }
+        let recorded = ledger.entries.filter { $0.category != Categories.start }
+        let since = recorded.map(\.created).min() ?? .now
+        if gotPaid || (recorded.count >= 30 && Date.now.timeIntervalSince(since) >= 14 * 86_400) { sharePrompt = "due" }
+    }
+
+    func shareFromPrompt() {
+        SharePocket.show()
+        sharePrompt = "done"
+    }
+
+    func dismissSharePrompt() { sharePrompt = "done" }
 
     @discardableResult
     func skip(_ occurrence: Occurrence) -> Bool {

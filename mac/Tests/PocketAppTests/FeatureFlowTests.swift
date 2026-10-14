@@ -40,6 +40,38 @@ final class FeatureFlowTests: XCTestCase {
         XCTAssertTrue(store.ledger.liveRules.isEmpty, "A one-time payment is done once it's confirmed")
     }
 
+    func testShareNoteAppearsOnceAfterTheFirstGotIt() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 50_000, openAtLogin: false))
+        for i in 0..<30 { XCTAssertNotNil(store.addEntry(cents: -100, label: "Coffee \(i)", day: .today, category: "food")) }
+        XCTAssertFalse(store.showSharePrompt, "Thirty entries in one day isn't a habit yet")
+        let state = EditorState(); state.store = store
+        state.spent = false
+        state.amount = "50"
+        state.label = "Sam owes me"
+        state.awaiting = true
+        XCTAssertTrue(state.save())
+        XCTAssertFalse(store.showSharePrompt, "Expecting money isn't the moment; receiving it is")
+        XCTAssertTrue(store.settle(try XCTUnwrap(store.waiting.first), cents: 5_000, on: .today))
+        XCTAssertTrue(store.showSharePrompt)
+        store.dismissSharePrompt()
+        XCTAssertFalse(store.showSharePrompt)
+        XCTAssertEqual(store.sharePrompt, "done")
+    }
+
+    func testPayingABillDoesNotAskToShare() throws {
+        let store = try isolatedStore()
+        XCTAssertTrue(store.start(currency: "USD", cents: 50_000, openAtLogin: false))
+        let state = EditorState(); state.store = store
+        state.spent = true
+        state.amount = "20"
+        state.label = "Electric bill"
+        state.awaiting = true
+        XCTAssertTrue(state.save())
+        XCTAssertTrue(store.settle(try XCTUnwrap(store.waiting.first), cents: -2_000, on: .today))
+        XCTAssertFalse(store.showSharePrompt)
+    }
+
     func testWaitingOptionOnlyAppliesToOneTimeEntriesDueByToday() {
         let state = EditorState()
         state.awaiting = true
