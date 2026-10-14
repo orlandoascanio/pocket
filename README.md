@@ -44,7 +44,9 @@ Then, for each release:
 
    ```bash
    cp mac/dist/Pocket-1.0.1.dmg /tmp/Pocket.dmg
-   gh release create v1.0.1 /tmp/Pocket.dmg --repo orlandoascanio/pocket --title "Pocket for Mac 1.0.1" --notes "What changed…" --latest
+   gh release create v1.0.1 /tmp/Pocket.dmg --repo orlandoascanio/pocket --title "Pocket for Mac 1.0.1" --notes "What changed…
+
+If Pocket helps you, a star on GitHub helps other people find it." --latest
    ```
 
 3. Check it: `https://github.com/orlandoascanio/pocket/releases/latest/download/Pocket.dmg` should download the new version.
