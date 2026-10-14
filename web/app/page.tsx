@@ -16,6 +16,7 @@ import "./guides/guides.css";
 import { RELEASES } from "@/lib/releases";
 import {
   DESCRIPTION,
+  DMG_SIZE,
   DOWNLOAD_URL,
   REPO_URL,
   SELF_HOSTING_GUIDE_URL,
@@ -102,17 +103,17 @@ export default function Home() {
             <a className="announce" href="/changelog/">
               <span className="announce-tag">New</span>
               <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
-              <span className="announce-text">Free money tracker for your Mac.</span>
+              <span className="announce-text">Check for updates from inside Pocket.</span>
               <span className="announce-arrow" aria-hidden="true">
                 ↗
               </span>
             </a>
-            <h1>Your money left,<br /><span>in your Mac menu bar.</span></h1>
-            <p className="lead">Enter your starting balance, record spending and income, and see what&apos;s left in your menu bar.</p>
+            <h1>How much money you have left,<br /><span>always in your menu bar.</span></h1>
+            <p className="lead">Type in what you have today, then log what you spend and what comes in. Pocket keeps the number up to date at the top of your screen.</p>
             <div className="cta" id="hero-cta">
               <DownloadButton />
               <a className="pill pill-soft" href="#tour">
-                See Pocket in action
+                Take the tour
               </a>
             </div>
             <ul className="meta">
@@ -132,14 +133,14 @@ export default function Home() {
         </section>
 
         <section className="section wrap" id="tour">
-          <h2>Inside Pocket.</h2>
+          <h2>Everything happens in one small window.</h2>
           <p className="section-lead">
-            Your balance, entries and upcoming payments in one window.
+            Your balance sits in the menu bar. Open the window to add entries, confirm payments and look ahead.
           </p>
           <Tour initialView="overview" />
           <div className="tour-download">
             <DownloadButton />
-            <p>Free. No account. Your money data stays on your Mac by default.</p>
+            <p>Free, and no account needed. Your money data stays on your Mac unless you set up sync.</p>
           </div>
         </section>
 
@@ -150,14 +151,14 @@ export default function Home() {
         <section className="section wrap" id="plan">
           <div className="feature">
             <div className="copy">
-              <h2>Plan for upcoming bills.</h2>
+              <h2>See your balance after rent, before rent is due.</h2>
               <p>
-                See where your balance is heading based on the payments you enter. Add your bills, subscriptions
-                and expected income to plan a month or a year ahead.
+                Add your bills, subscriptions and expected pay once. Pocket shows what your balance will be after
+                each one, up to 12 months ahead.
               </p>
               <ul className="dots">
-                <li>A projected runway based on your recorded balance and planned payments</li>
-                <li>Every payment coming up, with the balance after it</li>
+                <li>A chart of where your balance is heading, 1 to 12 months out</li>
+                <li>Every upcoming payment, with your balance right after it</li>
                 <li>Pause, skip or stop anything that repeats</li>
               </ul>
             </div>
@@ -188,12 +189,12 @@ export default function Home() {
             <div className="copy">
               <h2>Made for money that doesn&apos;t arrive on schedule.</h2>
               <p>
-                Freelance pay, refunds, the friend who owes you: mark it as something you&apos;re waiting for. When it
-                lands, click “Got it” and type what actually arrived, even if it came late or smaller.
+                Freelance pay, a refund, the $40 a friend owes you. Mark it as waiting, and when it lands, click Got
+                it and enter what actually arrived, even if it came late or short.
               </p>
               <ul className="dots">
-                <li>Waiting payments sit in Overview with Got it and Skip buttons</li>
-                <li>Your balance only changes once you confirm</li>
+                <li>Waiting payments sit in Overview until you click Got it or Skip</li>
+                <li>Your balance moves only when you confirm</li>
                 <li>A reminder on the day it&apos;s due</li>
               </ul>
               <a className="feature-guide" href="/guides/expected-income/">
@@ -205,10 +206,10 @@ export default function Home() {
 
           <div className="feature quick-add-feature" id="quick-add">
             <div className="copy">
-              <h2>Quick-add for everyday spending.</h2>
+              <h2>Log your usual coffee in one keystroke.</h2>
               <p>
-                Add a coffee once, then choose Save as Button. From then on it&apos;s one click, or ⌘1 to ⌘9 from the
-                menu bar panel or anywhere in the Pocket window, and your balance updates right away.
+                Add a coffee once and choose Save as Button. After that it&apos;s one click, or ⌘1 to ⌘9 from the menu
+                bar panel or the Pocket window, and your balance updates right away.
               </p>
               <a className="feature-guide" href="/guides/quick-add-spending/">
                 Guide: set up quick-add buttons <span aria-hidden="true">→</span>
@@ -233,10 +234,10 @@ export default function Home() {
 
           <div className="feature categories-feature" id="categories">
             <div className="copy">
-              <h2>Categories, month by month.</h2>
+              <h2>See where each month went.</h2>
               <p>
-                See how much went to food, bills and other categories, and where your money came from. Switch
-                between Month and All time, or click a category to see its entries.
+                Pocket totals your spending by category and shows where your income came from. Switch between
+                Month and All time, or click a category to see every entry in it.
               </p>
             </div>
             <figure className="categories-recording">
@@ -259,21 +260,21 @@ export default function Home() {
 
         <section className="section wrap" id="private">
           <h2 className="two-tone">
-            Free. <span>Every feature in it.</span>
+            Free, <span>with every feature.</span>
             <br />
-            <span>No account, and Pocket is</span> yours.
+            <span>Your data lives in</span> one file on your Mac.
           </h2>
           <div className="local-default plan">
             <div className="local-copy">
               <h3>On your Mac</h3>
-              <p>Download Pocket, enter your starting balance, and start recording. No account or server to set up.</p>
+              <p>Download Pocket, type in today&apos;s balance, and add your first entry. Everything runs on your Mac.</p>
               <DownloadButton />
               <a className="feature-guide plan-guide" href="/guides/back-up-your-data/">
                 Back up or move to a new Mac <span aria-hidden="true">→</span>
               </a>
             </div>
             <ul className="checks">
-              <Check>Your money data stays in one file on your Mac</Check>
+              <Check>One file on your Mac holds all your money data</Check>
               <Check>Works offline</Check>
               <Check>Seven daily backups you can restore</Check>
               <Check>Export, import or erase any time</Check>
@@ -281,11 +282,11 @@ export default function Home() {
           </div>
           <details className="sync-details">
             <summary>
-              <span>Optional: see your balance on your phone</span>
+              <span>Want your balance on your phone too?</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
             </summary>
             <div className="sync-content">
-              <p>Sync requires a server you run, using a free Supabase project. Set it up when you want access from your phone or another computer.</p>
+              <p>Connect Pocket to your own free Supabase project, then pair your phone with a 6-digit code. Your Mac keeps a full copy and keeps working offline.</p>
               <ul className="checks">
                 <Check>The Pocket web app on your phone or any computer</Check>
                 <Check>Pair a device with a 6-digit code</Check>
@@ -299,8 +300,8 @@ export default function Home() {
         </section>
 
         <section className="home-guides wrap" id="guides">
-          <h2>A few useful things to start with.</h2>
-          <p className="section-lead">Set up your balance, make everyday spending easier to record, and keep expected money in its place.</p>
+          <h2>Learn Pocket in three short guides.</h2>
+          <p className="section-lead">Set your starting balance, turn your usual purchases into one-keystroke buttons, and track money you&apos;re still waiting for.</p>
           <GuideCards slugs={["getting-started", "quick-add-spending", "expected-income"]} />
           <a href="/guides/">All Pocket guides <span aria-hidden="true">↗</span></a>
         </section>
@@ -312,8 +313,8 @@ export default function Home() {
 
         <section className="closing wrap home-closing">
           <img className="closing-sculpture" src="/pocket-sculpture.webp" alt="" width={200} height={200} loading="lazy" />
-          <h2>Ready to know what&apos;s left?</h2>
-          <p>Free for macOS 14 or later, on Apple Silicon and Intel.</p>
+          <h2>Know what&apos;s left before you spend it.</h2>
+          <p>Free for macOS 14 or later, on Apple Silicon and Intel. A {DMG_SIZE} download.</p>
           <div className="cta">
             <DownloadButton />
             <a className="pill pill-soft" href={REPO_URL}>

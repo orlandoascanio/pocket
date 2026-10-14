@@ -13,7 +13,7 @@ const display = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Pocket for Mac — Free Menu Bar Money Tracker",
+  title: "Pocket for Mac: Free Menu Bar Money Tracker",
   description: DESCRIPTION,
   applicationName: "Pocket",
   alternates: { canonical: "/" },
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     url: "/",
     siteName: "Pocket",
     title: "Pocket for Mac",
-    description: "Your balance in the menubar, and how long it will last. Your money stays on your Mac.",
+    description: "See how much money you have left, right in your Mac menu bar. Free, and your data stays on your Mac.",
     images: [{ url: "/screenshot-overview.png", width: 1600, height: 1283, alt: "Pocket's main window on a Mac" }],
   },
   twitter: { card: "summary_large_image" },
