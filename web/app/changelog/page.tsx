@@ -5,7 +5,7 @@ import { DownloadDialog } from "@/components/DownloadDialog";
 import { PocketCharacter } from "@/components/PocketCharacter";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
-import { ISSUES_URL, SITE_URL } from "@/lib/site";
+import { ISSUES_URL, REPO_URL, SITE_URL } from "@/lib/site";
 import "./changelog.css";
 
 export const metadata: Metadata = {
@@ -40,7 +40,7 @@ export default function ChangelogPage() {
         </header>
         <Changelog />
         <div className="changes-close">
-          <div><h2>Something we can improve?</h2><p>Tell us what happened, or what would help.</p></div>
+          <div><h2>Something we can improve?</h2><p>Tell us what happened, or what would help. Like Pocket? <a href={REPO_URL} data-star>Star it on GitHub</a>.</p></div>
           <a className="pill pill-line" href={ISSUES_URL}>Share feedback <span aria-hidden="true">↗</span></a>
         </div>
       </main>

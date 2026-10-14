@@ -50,6 +50,9 @@ export function SiteFooter() {
         <nav className="foot-col" aria-label="Project">
           <h3>Project</h3>
           <a href={REPO_URL}>Source code</a>
+          <a href={REPO_URL} data-star>
+            Star on GitHub
+          </a>
           <a href="/changelog/">Changelog</a>
           <a href={RELEASES_URL}>All releases</a>
           <a href="https://www.orlandoascanio.com">Made by Orlando Ascanio</a>

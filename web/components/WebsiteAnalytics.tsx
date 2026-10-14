@@ -115,7 +115,8 @@ export function WebsiteAnalytics() {
       const link = event.target instanceof Element ? event.target.closest("a") : null;
       if (!link) return;
       const location = link.closest(".dl") ? "install_dialog" : link.closest(".nav-shell") ? "navigation" : link.closest(".hero") ? "hero" : link.closest("footer") ? "footer" : "content";
-      if (link.href === DOWNLOAD_URL) trackWebsiteEvent("download_clicked", { location, download_target: "latest" });
+      if (link.hasAttribute("data-star")) trackWebsiteEvent("star_link_opened", { location });
+      else if (link.href === DOWNLOAD_URL) trackWebsiteEvent("download_clicked", { location, download_target: "latest" });
       else if (link.href === SELF_HOSTING_URL || (link.origin === window.location.origin && link.pathname === SELF_HOSTING_GUIDE_URL)) trackWebsiteEvent("self_hosting_opened", { location });
       else if (link.pathname === "/app/") trackWebsiteEvent("web_app_opened", { location });
       else if (link.href === REPO_URL) trackWebsiteEvent("source_opened", { location });

@@ -19,7 +19,7 @@ export default function PrivacyPage() {
       <h2>Your money data</h2>
       <p>Pocket stores your money on your Mac by default. If you enable optional sync, your chosen server stores the shared copy. The paired web app at /app/ has no Google Analytics or Sentry integration.</p>
       <h2>Optional website analytics</h2>
-      <p>When configured, Google Analytics loads only after you choose Allow analytics. It measures public page visits and clicks on downloads, the source code, the self-hosting guide, and the web app link. A download click records intent; it does not confirm a completed download or installation.</p>
+      <p>When configured, Google Analytics loads only after you choose Allow analytics. It measures public page visits and clicks on downloads, the source code, Star on GitHub links, the self-hosting guide, and the web app link. A download click records intent; it does not confirm a completed download or installation.</p>
       <p>Analytics can use first-party cookies and process technical information about your browser, device, and visit. The website omits URL query strings and fragments from its analytics events. It does not send your balances, entries, or pairing details.</p>
       <p>Your choice is saved in this browser for 180 days. We ask again when it expires or this site’s saved data is cleared. Use Analytics preferences in the footer to change it anytime. Choosing No thanks stops analytics and removes this site’s Google Analytics cookies. It does not delete measurements already received by Google.</p>
       <h2>Website error reports</h2>
