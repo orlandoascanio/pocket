@@ -51,6 +51,13 @@ If Pocket helps you, a star on GitHub helps other people find it." --latest
 
 3. Check it: `https://github.com/orlandoascanio/pocket/releases/latest/download/Pocket.dmg` should download the new version.
 
+## Pocket for iPhone and Android
+
+`mobile/` is the phone app, built with React Native and Expo. Like the Mac, it keeps your money in one JSON file
+on the phone (the same format, so exports move between them), or connects to a Pocket server with a 6-digit
+pairing code. Overview, Plan, Categories and Settings, with the same money logic as the Mac
+(`mobile/src/core/`, tested against the Mac's cases). See **[mobile/README.md](mobile/README.md)**.
+
 ## Web app and server
 
 - `web/`: the website at [pocketleft.app](https://pocketleft.app), a Next.js site hosted on Vercel (project Root Directory: `web`).
