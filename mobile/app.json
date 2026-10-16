@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Pocket",
+    "slug": "pocket",
+    "scheme": "pocket",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#f6f5f2",
+    "ios": {
+      "bundleIdentifier": "com.orlandoascanio.pocket.mobile",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.orlandoascanio.pocket.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#145236",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-localization",
+      "expo-sharing",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "backgroundColor": "#f6f5f2",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#121212"
+          }
+        }
+      ],
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "enableRemoteNotifications": false,
+          "color": "#1d6b47"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
