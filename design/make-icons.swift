@@ -64,4 +64,17 @@ for s in [16, 32, 128, 256, 512] {
     write(macIcon(s * 2), "\(iconset)/icon_\(s)x\(s)@2x.png")
 }
 write(macIcon(1024), "design/icon-mac-preview.png")
+
+// Pocket for iPhone and Android (mobile/, an Expo app). iOS masks the full-bleed square itself; Android's
+// adaptive icon gets the same art as its foreground (the coin and pocket sit inside the safe zone) on a green
+// background. The splash screen shows the pocket and coin alone.
+let mark = NSImage(data: String(decoding: svg, as: UTF8.self)
+    .replacingOccurrences(of: #"<rect width="1024" height="1024" fill="url(#bg)"/>"#, with: "")
+    .data(using: .utf8)!)!
+write(fullBleed(1024), "mobile/assets/icon.png")
+write(fullBleed(1024), "mobile/assets/android-icon-foreground.png")
+write(render(1024) { r in NSColor(red: 0.08, green: 0.32, blue: 0.21, alpha: 1).setFill(); r.fill() },
+      "mobile/assets/android-icon-background.png")
+write(render(1024) { mark.draw(in: $0) }, "mobile/assets/splash-icon.png")
+write(fullBleed(48), "mobile/assets/favicon.png")
 print("icons written")
