@@ -16,6 +16,9 @@ and sends changes in order once it's back online (`account-sync.json` holds the 
 wait for review instead of being sent again, so nothing posts twice. The access key lives in the Keychain.
 
 - Menubar balance, plus a window with Overview (history you can search and filter, ⌘F), Plan (forecast chart), Insights and Settings.
+- Check for Updates downloads the latest GitHub release, checks it is Pocket signed with the Developer ID at the offered
+  version (`codesign` with a team and bundle ID requirement), replaces the app and relaunches. When the app can't be
+  replaced in place (Downloads, the disk image), it opens the downloaded disk image instead.
 - Repeating money that can wait for confirmation, quick-add buttons (⌘1–⌘9), categories, reminders when money is due.
 - `swift test` (in `mac/`) runs the money-logic tests and the app tests, including sync against a mock server
   (`Tests/PocketAppTests/AccountSyncTests.swift`). Set `POCKET_SNAPSHOT_DIR` to also render screen previews.
