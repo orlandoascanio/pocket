@@ -216,7 +216,7 @@
   .details-btn[aria-expanded="true"]::after { transform: translateY(3px) rotate(-135deg); }
   .details-sum { margin-left: auto; color: var(--muted); }
   .details-in { padding: 2px 0 12px; }
-  .details-in .chips { margin-top: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+  .details-in .chips { margin-top: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
   .details-in .chips button { padding: 7px 2px; white-space: nowrap; }
   .detail-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
   .seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; background: var(--chip); border-radius: 11px; padding: 3px; gap: 3px; }
