@@ -85,6 +85,13 @@ struct SettingsView: View {
                         if !store.connected { Button("Import…", action: chooseImport) }
                     }
                 }
+                LabeledContent {
+                    Button("Export CSV…") { message = saveCSV(store, entries: store.ledger.sortedEntries, name: "Pocket \(store.today.iso)") }
+                        .disabled(store.loadError != nil || store.ledger.entries.isEmpty)
+                } label: {
+                    Text("Spreadsheet")
+                    Text("Every entry as a CSV file for Numbers, Excel or Google Sheets.")
+                }
                 if !store.connected {
                     LabeledContent {
                         let backups = store.backups
@@ -200,6 +207,21 @@ struct SettingsView: View {
         } catch {
             message = "Couldn't import: \(error.localizedDescription) Your saved data is unchanged."
         }
+    }
+}
+
+/// Asks where to save a CSV of `entries`. Returns what to tell the person (nil when they cancel).
+@MainActor
+func saveCSV(_ store: Store, entries: [Entry], name: String) -> String? {
+    let panel = NSSavePanel()
+    panel.allowedContentTypes = [.commaSeparatedText]
+    panel.nameFieldStringValue = name + ".csv"
+    guard panel.runModal() == .OK, let url = panel.url else { return nil }
+    do {
+        try store.exportCSV(entries, to: url)
+        return "Exported \(entries.count) \(entries.count == 1 ? "entry" : "entries") to \(url.lastPathComponent)."
+    } catch {
+        return "Couldn't export: \(error.localizedDescription)"
     }
 }
 
