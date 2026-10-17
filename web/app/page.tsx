@@ -46,10 +46,11 @@ const jsonLd = [
       "Recorded balance in the Mac menu bar",
       "Manual spending and income entries with categories",
       "Quick-add buttons with Command-1 through Command-9",
-      "Weekly, every-two-weeks, monthly and yearly repeating payments",
+      "Weekly, every-two-weeks, monthly, quarterly and yearly repeating payments",
       "Expected payments that wait for confirmation",
-      "Balance forecast for the next 1, 3, 6 or 12 months",
-      "Local data file with seven daily backups and JSON export/import",
+      "Balance forecast for the next 1, 3, 6 or 12 months, including usual everyday spending",
+      "History search and filters by name, category, amount and date",
+      "Local data file with seven daily backups, JSON export/import and CSV export",
       "Optional self-hosted sync with a Pocket web app for phones",
     ],
     operatingSystem: "macOS 14 or later",
@@ -105,7 +106,7 @@ export default function Home() {
               <a className="announce" href="/changelog/">
                 <span className="announce-tag">New</span>
                 <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
-                <span className="announce-text">Check for updates from inside Pocket.</span>
+                <span className="announce-text">Forecasts that count your everyday spending.</span>
                 <span className="announce-arrow" aria-hidden="true">
                   ↗
                 </span>
@@ -157,12 +158,13 @@ export default function Home() {
               <h2>See your balance after rent, before rent is due.</h2>
               <p>
                 Add your bills, subscriptions and expected pay once. Pocket shows what your balance will be after
-                each one, up to 12 months ahead.
+                each one, up to 12 months ahead, and takes out what you usually spend in between.
               </p>
               <ul className="dots">
                 <li>A chart of where your balance is heading, 1 to 12 months out</li>
+                <li>Counts your usual everyday spending, learned from your recent weeks</li>
                 <li>Every upcoming payment, with your balance right after it</li>
-                <li>Pause, skip or stop anything that repeats</li>
+                <li>Weekly to yearly, including every 3 months. Pause, skip or stop any of it</li>
               </ul>
             </div>
             <div className="upcoming" aria-label="Example of payments coming up">
@@ -240,7 +242,8 @@ export default function Home() {
               <h2>See where each month went.</h2>
               <p>
                 Pocket totals your spending by category and shows where your income came from. Switch between
-                Month and All time, or click a category to see every entry in it.
+                Month and All time, or click a category to see every entry in it. Search History by name or amount,
+                and export what you find as a CSV spreadsheet.
               </p>
             </div>
             <figure className="categories-recording">
@@ -280,7 +283,7 @@ export default function Home() {
               <Check>One file on your Mac holds all your money data</Check>
               <Check>Works offline</Check>
               <Check>Seven daily backups you can restore</Check>
-              <Check>Export, import or erase any time</Check>
+              <Check>Export a backup or a CSV spreadsheet any time</Check>
             </ul>
           </div>
           <details className="sync-details">
