@@ -5,12 +5,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATEGORY_START, categoryName, categorySymbol } from "../../core/categories";
 import { relativeDay, shortDay } from "../../core/day";
 import { waiting } from "../../core/engine";
+import { EMPTY_QUERY, matches, queryIsEmpty, type EntryQuery } from "../../core/history";
 import { line } from "../../core/lines";
 import type { Entry, Occurrence, Preset } from "../../core/models";
 import { KEYS, getItem, setItem } from "../../data/storage";
 import { store, useMoney, usePocket } from "../../data/store";
 import { Big, Button, Card, Chip, Empty, MoneyRow, SectionTitle, tap, useToast } from "../../ui/components";
 import { useRunway, useSpentThisMonth } from "../../ui/derived";
+import { HistorySearch, shareCSV } from "../../ui/HistorySearch";
 import { Icon } from "../../ui/Icon";
 import { PocketCharacter } from "../../ui/PocketCharacter";
 import { SyncBadge } from "../../ui/SyncBadge";
@@ -29,6 +31,7 @@ export default function Overview() {
   const [shown, setShown] = useState(PAGE);
   const [refreshing, setRefreshing] = useState(false);
   const [greeting, setGreeting] = useState<string | null>(null);
+  const [query, setQuery] = useState<EntryQuery>(EMPTY_QUERY);
   const due = useMemo(() => waiting(s.upcoming, s.today), [s.upcoming, s.today]);
 
   // Say hello once in the morning or late at night, or ask about money that's due.
@@ -49,7 +52,16 @@ export default function Overview() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const days = useMemo(() => groupByDay(s.entries.slice(0, shown), s.balance), [s.entries, s.balance, shown]);
+  const searching = !queryIsEmpty(query);
+  const found = useMemo(() => (searching ? s.entries.filter((e) => matches(query, e)) : s.entries), [s.entries, query, searching]);
+  const after = useMemo(() => balanceAfter(s.entries, s.balance), [s.entries, s.balance]);
+  const days = useMemo(() => groupByDay(found.slice(0, shown), after), [found, after, shown]);
+  const foundNet = useMemo(() => found.reduce((sum, e) => sum + e.cents, 0), [found]);
+  const changeQuery = (q: EntryQuery) => { setQuery(q); setShown(PAGE); };
+  const exportFound = async () => {
+    const problem = await shareCSV(found, `Pocket search ${s.today}`);
+    if (problem) toast({ text: problem });
+  };
 
   const addPreset = async (p: Preset) => {
     if (p.cents == null) {
@@ -182,9 +194,32 @@ export default function Overview() {
       ) : null}
 
       <SectionTitle title="History" />
+      {s.entries.length ? <HistorySearch query={query} onChange={changeQuery} entries={s.entries} today={s.today} /> : null}
+      {searching && found.length ? (
+        <View style={styles.results}>
+          <Text style={{ color: c.muted, fontSize: 14, fontVariant: ["tabular-nums"], flex: 1 }}>
+            {found.length} {found.length === 1 ? "entry" : "entries"} · {money.string(foundNet, true)}
+          </Text>
+          <Pressable onPress={exportFound} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Export these ${found.length} entries as a spreadsheet`}
+            style={({ pressed }) => [styles.resultAction, { opacity: pressed ? 0.6 : 1 }]}>
+            <Icon name="square.and.arrow.up" size={15} color={c.accent} />
+            <Text style={{ color: c.accent, fontSize: 14, fontWeight: "600" }}>Export</Text>
+          </Pressable>
+          <Pressable onPress={() => changeQuery(EMPTY_QUERY)} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.resultAction, { opacity: pressed ? 0.6 : 1 }]}>
+            <Text style={{ color: c.accent, fontSize: 14, fontWeight: "600" }}>Clear</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {s.entries.length === 0 ? (
         <Card>
           <Empty icon="hand.tap" title="Nothing yet" body="Add what you spend and what you get. Your balance updates right away." />
+        </Card>
+      ) : found.length === 0 ? (
+        <Card>
+          <Empty icon="magnifyingglass" title="Nothing matches" body="Try other words or clear the filters." />
+          <View style={{ padding: 14, paddingTop: 0 }}>
+            <Button kind="secondary" title="Clear search and filters" onPress={() => changeQuery(EMPTY_QUERY)} />
+          </View>
         </Card>
       ) : (
         days.map((d) => (
@@ -214,8 +249,8 @@ export default function Overview() {
           </View>
         ))
       )}
-      {s.entries.length > shown ? (
-        <Button kind="secondary" title={`Show ${Math.min(PAGE, s.entries.length - shown)} more`} onPress={() => setShown((n) => n + PAGE)} />
+      {found.length > shown ? (
+        <Button kind="secondary" title={`Show ${Math.min(PAGE, found.length - shown)} more`} onPress={() => setShown((n) => n + PAGE)} />
       ) : null}
     </ScrollView>
   );
@@ -270,19 +305,28 @@ function LockedBanner({ message }: { message: string }) {
   );
 }
 
-/** History grouped by day, with each entry's balance right after it. */
-function groupByDay(page: Entry[], balance: number) {
-  const out: { day: string; total: number; rows: { e: Entry; after: number }[] }[] = [];
+/** The balance right after each entry (entries newest first). */
+function balanceAfter(entries: Entry[], balance: number) {
+  const out = new Map<string, number>();
   let after = balance;
+  for (const e of entries) {
+    out.set(e.id, after);
+    after -= e.cents;
+  }
+  return out;
+}
+
+/** History grouped by day, with each entry's balance right after it. */
+function groupByDay(page: Entry[], after: Map<string, number>) {
+  const out: { day: string; total: number; rows: { e: Entry; after: number }[] }[] = [];
   for (const e of page) {
     let g = out[out.length - 1];
     if (!g || g.day !== e.day) {
       g = { day: e.day, total: 0, rows: [] };
       out.push(g);
     }
-    g.rows.push({ e, after });
+    g.rows.push({ e, after: after.get(e.id) ?? 0 });
     g.total += e.cents;
-    after -= e.cents;
   }
   return out;
 }
@@ -300,5 +344,7 @@ const styles = StyleSheet.create({
   },
   addIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   waitActions: { flexDirection: "row", gap: 8, paddingHorizontal: 14 },
+  results: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 4, marginBottom: 10 },
+  resultAction: { flexDirection: "row", alignItems: "center", gap: 4 },
   dayHead: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 4, marginBottom: 6 },
 });
