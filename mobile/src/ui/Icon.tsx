@@ -51,6 +51,9 @@ const MATERIAL: Record<string, string> = {
   "pencil": "edit",
   "hand.tap": "touch_app",
   "questionmark.circle": "help",
+  "magnifyingglass": "search",
+  "xmark.circle.fill": "cancel",
+  "line.3.horizontal.decrease": "filter_list",
 };
 
 export function Icon({ name, size = 18, color, weight = "medium" }: { name: string; size?: number; color: ColorValue; weight?: SymbolWeight }) {
