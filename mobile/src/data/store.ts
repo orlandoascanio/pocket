@@ -11,12 +11,13 @@ import * as Localization from "expo-localization";
 import { CATEGORY_START } from "../core/categories";
 import { today as todayDay, type Day } from "../core/day";
 import * as engine from "../core/engine";
+import { entriesCSV } from "../core/history";
 import {
   ruleFinished, ruleNext, ruleView,
   type Cadence, type Entry, type Ledger, type Occurrence, type Preset, type RuleView,
 } from "../core/models";
 import { CURRENCIES, Money, type Cents } from "../core/money";
-import { exportFile, readLedger, setAsideUnreadable, UnreadableLedger, writeLedger } from "./ledgerFile";
+import { exportCSVFile, exportFile, readLedger, setAsideUnreadable, UnreadableLedger, writeLedger } from "./ledgerFile";
 import {
   DEFAULT_SERVER, ServerError, cleanServer, convertState, rpc, toAmount,
   type Device as PairedDevice, type Server, type ServerState,
@@ -47,6 +48,8 @@ export interface State {
   presets: Preset[];
   balance: Cents;
   range: Range;
+  /** Whether the forecast counts everyday spending, not only scheduled payments. */
+  includeEveryday: boolean;
   server: Server;
   sync: SyncStatus;
   /** Set when saved data couldn't be read; nothing is written until it's resolved. */
@@ -84,7 +87,7 @@ function defaultCurrency(): string {
 class PocketStore {
   private state: State = {
     ready: false, onboarded: false, mode: "local", currency: "USD", today: todayDay(),
-    entries: [], rules: [], upcoming: [], presets: [], balance: 0, range: 91,
+    entries: [], rules: [], upcoming: [], presets: [], balance: 0, range: 91, includeEveryday: true,
     server: DEFAULT_SERVER, sync: { state: "idle", waiting: 0 },
   };
   private listeners = new Set<() => void>();
@@ -124,12 +127,12 @@ class PocketStore {
   }
 
   private async doLoad() {
-    const [mode, onboarded, range, server, displayCurrency, key] = await Promise.all([
-      getItem(KEYS.mode), getItem(KEYS.onboarded), getItem(KEYS.range), getJSON<Server>(KEYS.server),
+    const [mode, onboarded, range, everyday, server, displayCurrency, key] = await Promise.all([
+      getItem(KEYS.mode), getItem(KEYS.onboarded), getItem(KEYS.range), getItem(KEYS.everyday), getJSON<Server>(KEYS.server),
       getItem(KEYS.displayCurrency), getSecret(KEYS.accessKey),
     ]);
     const r = Number(range) as Range;
-    this.set({ range: RANGES.includes(r) ? r : 91, server: (server && cleanServer(server.url, server.key)) || DEFAULT_SERVER });
+    this.set({ range: RANGES.includes(r) ? r : 91, includeEveryday: everyday !== "0", server: (server && cleanServer(server.url, server.key)) || DEFAULT_SERVER });
 
     let saved: Ledger | null = null;
     let loadError: string | undefined;
@@ -482,6 +485,16 @@ class PocketStore {
   async setRange(range: Range) {
     this.set({ range });
     await setItem(KEYS.range, String(range));
+  }
+
+  async setIncludeEveryday(includeEveryday: boolean) {
+    this.set({ includeEveryday });
+    await setItem(KEYS.everyday, includeEveryday ? "1" : "0");
+  }
+
+  /** Entries as a CSV spreadsheet to share (all of them, or what History shows). Works connected too. */
+  async exportCSV(entries: Entry[], name = `Pocket ${this.state.today}`) {
+    return exportCSVFile(entriesCSV(entries, this.state.currency), name);
   }
 
   /** The ledger as a file to share (local mode). */
