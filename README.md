@@ -15,7 +15,7 @@ While connected, the server is the main copy. The Mac keeps a full copy (`accoun
 and sends changes in order once it's back online (`account-sync.json` holds the outbox). Requests that time out
 wait for review instead of being sent again, so nothing posts twice. The access key lives in the Keychain.
 
-- Menubar balance, plus a window with Overview, Plan (forecast chart), Insights and Settings.
+- Menubar balance, plus a window with Overview (history you can search and filter, ⌘F), Plan (forecast chart), Insights and Settings.
 - Repeating money that can wait for confirmation, quick-add buttons (⌘1–⌘9), categories, reminders when money is due.
 - `swift test` (in `mac/`) runs the money-logic tests and the app tests, including sync against a mock server
   (`Tests/PocketAppTests/AccountSyncTests.swift`). Set `POCKET_SNAPSHOT_DIR` to also render screen previews.
@@ -75,9 +75,12 @@ pairing code. Overview, Plan, Categories and Settings, with the same money logic
 
 What it does:
 - One-time spending and income on any date; future dates count when the day arrives.
-- Repeating bills, subscriptions and income (weekly, every 2 weeks, monthly, yearly), with or without an end.
+- Repeating bills, subscriptions and income (weekly, every 2 weeks, monthly, every 3 months, yearly), with or without an end.
   Income can wait for you to confirm it arrived, then "Got it" logs the real amount and date. Pause, skip, or stop any of them.
-- Categories, a monthly breakdown, and a forecast (1, 3, 6 or 12 months) of when the money runs out.
+- Categories, a monthly breakdown, and a forecast (1, 3, 6 or 12 months) of when the money runs out. On the Mac and phone
+  the forecast also takes out your usual everyday spending (the median week of the last 12 full weeks of unscheduled
+  spending, once there are two weeks of entries) and estimates how many months of money are left.
+- History search and filters (words, money in or out, category, date range) and CSV export, on the Mac and phone.
 - Quick-add buttons (keys 1–9 on the web, ⌘1–⌘9 on the Mac) and keyboard shortcuts (press ? on the web).
 - New entries made offline wait on the device and sync when it's back online.
 - Devices pair with a 6-digit code from one that's already set up, and can be removed from Settings.
