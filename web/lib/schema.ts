@@ -9,9 +9,9 @@ export const AUTHOR = {
   sameAs: ["https://github.com/orlandoascanio"],
 };
 
-// Other pages that describe this same app. Add Product Hunt, AlternativeTo, MacUpdate or a
-// portfolio product page here once they exist: matching profiles are how AI engines learn they're one app.
-export const PROFILES = [REPO_URL];
+// Other pages that describe this same app. Add Product Hunt, AlternativeTo or MacUpdate here once
+// they exist: matching profiles are how AI engines learn they're one app.
+export const PROFILES = [REPO_URL, "https://www.orlandoascanio.com/products/pocket"];
 
 // "Pocket" is a crowded name, so say which Pocket this is.
 export const ALTERNATE_NAMES = ["Pocket", "Pocket Left", "pocketleft"];
