@@ -1,12 +1,13 @@
 import { addDays, addMonths, addYears, type Day } from "./day";
 import type { Cents } from "./money";
 
-export type Cadence = "weekly" | "biweekly" | "monthly" | "yearly";
+export type Cadence = "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
 
 export const CADENCES: Record<Cadence, { name: string; unit: string; perMonth: number }> = {
   weekly: { name: "Weekly", unit: "week", perMonth: 52 / 12 },
   biweekly: { name: "Every 2 weeks", unit: "2 weeks", perMonth: 26 / 12 },
   monthly: { name: "Monthly", unit: "month", perMonth: 1 },
+  quarterly: { name: "Every 3 months", unit: "3 months", perMonth: 1 / 3 },
   yearly: { name: "Yearly", unit: "year", perMonth: 1 / 12 },
 };
 
@@ -16,6 +17,7 @@ export function step(cadence: Cadence, anchor: Day, n: number): Day {
     case "weekly": return addDays(anchor, 7 * n);
     case "biweekly": return addDays(anchor, 14 * n);
     case "monthly": return addMonths(anchor, n);
+    case "quarterly": return addMonths(anchor, 3 * n);
     case "yearly": return addYears(anchor, n);
   }
 }
