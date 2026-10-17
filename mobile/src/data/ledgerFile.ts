@@ -88,6 +88,15 @@ function backupOncePerDay(current: File, day: string) {
   }
 }
 
+/** Writes a CSV spreadsheet to a temporary file to hand to the share sheet. */
+export async function exportCSVFile(csv: string, name: string): Promise<File> {
+  const f = new File(Paths.cache, `${name}.csv`);
+  if (f.exists) f.delete();
+  f.create();
+  await f.write(csv);
+  return f;
+}
+
 /** Writes the ledger to a temporary file to hand to the share sheet. */
 export async function exportFile(l: Ledger, day: string): Promise<File> {
   const f = new File(Paths.cache, `Pocket ${day}.json`);
