@@ -14,18 +14,21 @@ out once it's back online. The access key lives in the Keychain (Android Keystor
 phone's own ledger. A link like `pocket://connect?server=…&apikey=…&code=…` fills in the server and the code.
 
 - Overview: money left, the pocket, quick-add buttons, payments waiting for confirmation, and history with the
-  balance after each entry.
-- Plan: how long the money lasts (1, 3, 6 or 12 months), a forecast chart you can scrub, what's coming up, and
-  everything repeating or planned.
+  balance after each entry. Search History and filter it by money in or out, date range and category, then export
+  what you found as a CSV spreadsheet.
+- Plan: how long the money lasts (1, 3, 6 or 12 months), a forecast chart you can scrub that can count your usual
+  everyday spending, roughly how many months of money are left, what's coming up, and everything repeating or planned.
 - Categories: spending and money in by month or all time.
-- Settings: sync and paired devices, currency, payment reminders, quick-add buttons, export / import / erase.
+- Settings: sync and paired devices, currency, payment reminders, quick-add buttons, export / import / erase, and
+  a CSV spreadsheet export (also while connected).
 - Reminders (off until turned on): at 10 AM on the day money you said you'd confirm is due, a notification asks
   whether it arrived; tapping it opens "Got it". Scheduled on the phone, like Pocket for Mac's (`src/core/reminders.ts`).
 
 ## Code
 
 - `src/core/`: the money logic, ported from `mac/Sources/PocketCore` (same cents, day math, schedules, forecast).
-  `src/core/__tests__/engine.test.ts` mirrors `mac/Tests/PocketCoreTests/EngineTests.swift`.
+  `src/core/__tests__/engine.test.ts` mirrors `mac/Tests/PocketCoreTests/EngineTests.swift`, and
+  `forecast-history.test.ts` mirrors `ForecastAndHistoryTests.swift` (everyday spending, search, CSV).
 - `src/data/store.ts`: the one place screens read from and write through, for both the local ledger and a server.
 - `src/app/`: screens (Expo Router). `src/ui/`: theme, components, the pocket character, the forecast chart.
 
