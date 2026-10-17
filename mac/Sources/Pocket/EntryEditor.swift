@@ -3,10 +3,17 @@ import PocketCore
 import SwiftUI
 
 enum Frequency: String, CaseIterable, Identifiable {
-    case once, weekly, biweekly, monthly, yearly
+    case once, weekly, biweekly, monthly, quarterly, yearly
     var id: String { rawValue }
     var cadence: Cadence? { Cadence(rawValue: rawValue) }
-    var name: String { self == .once ? "Once" : self == .biweekly ? "2 weeks" : cadence!.name }
+    var name: String {
+        switch self {
+        case .once: "Once"
+        case .biweekly: "2 weeks"
+        case .quarterly: "3 months"
+        default: cadence!.name
+        }
+    }
 }
 
 struct EntryDraft: Equatable {
@@ -326,7 +333,7 @@ struct EntryEditor: View {
                     VStack(alignment: .leading, spacing: 6) {
                         fieldLabel("Repeat")
                         Picker("Repeat", selection: $state.frequency) {
-                            ForEach(Frequency.allCases) { Text($0 == .biweekly ? "Every 2 weeks" : $0.name).tag($0) }
+                            ForEach(Frequency.allCases) { Text($0.cadence?.name ?? "Once").tag($0) }
                         }
                         .labelsHidden().pickerStyle(.menu).controlSize(.large)
                     }
