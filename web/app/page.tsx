@@ -51,6 +51,7 @@ const jsonLd = [
       "Balance forecast for the next 1, 3, 6 or 12 months, including usual everyday spending",
       "History search and filters by name, category, amount and date",
       "Local data file with seven daily backups, JSON export/import and CSV export",
+      "One-click updates that download, check and install inside the app",
       "Optional self-hosted sync with a Pocket web app for phones",
     ],
     operatingSystem: "macOS 14 or later",
@@ -106,7 +107,7 @@ export default function Home() {
               <a className="announce" href="/changelog/">
                 <span className="announce-tag">New</span>
                 <b>Pocket {VERSION.replace(/\.0$/, "")}</b>
-                <span className="announce-text">Forecasts that count your everyday spending.</span>
+                <span className="announce-text">Updates now install themselves in one click.</span>
                 <span className="announce-arrow" aria-hidden="true">
                   ↗
                 </span>
