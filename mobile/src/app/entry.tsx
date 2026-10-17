@@ -17,6 +17,7 @@ const REPEATS: { value: Repeat; label: string }[] = [
   { value: "weekly", label: "Weekly" },
   { value: "biweekly", label: "2 wks" },
   { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "3 mo" },
   { value: "yearly", label: "Yearly" },
 ];
 
