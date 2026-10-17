@@ -215,7 +215,7 @@ export const GUIDES: Guide[] = [
         title: "Update the plan when expectations change",
         paragraphs: [
           "If a payment will come later, click it in Plan and change its date. To skip the next payment, pause a repeating one or stop it, use the ⋯ button next to it in Plan.",
-          "Check uncertain income and [missing or duplicate entries](/guides/getting-started/#keep-current) before relying on the forecast. Pocket projects the amounts and dates you enter; purchases you have not recorded or planned are left out.",
+          "Check uncertain income and [missing or duplicate entries](/guides/getting-started/#keep-current) before relying on the forecast. Pocket projects the amounts and dates you enter. Once you have two weeks of entries, Plan also takes out your usual everyday spending (you can turn that off under the chart); one-off purchases you have not recorded or planned are left out.",
         ],
       },
     ],
@@ -246,7 +246,7 @@ export const GUIDES: Guide[] = [
         title: "Add spending from the menu bar",
         paragraphs: [
           "Click the number to open the menu bar panel. The amount field is ready as soon as it opens: type the amount, a description and press Return. Your quick-add buttons sit above it, and Command-1 through Command-9 use the first nine.",
-          "Under Money left, a forecast line says “Runs out on” or “Lasts past” a date, based on the payments you have scheduled. Click it to open Plan. The panel also shows how many payments are waiting for you and your three most recent entries.",
+          "Under Money left, a forecast line says “Runs out on” or “Lasts past” a date, based on the payments you have scheduled and your usual everyday spending. Click it to open Plan. The panel also shows how many payments are waiting for you and your three most recent entries.",
         ],
         table: {
           label: "Keyboard shortcuts in the menu bar panel",
