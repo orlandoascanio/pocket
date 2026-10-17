@@ -13,7 +13,7 @@ const FACTS = [
   `- Platform: macOS 14 Sonoma or later, Apple Silicon and Intel. Signed and notarized by Apple.`,
   `- Latest version: ${VERSION} (${RELEASES[0].date}). Download: ${DOWNLOAD_URL} (${DMG_SIZE} .dmg).`,
   `- How it works: you record money in and out by hand. Pocket does not connect to banks.`,
-  `- Data: one local file (~/Library/Application Support/Pocket/ledger.json) with seven daily backups and JSON export/import. No account or server by default.`,
+  `- Data: one local file (~/Library/Application Support/Pocket/ledger.json) with seven daily backups, JSON export/import and CSV export. No account or server by default.`,
   `- Optional sync: connect a free Supabase project you run to see your balance on a phone through the Pocket web app.`,
   `- Currencies: any standard currency, one per ledger. Changing it relabels amounts; it does not convert them.`,
   `- Not available: native Windows or iPhone apps (the Pocket web app works in any browser once sync is set up); bank connections; currency conversion.`,
