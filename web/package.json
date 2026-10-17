@@ -5,7 +5,8 @@
     "dev": "next dev",
     "check": "tsc --noEmit && node scripts/verify-integrations.mjs",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "indexnow": "node scripts/indexnow.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.7.0",

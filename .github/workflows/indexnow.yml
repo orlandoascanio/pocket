@@ -1,0 +1,19 @@
+# After Vercel finishes a production deploy, tell Bing and other IndexNow engines what changed.
+# Vercel reports deploys to GitHub as deployment statuses; previews are ignored.
+name: Submit pages to IndexNow
+on:
+  deployment_status:
+  workflow_dispatch:
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: web/scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Submit sitemap URLs
+        run: node web/scripts/indexnow.mjs
