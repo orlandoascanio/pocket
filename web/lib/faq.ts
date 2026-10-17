@@ -12,7 +12,7 @@ export const FAQ: FaqItem[] = [
   },
   {
     q: "Where is my money data stored?",
-    a: "In one file on your Mac (~/Library/Application Support/Pocket/ledger.json), with seven daily backups. From Settings you can restore one of those backups, export your data as JSON, import it again, or erase it.",
+    a: "In one file on your Mac (~/Library/Application Support/Pocket/ledger.json), with seven daily backups. From Settings you can restore one of those backups, export your data as JSON or as a CSV spreadsheet, import it again, or erase it.",
   },
   {
     q: "Can I see my balance on my phone?",
