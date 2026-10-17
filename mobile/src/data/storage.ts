@@ -15,6 +15,7 @@ export const KEYS = {
   queue: "pocket.queue",
   displayCurrency: "pocket.currency",
   range: "pocket.range",
+  everyday: "pocket.everyday",
   greeted: "pocket.greeted",
 } as const;
 
