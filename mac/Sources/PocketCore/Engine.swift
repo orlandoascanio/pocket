@@ -135,19 +135,53 @@ extension Ledger {
 
     // MARK: forecast
 
-    public func project(today: Day, days: Int) -> Projection {
+    /// What you usually spend on things nobody scheduled (food, shopping, games…), so the forecast isn't only bills.
+    /// It's the median of the last full weeks (up to `maxWeeks`, ending yesterday), so one big purchase doesn't
+    /// skew it. Needs two full weeks since the first entry; nil until then, or when nothing unscheduled was spent.
+    public func everydaySpending(today: Day, maxWeeks: Int = 12) -> EverydaySpending? {
+        guard let first = entries.map(\.day).min() else { return nil }
+        let weeks = min(maxWeeks, first.days(until: today) / 7)
+        guard weeks >= 2 else { return nil }
+        let start = today.adding(days: -7 * weeks)
+        var totals = Array(repeating: 0, count: weeks)
+        for e in entries where e.cents < 0 && e.ruleID == nil && e.category != Categories.start && e.day >= start && e.day < today {
+            totals[(e.day.days(until: today) - 1) / 7] -= e.cents
+        }
+        let sorted = totals.sorted()
+        let mid = sorted.count / 2
+        let median = sorted.count % 2 == 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+        guard median > 0 else { return nil }
+        return EverydaySpending(weekly: median, weeks: weeks)
+    }
+
+    /// The balance from today to `today + days`: scheduled payments land on their day, and `everyday` (cents a day)
+    /// goes out every day after today.
+    public func project(today: Day, days: Int, everyday: Cents = 0) -> Projection {
         let end = today.adding(days: days)
         let events = upcoming(today: today, days: days)
             .map { o -> Occurrence in var o = o; if o.overdue { o.day = today }; return o }
             .sorted { ($0.day, $0.label) < ($1.day, $1.label) }
         let start = balance
         var bal = start
-        var points = [Projection.Point(day: today, balance: start, events: [])]
+        var spentThrough = today
+        var points = [Projection.Point(day: today, before: start, balance: start, events: [])]
         var steps: [Projection.Step] = []
         var hitZero: Day?
         var backAbove: Occurrence?
         var low = (day: today, balance: start)
+        // Everyday spending up to `day`, noting the day it first takes the balance below zero.
+        func spend(through day: Day) {
+            guard day > spentThrough else { return }
+            if everyday > 0 {
+                let after = bal - everyday * spentThrough.days(until: day)
+                if bal >= 0 && after < 0 && hitZero == nil { hitZero = spentThrough.adding(days: bal / everyday + 1) }
+                bal = after
+                if bal < low.balance { low = (day, bal) }
+            }
+            spentThrough = day
+        }
         for e in events {
+            spend(through: e.day)
             let before = bal
             bal += e.cents
             steps.append(.init(occurrence: e, after: bal))
@@ -155,14 +189,29 @@ extension Ledger {
                 points[points.count - 1].balance = bal
                 points[points.count - 1].events.append(e)
             } else {
-                points.append(.init(day: e.day, balance: bal, events: [e]))
+                points.append(.init(day: e.day, before: before, balance: bal, events: [e]))
             }
             if before >= 0 && bal < 0 && hitZero == nil { hitZero = e.day }
             if before < 0 && bal >= 0 && backAbove == nil { backAbove = e }
             if bal < low.balance { low = (e.day, bal) }
         }
-        return Projection(today: today, end: end, days: days, start: start, endBalance: bal, points: points,
+        spend(through: end)
+        return Projection(today: today, end: end, days: days, everyday: everyday, start: start, endBalance: bal, points: points,
                           steps: steps, hitZero: hitZero, backAbove: backAbove, lowDay: low.day, lowBalance: low.balance)
+    }
+
+    /// Roughly how many months the balance lasts at the usual pace: `everyday` spending plus repeating money
+    /// averaged per month. nil when nothing is left, or when money isn't going down at that pace.
+    public func monthsLeft(everyday: Cents) -> Double? {
+        Ledger.monthsLeft(balance: balance, everyday: everyday,
+                          repeating: rules.filter { $0.active && !$0.finished && !$0.isOnce }.map { ($0.cents, $0.cadence) })
+    }
+
+    public static func monthsLeft(balance: Cents, everyday: Cents, repeating: [(Cents, Cadence)]) -> Double? {
+        guard balance > 0 else { return nil }
+        let monthly = Double(everyday) * 365.25 / 12 - repeating.reduce(0) { $0 + Double($1.0) * $1.1.perMonth }
+        guard monthly > 0 else { return nil }
+        return Double(balance) / monthly
     }
 
     // MARK: insights
@@ -206,6 +255,8 @@ extension Ledger {
 public struct Projection: Sendable {
     public struct Point: Identifiable, Sendable {
         public var day: Day
+        /// Just before this day's payments land (after everyday spending).
+        public var before: Cents
         public var balance: Cents
         public var events: [Occurrence]
         public var id: String { day.iso + "\(events.count)" }
@@ -220,6 +271,8 @@ public struct Projection: Sendable {
     public var today: Day
     public var end: Day
     public var days: Int
+    /// Everyday spending counted in, in cents a day (0 = scheduled payments only).
+    public var everyday: Cents
     public var start: Cents
     public var endBalance: Cents
     public var points: [Point]
@@ -252,6 +305,14 @@ public struct Projection: Sendable {
         if let hitZero { return .runsOut(hitZero) }
         return .lastsPast(end)
     }
+}
+
+public struct EverydaySpending: Equatable, Sendable {
+    /// A typical week of unscheduled spending.
+    public var weekly: Cents
+    /// How many full weeks it's based on.
+    public var weeks: Int
+    public var perDay: Cents { Int((Double(weekly) / 7).rounded()) }
 }
 
 public struct CategoryTotal: Identifiable, Equatable, Sendable {
