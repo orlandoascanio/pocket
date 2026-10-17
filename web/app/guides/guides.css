@@ -78,3 +78,5 @@
   body:has(.guides-index, .guide-page) .nav-cta svg { width: 15px; height: 15px; }
   body:has(.guides-index, .guide-page) .nav-toggle { width: 36px; height: 36px; }
 }
+/* Comparison tables have short text in several columns: let cells wrap instead of scrolling sideways. */
+.guide-table-wrap table:has(thead th:nth-child(4)) td, .guide-table-wrap table:has(thead th:nth-child(4)) th { white-space: normal; min-width: 5em; padding-inline: 8px; }
