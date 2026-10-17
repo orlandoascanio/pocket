@@ -1,12 +1,13 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CATEGORY_START } from "../../core/categories";
 import { shortDay, weekdayDay } from "../../core/day";
 import { CADENCES } from "../../core/models";
 import { store, useMoney, usePocket, RANGES } from "../../data/store";
 import { Big, Button, Card, Empty, MoneyRow, SectionTitle, Segmented } from "../../ui/components";
-import { RANGE_NAME, RANGE_SHORT, useRunway } from "../../ui/derived";
+import { RANGE_NAME, RANGE_SHORT, monthsLeftText, useEveryday, useMonthsLeft, useRunway } from "../../ui/derived";
 import { ForecastChart } from "../../ui/ForecastChart";
 import { GUTTER, useColors } from "../../ui/theme";
 
@@ -18,6 +19,9 @@ export default function Plan() {
   const rw = useRunway(money);
   const p = rw.projection;
   const [showAll, setShowAll] = useState(false);
+  const everyday = useEveryday();
+  const months = useMonthsLeft();
+  const hasEntries = s.entries.some((e) => e.category !== CATEGORY_START);
 
   // Coming up, with the balance after each payment (the chart's table view).
   const future = p.steps.filter((st) => !st.occurrence.overdue);
@@ -47,6 +51,7 @@ export default function Plan() {
         On {shortDay(p.end)}: {money.string(p.endBalance)}
         {p.lowBalance < p.start ? ` · lowest ${money.string(p.lowBalance)} on ${shortDay(p.lowDay)}` : ""}
       </Text>
+      {months != null ? <Text style={{ color: c.muted, fontSize: 15, marginTop: 2 }}>{monthsLeftText(months)}</Text> : null}
 
       <Segmented
         style={{ marginTop: 18 }}
@@ -57,6 +62,26 @@ export default function Plan() {
 
       <Card style={{ marginTop: 14, paddingHorizontal: 8, paddingBottom: 8 }}>
         <ForecastChart p={p} money={money} range={s.range} />
+        {everyday ? (
+          <View style={[styles.everyday, { borderColor: c.line }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.ink, fontSize: 16 }}>Count everyday spending</Text>
+              <Text style={{ color: c.muted, fontSize: 14, lineHeight: 19, marginTop: 2 }}>
+                ≈ {money.string(everyday.perDay)} a day, from a typical week of your last {everyday.weeks} weeks. Scheduled payments are counted separately.
+              </Text>
+            </View>
+            <Switch
+              value={s.includeEveryday}
+              onValueChange={(v) => void store.setIncludeEveryday(v)}
+              trackColor={{ true: c.accent }}
+              accessibilityLabel="Count everyday spending"
+            />
+          </View>
+        ) : hasEntries ? (
+          <Text style={[styles.everyday, { borderColor: c.line, color: c.muted, fontSize: 14, lineHeight: 19 }]}>
+            After two weeks of entries, the forecast also counts your everyday spending.
+          </Text>
+        ) : null}
       </Card>
 
       {rows.length ? (
@@ -134,4 +159,8 @@ export default function Plan() {
 
 const styles = StyleSheet.create({
   title: { fontSize: 34, letterSpacing: -0.8, marginTop: 2 },
+  everyday: {
+    flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8, paddingTop: 12, paddingHorizontal: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });
