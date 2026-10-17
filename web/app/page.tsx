@@ -11,7 +11,7 @@ import { HeroAnnounce } from "@/components/HeroAnnounce";
 import { HeroScene } from "@/components/HeroScene";
 import { SiteFooter } from "@/components/SiteFooter";
 import { FAQ } from "@/lib/faq";
-import { AUTHOR, PUBLISHER } from "@/lib/schema";
+import { ALTERNATE_NAMES, AUTHOR, DISAMBIGUATION, PROFILES, PUBLISHER } from "@/lib/schema";
 import "./home.css";
 import "./guides/guides.css";
 import { RELEASES } from "@/lib/releases";
@@ -31,7 +31,9 @@ const jsonLd = [
     "@type": "SoftwareApplication",
     "@id": `${SITE_URL}/#software`,
     name: "Pocket for Mac",
+    alternateName: ALTERNATE_NAMES,
     description: DESCRIPTION,
+    disambiguatingDescription: DISAMBIGUATION,
     url: `${SITE_URL}/`,
     downloadUrl: DOWNLOAD_URL,
     softwareVersion: VERSION,
@@ -41,7 +43,7 @@ const jsonLd = [
     releaseNotes: `${SITE_URL}/changelog/`,
     author: AUTHOR,
     publisher: PUBLISHER,
-    sameAs: [REPO_URL],
+    sameAs: PROFILES,
     featureList: [
       "Recorded balance in the Mac menu bar",
       "Manual spending and income entries with categories",
