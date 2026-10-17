@@ -52,6 +52,13 @@ select pocket_state(pg_temp.k(), '2026-12-31');
 select pg_temp.eq((select count(*) from transactions where label = 'Month end'), 3::bigint, 'stops after 3 payments');
 select pg_temp.eq((select category from transactions where label = 'Month end' limit 1), 'bills', 'rule category copied');
 
+-- 3b. Quarterly counts 3 months from the anchor (removed again so later balances are unchanged)
+select pocket_recurring_add(pg_temp.k(), -30, 'Quarter', 'quarterly', '2025-11-30', '2026-06-01', 3, 'bills');
+select pg_temp.eq((select string_agg(occurred_on::text, ',' order by occurred_on) from transactions where label = 'Quarter'),
+                  '2025-11-30,2026-02-28,2026-05-30', 'quarterly dates');
+delete from transactions where label = 'Quarter';
+delete from recurring where label = 'Quarter';
+
 -- 4. Income that waits for confirmation: not logged on its own, shows as overdue,
 --    "got it" logs the real amount and date and moves to the next one
 select pocket_recurring_add(pg_temp.k(), 750, 'Client', 'monthly', '2026-10-05', '2026-10-11', null, 'pay', false);
