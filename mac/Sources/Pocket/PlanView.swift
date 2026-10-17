@@ -19,6 +19,7 @@ struct PlanView: View {
                     ForecastChart(projection: p, money: store.money)
                         .frame(height: 240)
                         .padding(14)
+                    everyday
                 }
                 comingUp(p)
                 repeating
@@ -52,8 +53,35 @@ struct PlanView: View {
                 Text("On \(d(p.end)): \(store.money.string(p.endBalance))"
                      + (p.lowBalance < p.start ? " · lowest \(store.money.string(p.lowBalance)) on \(d(p.lowDay))" : ""))
                     .foregroundStyle(.secondary).monospacedDigit()
+                if let months = store.monthsLeft {
+                    Text(monthsLeftText(months)).foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Whether the forecast also counts what's usually spent day to day, and how much that is.
+    @ViewBuilder
+    private var everyday: some View {
+        if let e = store.everyday {
+            Divider().padding(.horizontal, 8)
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Count everyday spending")
+                    Text("≈ \(store.money.string(e.perDay)) a day, from a typical week of your last \(e.weeks) weeks. Scheduled payments are counted separately.")
+                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Toggle("Count everyday spending", isOn: $store.includeEveryday)
+                    .toggleStyle(.switch).labelsHidden()
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+        } else if store.hasRecordedEntries {
+            Divider().padding(.horizontal, 8)
+            Text("After two weeks of entries, the forecast also counts your everyday spending.")
+                .font(.callout).foregroundStyle(.secondary)
+                .padding(.horizontal, 14).padding(.vertical, 10)
+        }
     }
 
     private var rangePicker: some View {
@@ -206,7 +234,7 @@ struct NextActions: View {
     }
 }
 
-/// The projected balance as a step chart: it only changes when a payment lands.
+/// The projected balance: it jumps when a payment lands, and slopes down with everyday spending.
 struct ForecastChart: View {
     let projection: Projection
     let money: Money
@@ -220,16 +248,14 @@ struct ForecastChart: View {
         var id: Int { index }
     }
 
-    /// The stepped line, drawn explicitly: each payment adds a vertical jump on its day.
+    /// The line, drawn explicitly: each payment adds a vertical jump on its day, and everyday spending
+    /// (when counted) slopes it down in between.
     private var samples: [Sample] {
         var out: [Sample] = []
-        var last: Double?
-        for p in projection.points {
-            let v = Double(p.balance) / 100
-            // The old balance holds until just before the payment lands (distinct x keeps the order stable).
-            if let last { out.append(Sample(index: out.count, date: p.day.localDate.addingTimeInterval(-60), value: last)) }
-            out.append(Sample(index: out.count, date: p.day.localDate, value: v))
-            last = v
+        for (i, p) in projection.points.enumerated() {
+            // The balance just before the payment lands (distinct x keeps the order stable).
+            if i > 0 { out.append(Sample(index: out.count, date: p.day.localDate.addingTimeInterval(-60), value: Double(p.before) / 100)) }
+            out.append(Sample(index: out.count, date: p.day.localDate, value: Double(p.balance) / 100))
         }
         out.append(Sample(index: out.count, date: projection.end.localDate, value: Double(projection.endBalance) / 100))
         return out
