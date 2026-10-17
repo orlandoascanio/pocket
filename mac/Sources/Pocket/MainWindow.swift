@@ -9,11 +9,6 @@ struct EditTarget: Identifiable {
     let id = UUID()
 }
 
-struct HistoryFilter: Equatable {
-    var category: String
-    var month: YearMonth?
-}
-
 extension Projection.Runway {
     func text(_ range: Int) -> (lead: String, strong: String) {
         let d = { (day: Day) in day.localDate.formatted(.dateTime.month(.abbreviated).day()) }
@@ -36,6 +31,14 @@ func rangeName(_ days: Int) -> String {
     }
 }
 
+/// "About 7 months of money at your usual pace."
+func monthsLeftText(_ months: Double) -> String {
+    let pace = "of money at your usual pace"
+    if months < 1 { return "Less than a month \(pace)" }
+    if months < 24 { let n = Int(months.rounded()); return "About \(n) month\(n == 1 ? "" : "s") \(pace)" }
+    return "About \(Int(months / 12)) years \(pace)"
+}
+
 struct RunwayLine: View {
     var runway: Projection.Runway
     var range = 91
@@ -55,7 +58,7 @@ struct MainWindow: View {
     @State private var section: AppSection = .overview
     @StateObject private var editor = EditorState()
     @State private var editTarget: EditTarget?
-    @State private var filter: HistoryFilter?
+    @State private var query = EntryQuery()
     @State private var waitingExpanded = false
     @State private var scrollTarget: String?
     @State private var hoveredSection: AppSection?
@@ -105,10 +108,10 @@ struct MainWindow: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 } else {
                 switch section {
-                case .overview: OverviewView(editor: editor, filter: $filter, waitingExpanded: $waitingExpanded, scrollTarget: $scrollTarget, onEdit: { editTarget = $0 })
+                case .overview: OverviewView(editor: editor, query: $query, waitingExpanded: $waitingExpanded, scrollTarget: $scrollTarget, onEdit: { editTarget = $0 })
                 case .plan: PlanView(onEdit: { editTarget = $0 })
                 case .insights: InsightsView(onShow: { cat, month in
-                        filter = HistoryFilter(category: cat, month: month)
+                        query = EntryQuery(category: cat, month: month)
                         withAnimation(reduceMotion ? nil : .snappy) { section = .overview }
                     })
                 case .settings: SettingsView()
@@ -193,7 +196,7 @@ struct MainWindow: View {
             editTarget = EditTarget(kind: .new(draft))
         case .firstEntry:
             section = .overview
-            filter = nil
+            query = EntryQuery()
             scrollTarget = "entry"
             DispatchQueue.main.async {
                 editor.reset()
@@ -210,7 +213,7 @@ struct MainWindow: View {
             scrollTarget = "waiting"
         case .history:
             section = .overview
-            filter = nil
+            query = EntryQuery()
             scrollTarget = "history"
         case .editEntry(let id):
             if let e = store.ledger.entries.first(where: { $0.id == id }) { editTarget = EditTarget(kind: .entry(e)) }
@@ -252,11 +255,14 @@ struct EditSheet: View {
 struct OverviewView: View {
     @EnvironmentObject var store: Store
     @ObservedObject var editor: EditorState
-    @Binding var filter: HistoryFilter?
+    @Binding var query: EntryQuery
     @Binding var waitingExpanded: Bool
     @Binding var scrollTarget: String?
     var onEdit: (EditTarget) -> Void
     @State private var pendingDelete: Entry?
+    @State private var exportMessage: String?
+    @State private var choosingDates = false
+    @FocusState private var searchFocused: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -377,36 +383,30 @@ struct OverviewView: View {
         .padding(.top, 6)
     }
 
-    private var shownEntries: [Entry] {
-        let all = store.ledger.sortedEntries
-        guard let f = filter else { return all }
-        return all.filter { Categories.key($0.category, cents: $0.cents) == f.category && (f.month?.contains($0.day) ?? true) }
-    }
-
     private var history: some View {
         let all = store.ledger.sortedEntries
         var after: [UUID: Cents] = [:]
         var run: Cents = 0
         for e in all.reversed() { run += e.cents; after[e.id] = run }
-        let groups = Dictionary(grouping: shownEntries, by: \.day).sorted { $0.key > $1.key }
+        let shown = query.isEmpty ? all : all.filter(query.matches)
+        let groups = Dictionary(grouping: shown, by: \.day).sorted { $0.key > $1.key }
 
         return VStack(alignment: .leading, spacing: 10) {
-            SectionTitle(title: "History").padding(.top, 6)
-            if let f = filter {
-                HStack(spacing: 6) {
-                    Text("\(Categories.name(f.category)) · \(f.month.map { $0.first.localDate.formatted(.dateTime.month(.wide)) } ?? "all time")")
-                    Button { withAnimation { filter = nil } } label: { Image(systemName: "xmark") }
-                        .buttonStyle(.plain)
-                        .help("Show everything").accessibilityLabel("Clear history filter")
+            SectionTitle(title: "History", meta: query.isEmpty ? nil : resultsMeta(shown)).padding(.top, 6)
+            if !all.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { searchField; filterMenus(shown) }
+                    VStack(alignment: .leading, spacing: 8) { searchField; HStack(spacing: 8) { filterMenus(shown) } }
                 }
-                .font(.callout.weight(.semibold))
-                .accessibilityLabel("Active history filter")
-                .padding(.horizontal, 12).padding(.vertical, 5)
-                .foregroundStyle(Palette.bg)
-                .background(Color.primary, in: Capsule())
+                .background {
+                    Button("Search History") { searchFocused = true }
+                        .keyboardShortcut("f", modifiers: .command)
+                        .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
+                }
             }
+            if let exportMessage { Text(exportMessage).font(.callout).foregroundStyle(.secondary).padding(.horizontal, 4) }
             if groups.isEmpty {
-                Text(filter == nil ? "Nothing here yet. Add your first entry above." : "Nothing here for that filter.")
+                Text(all.isEmpty ? "Nothing here yet. Add your first entry above." : "Nothing matches. Try other words or clear the filters.")
                     .foregroundStyle(.secondary).padding(.vertical, 20).frame(maxWidth: .infinity)
             }
             ForEach(groups, id: \.key) { day, entries in
@@ -449,6 +449,102 @@ struct OverviewView: View {
             }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: store.ledger.entries.count)
+        .onChange(of: query) { _, _ in exportMessage = nil }
+    }
+
+    private func resultsMeta(_ shown: [Entry]) -> String {
+        let net = shown.reduce(0) { $0 + $1.cents }
+        return "\(shown.count) \(shown.count == 1 ? "entry" : "entries") · \(store.money.string(net, signed: true))"
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Search history", text: $query.text, prompt: Text("Search history"))
+                .textFieldStyle(.plain)
+                .focused($searchFocused)
+                .onExitCommand { query.text = ""; searchFocused = false }
+            if !query.text.isEmpty {
+                Button { query.text = "" } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain).foregroundStyle(.tertiary)
+                    .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .frame(minWidth: 200)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(searchFocused ? Palette.accent : Palette.line))
+        .help("Search labels, categories and amounts · ⌘F")
+    }
+
+    private var periodTitle: String {
+        if query.from == nil && query.to == nil { return "Any time" }
+        if let p = query.period(today: store.today) { return p.name }
+        if let m = query.month { return m.first.localDate.formatted(.dateTime.month(.wide).year()) }
+        let d = { (day: Day?) in day?.localDate.formatted(.dateTime.month(.abbreviated).day()) ?? "…" }
+        return "\(d(query.from)) – \(d(query.to))"
+    }
+
+    @ViewBuilder
+    private func filterMenus(_ shown: [Entry]) -> some View {
+        Menu {
+            Picker("Show", selection: $query.kind) {
+                ForEach(EntryQuery.Kind.allCases) { Text($0.name).tag($0) }
+            }
+            .pickerStyle(.inline).labelsHidden()
+        } label: { Text(query.kind.name) }
+            .menuStyle(.button).fixedSize()
+            .help("Show spending, money in, or both")
+        Menu {
+            Picker("Category", selection: $query.category) {
+                Text("Any category").tag(String?.none)
+                Section("Spending") { ForEach(Categories.spending) { Label($0.name, systemImage: $0.symbol).tag(Optional($0.id)) } }
+                Section("Money in") { ForEach(Categories.income) { Label($0.name, systemImage: $0.symbol).tag(Optional($0.id)) } }
+            }
+            .pickerStyle(.inline).labelsHidden()
+        } label: { Text(query.category.map(Categories.name) ?? "Any category") }
+            .menuStyle(.button).fixedSize()
+            .help("Show one category")
+        Menu {
+            Button("Any time") { query.from = nil; query.to = nil }
+            Divider()
+            ForEach(EntryQuery.Period.allCases) { p in
+                Button(p.name) { (query.from, query.to) = p.range(today: store.today) }
+            }
+            Divider()
+            Button("Choose Dates…") { choosingDates = true }
+        } label: { Text(periodTitle) }
+            .menuStyle(.button).fixedSize()
+            .help("Show a date range")
+            .popover(isPresented: $choosingDates, arrowEdge: .bottom) { datesPopover }
+        if !query.isEmpty {
+            Button("Clear") { withAnimation(reduceMotion ? nil : .snappy) { query = EntryQuery() } }
+                .help("Show everything")
+        }
+        Spacer(minLength: 0)
+        Button { exportMessage = saveCSV(store, entries: shown, name: "Pocket \(query.isEmpty ? "" : "search ")\(store.today.iso)") } label: {
+            Image(systemName: "square.and.arrow.up")
+        }
+        .help(query.isEmpty ? "Export history as a CSV spreadsheet" : "Export these \(shown.count) entries as a CSV spreadsheet")
+        .accessibilityLabel("Export as CSV")
+        .disabled(shown.isEmpty)
+    }
+
+    private var datesPopover: some View {
+        let from = Binding(get: { (query.from ?? store.today.yearMonth.first).localDate },
+                           set: { query.from = Day($0); if let to = query.to, to < query.from! { query.to = query.from } })
+        let to = Binding(get: { (query.to ?? store.today).localDate },
+                         set: { query.to = Day($0); if let f = query.from, f > query.to! { query.from = query.to } })
+        return Form {
+            DatePicker("From", selection: from, displayedComponents: .date)
+            DatePicker("To", selection: to, displayedComponents: .date)
+        }
+        .padding(16)
+        .frame(width: 260)
+        .onAppear {
+            if query.from == nil { query.from = store.today.yearMonth.first }
+            if query.to == nil { query.to = store.today }
+        }
     }
 }
 
