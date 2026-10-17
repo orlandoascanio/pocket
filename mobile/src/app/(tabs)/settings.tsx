@@ -12,6 +12,7 @@ import { isDefaultServer, type Device } from "../../data/server";
 import { store, usePocket } from "../../data/store";
 import { Big, tap, useToast } from "../../ui/components";
 import { Field, Group, ToggleField } from "../../ui/form";
+import { shareCSV } from "../../ui/HistorySearch";
 import { Icon } from "../../ui/Icon";
 import { SyncBadge } from "../../ui/SyncBadge";
 import { DISPLAY, GUTTER, tint, useColors } from "../../ui/theme";
@@ -31,6 +32,12 @@ export default function Settings() {
     } catch {
       toast({ text: "Couldn't export. Try again." });
     }
+  };
+
+  const exportSpreadsheet = async () => {
+    if (!s.entries.length) { toast({ text: "Nothing to export yet." }); return; }
+    const problem = await shareCSV(s.entries);
+    if (problem) toast({ text: problem });
   };
 
   const importData = async () => {
@@ -119,12 +126,17 @@ export default function Settings() {
       </Group>
 
       {s.mode === "local" ? (
-        <Group title="Your data" footer="Exports a JSON file that Pocket for Mac can import too. Pocket keeps 7 daily backups on this phone.">
+        <Group title="Your data" footer="Export makes a JSON file that Pocket for Mac can import too. The spreadsheet is a CSV file for Numbers, Excel or Google Sheets. Pocket keeps 7 daily backups on this phone.">
           <Field label="Export" icon="square.and.arrow.up" onPress={exportData} />
+          <Field label="Export as a spreadsheet" icon="square.and.arrow.up" onPress={exportSpreadsheet} />
           <Field label="Import a file" icon="square.and.arrow.down" onPress={importData} />
           <Field label="Erase everything" icon="trash" iconColor={c.neg} onPress={erase} last />
         </Group>
-      ) : null}
+      ) : (
+        <Group title="Your data" footer="A CSV file of every entry, for Numbers, Excel or Google Sheets.">
+          <Field label="Export as a spreadsheet" icon="square.and.arrow.up" onPress={exportSpreadsheet} last />
+        </Group>
+      )}
 
       <Group title="About">
         <Field label="Pocket" icon="questionmark.circle">
