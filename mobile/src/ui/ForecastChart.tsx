@@ -20,7 +20,7 @@ function niceTicks(lo: number, hi: number, n: number): number[] {
 
 const monthTick = new Intl.DateTimeFormat(undefined, { month: "short" });
 
-/** Step chart of the projected balance: it only changes when a payment lands. Drag to read any point. */
+/** The projected balance: it jumps when a payment lands and slopes down with everyday spending. Drag to read any point. */
 export function ForecastChart({ p, money, range }: { p: Projection; money: Money; range: number }) {
   const c = useColors();
   const [W, setW] = useState(0);
@@ -32,13 +32,14 @@ export function ForecastChart({ p, money, range }: { p: Projection; money: Money
     if (!W) return null;
     const span = Math.max(1, daysBetween(p.today, p.end));
     const X = (d: string) => m.l + (daysBetween(p.today, d) / span) * (W - m.l - m.r);
-    const vals = p.points.map((q) => q.balance).concat(0);
+    const vals = p.points.flatMap((q) => [q.before, q.balance]).concat(p.endBalance, 0);
     const ticks = niceTicks(Math.min(...vals), Math.max(...vals), 4);
     const lo = ticks[0], hi = ticks[ticks.length - 1];
     const Y = (v: number) => m.t + ((hi - v) / (hi - lo)) * (H - m.t - m.b);
     let d = `M${X(p.points[0].day)},${Y(p.points[0].balance)}`;
-    for (let i = 1; i < p.points.length; i++) d += `H${X(p.points[i].day)}V${Y(p.points[i].balance)}`;
-    d += `H${X(p.end)}`;
+    // Everyday spending slopes the line down between payments; each payment jumps on its day.
+    for (let i = 1; i < p.points.length; i++) d += `L${X(p.points[i].day)},${Y(p.points[i].before)}V${Y(p.points[i].balance)}`;
+    d += `L${X(p.end)},${Y(p.endBalance)}`;
     const wash = `${d}V${Y(Math.max(lo, 0))}H${X(p.today)}Z`;
     const xs: { day: string; text: string; anchor: "start" | "middle" | "end" }[] = [{ day: p.today, text: "Today", anchor: "start" }];
     if (range >= 91) {
