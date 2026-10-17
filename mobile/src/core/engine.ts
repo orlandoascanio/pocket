@@ -1,10 +1,10 @@
 // The money logic, ported from Pocket for Mac (PocketCore/Engine.swift) so both apps agree to the cent.
 // Ledger functions mutate the ledger they're given; callers pass a copy.
 import { CATEGORY_START, INCOME, SPENDING, categoryKey } from "./categories";
-import { addDays, isDay, monthContains, type Day, type YearMonth } from "./day";
+import { addDays, daysBetween, isDay, monthContains, type Day, type YearMonth } from "./day";
 import type { Cents } from "./money";
 import {
-  ruleFinished, ruleNext, step,
+  CADENCES, ruleFinished, ruleNext, step,
   type Cadence, type Entry, type Ledger, type Occurrence, type Rule,
 } from "./models";
 
@@ -134,9 +134,12 @@ export interface Projection {
   today: Day;
   end: Day;
   days: number;
+  /** Everyday spending counted in, in cents a day (0 = scheduled payments only). */
+  everyday: Cents;
   start: Cents;
   endBalance: Cents;
-  points: { day: Day; balance: Cents; events: Occurrence[] }[];
+  /** `before` is the balance just before that day's payments land (after everyday spending). */
+  points: { day: Day; before: Cents; balance: Cents; events: Occurrence[] }[];
   steps: { occurrence: Occurrence; after: Cents }[];
   hitZero?: Day;
   backAbove?: Occurrence;
@@ -144,16 +147,65 @@ export interface Projection {
   lowBalance: Cents;
 }
 
-export function project(balance: Cents, list: Occurrence[], today: Day, days: number): Projection {
+export interface EverydaySpending {
+  /** A typical week of unscheduled spending. */
+  weekly: Cents;
+  /** How many full weeks it's based on. */
+  weeks: number;
+  perDay: Cents;
+}
+
+/**
+ * What you usually spend on things nobody scheduled (food, shopping, games…), so the forecast isn't only bills.
+ * It's the median of the last full weeks (up to `maxWeeks`, ending yesterday), so one big purchase doesn't
+ * skew it. Needs two full weeks since the first entry; null until then, or when nothing unscheduled was spent.
+ */
+export function everydaySpending(entries: Entry[], today: Day, maxWeeks = 12): EverydaySpending | null {
+  if (!entries.length) return null;
+  const first = entries.reduce((min, e) => (e.day < min ? e.day : min), entries[0].day);
+  const weeks = Math.min(maxWeeks, Math.floor(daysBetween(first, today) / 7));
+  if (weeks < 2) return null;
+  const start = addDays(today, -7 * weeks);
+  const totals: number[] = new Array(weeks).fill(0);
+  for (const e of entries) {
+    if (e.cents < 0 && !e.ruleID && e.category !== CATEGORY_START && e.day >= start && e.day < today) {
+      totals[Math.floor((daysBetween(e.day, today) - 1) / 7)] -= e.cents;
+    }
+  }
+  const sorted = [...totals].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 1 ? sorted[mid] : Math.floor((sorted[mid - 1] + sorted[mid]) / 2);
+  if (median <= 0) return null;
+  return { weekly: median, weeks, perDay: Math.round(median / 7) };
+}
+
+/**
+ * The balance from today to `today + days`: scheduled payments land on their day, and `everyday` (cents a day)
+ * goes out every day after today.
+ */
+export function project(balance: Cents, list: Occurrence[], today: Day, days: number, everyday: Cents = 0): Projection {
   const end = addDays(today, days);
   const events = sortOccurrences(list.filter((o) => o.day <= end).map((o) => (o.overdue ? { ...o, day: today } : o)));
   let bal = balance;
-  const points: Projection["points"] = [{ day: today, balance: balance, events: [] }];
+  let spentThrough = today;
+  const points: Projection["points"] = [{ day: today, before: balance, balance, events: [] }];
   const steps: Projection["steps"] = [];
   let hitZero: Day | undefined;
   let backAbove: Occurrence | undefined;
   let low = { day: today, balance };
+  // Everyday spending up to `day`, noting the day it first takes the balance below zero.
+  const spend = (day: Day) => {
+    if (day <= spentThrough) return;
+    if (everyday > 0) {
+      const after = bal - everyday * daysBetween(spentThrough, day);
+      if (bal >= 0 && after < 0 && !hitZero) hitZero = addDays(spentThrough, Math.floor(bal / everyday) + 1);
+      bal = after;
+      if (bal < low.balance) low = { day, balance: bal };
+    }
+    spentThrough = day;
+  };
   for (const e of events) {
+    spend(e.day);
     const before = bal;
     bal += e.cents;
     steps.push({ occurrence: e, after: bal });
@@ -162,13 +214,24 @@ export function project(balance: Cents, list: Occurrence[], today: Day, days: nu
       last.balance = bal;
       last.events.push(e);
     } else {
-      points.push({ day: e.day, balance: bal, events: [e] });
+      points.push({ day: e.day, before, balance: bal, events: [e] });
     }
     if (before >= 0 && bal < 0 && !hitZero) hitZero = e.day;
     if (before < 0 && bal >= 0 && !backAbove) backAbove = e;
     if (bal < low.balance) low = { day: e.day, balance: bal };
   }
-  return { today, end, days, start: balance, endBalance: bal, points, steps, hitZero, backAbove, lowDay: low.day, lowBalance: low.balance };
+  spend(end);
+  return { today, end, days, everyday, start: balance, endBalance: bal, points, steps, hitZero, backAbove, lowDay: low.day, lowBalance: low.balance };
+}
+
+/**
+ * Roughly how many months the balance lasts at the usual pace: `everyday` spending plus repeating money
+ * averaged per month. null when nothing is left, or when money isn't going down at that pace.
+ */
+export function monthsLeft(balance: Cents, everyday: Cents, repeating: { cents: Cents; cadence: Cadence }[]): number | null {
+  if (balance <= 0) return null;
+  const monthly = (everyday * 365.25) / 12 - repeating.reduce((sum, r) => sum + r.cents * CADENCES[r.cadence].perMonth, 0);
+  return monthly > 0 ? balance / monthly : null;
 }
 
 export type Runway =
@@ -252,7 +315,7 @@ export function validateLedger(raw: unknown): Ledger {
     if (typeof e.id !== "string" || !amount(e.cents) || typeof e.label !== "string" || !isDay(e.day)) fail("This file contains an amount or date Pocket can't read.");
   }
   for (const r of l.rules) {
-    if (typeof r.id !== "string" || !amount(r.cents) || !isDay(r.anchor) || !["weekly", "biweekly", "monthly", "yearly"].includes(r.cadence)) {
+    if (typeof r.id !== "string" || !amount(r.cents) || !isDay(r.anchor) || !(typeof r.cadence === "string" && Object.hasOwn(CADENCES, r.cadence))) {
       fail("This file contains an invalid payment schedule.");
     }
     const count = (n: unknown) => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 1_000_000;
