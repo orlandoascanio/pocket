@@ -3,7 +3,7 @@ export type Release = {
   date: string;
   title: string;
   summary: string;
-  theme: "sync" | "launch" | "findable" | "update";
+  theme: "sync" | "launch" | "findable" | "update" | "share";
   highlights: { title: string; description: string }[];
   detailsTitle: string;
   details: string[];
@@ -13,6 +13,28 @@ export type Release = {
 // Curated from the published GitHub releases. Add a new entry here when shipping,
 // and update VERSION in site.ts. Dates are publication dates, not commit dates.
 export const RELEASES: Release[] = [
+  {
+    version: "1.4.0",
+    date: "2026-10-16",
+    title: "Forecasts that count your everyday spending.",
+    summary: "Plan now includes what you usually spend day to day, History has search and filters, you can export a CSV spreadsheet, payments can repeat every 3 months, and you can tell a friend about Pocket from its menus.",
+    theme: "share",
+    highlights: [
+      { title: "Everyday spending in the forecast", description: "Plan now takes out what you usually spend on things nobody scheduled, like food and shopping, based on a typical week from your recent entries. “Runs out on” gets closer to real life, and Plan says roughly how many months of money you have at that pace. You can turn it off under the chart." },
+      { title: "Search and filter History", description: "Press ⌘F to find any entry by name, category or amount. Show only spending or money in, one category, or a date range, and see the total of what you found above the list." },
+      { title: "Export a CSV spreadsheet", description: "Settings → Export CSV… saves every entry for Numbers, Excel or Google Sheets. The share button in History exports only what you searched for." },
+      { title: "Every 3 months", description: "Repeating payments can be quarterly now, for insurance, taxes or anything else billed each quarter." },
+      { title: "Share Pocket…", description: "Choose Share Pocket… from the Pocket menu or the ⋯ menu in the menu bar panel to send a short message and a link to pocketleft.app. Pocket asks once, at a good moment, if you know someone who'd like it, and the About window links to Pocket on GitHub." },
+    ],
+    detailsTitle: "How the everyday estimate works",
+    details: [
+      "Pocket looks at up to the last 12 full weeks of spending that a repeating payment didn't log, and uses the middle week (the median), so one big purchase doesn't throw it off.",
+      "It starts once you have two full weeks of entries. Scheduled payments still count on their own dates.",
+      "If you sync, update every connected Mac to 1.4 to see quarterly payments there.",
+      "The share message is fixed text and a link. It never includes your balance, your entries or anything else from Pocket.",
+    ],
+    source: "https://github.com/orlandoascanio/pocketleft/releases/tag/v1.4.0",
+  },
   {
     version: "1.2.3",
     date: "2026-10-13",
