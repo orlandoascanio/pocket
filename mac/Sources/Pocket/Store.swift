@@ -75,6 +75,8 @@ final class Store: ObservableObject {
     @Published private(set) var receipt: EntryReceipt?
     @Published var onboarded: Bool { didSet { defaults.set(onboarded, forKey: "onboarded") } }
     @Published var range: Int { didSet { defaults.set(range, forKey: "range") } }
+    /// Whether the forecast counts everyday spending, not only scheduled payments.
+    @Published var includeEveryday: Bool { didSet { defaults.set(includeEveryday, forKey: "includeEveryday") } }
     @Published var reminders: Bool {
         didSet {
             defaults.set(reminders, forKey: "reminders")
@@ -122,7 +124,12 @@ final class Store: ObservableObject {
     var money: Money { Money(currency: ledger.currency) }
     var balance: Cents { ledger.balance }
     var waiting: [Occurrence] { ledger.waiting(today: today) }
-    var projection: Projection { ledger.project(today: today, days: range) }
+    /// What's usually spent on unscheduled things, from recent weeks of history.
+    var everyday: EverydaySpending? { ledger.everydaySpending(today: today) }
+    /// Everyday spending the forecast counts, in cents a day.
+    var forecastEveryday: Cents { includeEveryday ? everyday?.perDay ?? 0 : 0 }
+    var projection: Projection { ledger.project(today: today, days: range, everyday: forecastEveryday) }
+    var monthsLeft: Double? { ledger.monthsLeft(everyday: forecastEveryday) }
     var menuTitle: String {
         if loadError != nil { return "Pocket ⚠︎" }
         guard onboarded else { return "Pocket" }
@@ -133,8 +140,9 @@ final class Store: ObservableObject {
     var hasRecordedEntries: Bool { ledger.entries.contains { $0.category != Categories.start } }
 
     var runway: Projection.Runway? {
-        let p = ledger.project(today: today, days: 91)
-        if p.steps.isEmpty && balance >= 0 { return nil }
+        let everyday = forecastEveryday
+        let p = ledger.project(today: today, days: 91, everyday: everyday)
+        if p.steps.isEmpty && everyday == 0 && balance >= 0 { return nil }
         return p.runway
     }
 
@@ -183,6 +191,7 @@ final class Store: ObservableObject {
         onboarded = wasOnboarded || hasSavedData || key != nil || initialLoadError != nil
         let r = defaults.integer(forKey: "range")
         range = [30, 91, 182, 365].contains(r) ? r : 91
+        includeEveryday = defaults.object(forKey: "includeEveryday") as? Bool ?? true
         reminders = defaults.object(forKey: "reminders") as? Bool ?? true
         sharePrompt = defaults.string(forKey: "sharePrompt")
         loadError = initialLoadError
@@ -544,6 +553,11 @@ final class Store: ObservableObject {
 
     func export(to url: URL) throws {
         try Store.encoder().encode(ledger).write(to: url, options: .atomic)
+    }
+
+    /// Entries as a CSV spreadsheet (all of them, or what History shows).
+    func exportCSV(_ entries: [Entry], to url: URL) throws {
+        try Data(CSV.entries(entries, currency: ledger.currency).utf8).write(to: url, options: .atomic)
     }
 
     func importFile(_ url: URL) throws {
