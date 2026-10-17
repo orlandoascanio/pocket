@@ -4,7 +4,7 @@ import Foundation
 public typealias Cents = Int
 
 public enum Cadence: String, Codable, CaseIterable, Identifiable, Sendable {
-    case weekly, biweekly, monthly, yearly
+    case weekly, biweekly, monthly, quarterly, yearly
 
     public var id: String { rawValue }
 
@@ -13,6 +13,7 @@ public enum Cadence: String, Codable, CaseIterable, Identifiable, Sendable {
         case .weekly: "Weekly"
         case .biweekly: "Every 2 weeks"
         case .monthly: "Monthly"
+        case .quarterly: "Every 3 months"
         case .yearly: "Yearly"
         }
     }
@@ -22,6 +23,7 @@ public enum Cadence: String, Codable, CaseIterable, Identifiable, Sendable {
         case .weekly: "week"
         case .biweekly: "2 weeks"
         case .monthly: "month"
+        case .quarterly: "3 months"
         case .yearly: "year"
         }
     }
@@ -32,6 +34,7 @@ public enum Cadence: String, Codable, CaseIterable, Identifiable, Sendable {
         case .weekly: 52.0 / 12
         case .biweekly: 26.0 / 12
         case .monthly: 1
+        case .quarterly: 1.0 / 3
         case .yearly: 1.0 / 12
         }
     }
@@ -42,6 +45,7 @@ public enum Cadence: String, Codable, CaseIterable, Identifiable, Sendable {
         case .weekly: anchor.adding(days: 7 * n)
         case .biweekly: anchor.adding(days: 14 * n)
         case .monthly: anchor.adding(months: n)
+        case .quarterly: anchor.adding(months: 3 * n)
         case .yearly: anchor.adding(years: n)
         }
     }
