@@ -13,6 +13,7 @@ const CADENCE = {
   weekly:   { name: "Weekly",        perMonth: 52 / 12, unit: "week" },
   biweekly: { name: "Every 2 weeks", perMonth: 26 / 12, unit: "2 weeks" },
   monthly:  { name: "Monthly",       perMonth: 1,       unit: "month" },
+  quarterly: { name: "Every 3 months", perMonth: 1 / 3, unit: "3 months" },
   yearly:   { name: "Yearly",        perMonth: 1 / 12,  unit: "year" },
 };
 const RANGE_NAME = { 30: "month", 91: "3 months", 182: "6 months", 365: "year" };
@@ -1902,7 +1903,7 @@ scheduleBlink();
 
 // Browsers sometimes keep an old copy of this page. Ask for the current version (never cached)
 // and reload into it when it changed, so nobody gets stuck on an old release.
-const APP_VERSION = "8";
+const APP_VERSION = "9";
 async function checkForUpdate() {
   try {
     const res = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
