@@ -1,29 +1,19 @@
+import { FACTS } from "@/lib/facts";
 import { FAQ } from "@/lib/faq";
 import { GUIDES, guideUrl, textParts, type Guide } from "@/lib/guides";
 import { RELEASES } from "@/lib/releases";
-import { DESCRIPTION, DMG_SIZE, DOWNLOAD_URL, ISSUES_URL, REPO_URL, SELF_HOSTING_URL, SITE_URL, VERSION } from "@/lib/site";
+import { DESCRIPTION, ISSUES_URL, REPO_URL, SELF_HOSTING_URL, SITE_URL } from "@/lib/site";
 
 // Plain-text summaries for AI systems (https://llmstxt.org), built from the same data as the pages
 // so they can't drift from what the site says.
 
 const SUMMARY = `> ${DESCRIPTION}`;
 
-const FACTS = [
-  `- Price: free. Every feature, with no account and no trial.`,
-  `- Platform: macOS 14 Sonoma or later, Apple Silicon and Intel. Signed and notarized by Apple.`,
-  `- Latest version: ${VERSION} (${RELEASES[0].date}). Download: ${DOWNLOAD_URL} (${DMG_SIZE} .dmg).`,
-  `- How it works: you record money in and out by hand. Pocket does not connect to banks.`,
-  `- Data: one local file (~/Library/Application Support/Pocket/ledger.json) with seven daily backups, JSON export/import and CSV export. No account or server by default.`,
-  `- Optional sync: connect a free Supabase project you run to see your balance on a phone through the Pocket web app.`,
-  `- Currencies: any standard currency, one per ledger. Changing it relabels amounts; it does not convert them.`,
-  `- Not available: native Windows or iPhone apps (the Pocket web app works in any browser once sync is set up); bank connections; currency conversion.`,
-  `- Made by Orlando Ascanio (https://www.orlandoascanio.com). Source code: ${REPO_URL}`,
-].join("\n");
-
 const absolute = (href: string) => (href.startsWith("/") ? `${SITE_URL}${href}` : href);
 const plain = (text: string) => textParts(text).map((p) => (p.href ? `${p.text} (${absolute(p.href)})` : p.text)).join("");
 
 const link = (title: string, url: string, note: string) => `- [${title}](${url}): ${note}`;
+const facts = () => FACTS.map((f) => `- ${f.label}: ${plain(f.value)}`).join("\n");
 
 export function llmsTxt() {
   return `# Pocket for Mac
@@ -32,13 +22,16 @@ ${SUMMARY}
 
 Pocket keeps your recorded balance in the Mac menu bar and forecasts how long it will last from the bills, subscriptions and income you schedule.
 
+Also written as Pocket Left or pocketleft. It is not related to Mozilla Pocket (the read-it-later app), PocketGuard or Pocket Clear.
+
 ## Key facts
 
-${FACTS}
+${facts()}
 
 ## Product
 
 ${link("Home", `${SITE_URL}/`, "features, screenshots, FAQ and download")}
+${link("Pocket at a glance", `${SITE_URL}/about/`, "what Pocket is, key facts, and how it differs from other apps named Pocket")}
 ${link("Changelog", `${SITE_URL}/changelog/`, "release notes for every version")}
 ${link("Website privacy", `${SITE_URL}/privacy/`, "what this website collects (the app itself sends nothing by default)")}
 ${link("Full text for AI systems", `${SITE_URL}/llms-full.txt`, "every guide, FAQ answer and release note in one file")}
@@ -89,7 +82,7 @@ Source: ${SITE_URL}/ . Generated from the website's own content.
 
 ## Key facts
 
-${FACTS}
+${facts()}
 
 ## Frequently asked questions
 

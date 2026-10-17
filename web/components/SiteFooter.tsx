@@ -49,6 +49,7 @@ export function SiteFooter() {
         </nav>
         <nav className="foot-col" aria-label="Project">
           <h3>Project</h3>
+          <a href="/about/">About Pocket</a>
           <a href={REPO_URL}>Source code</a>
           <a href={REPO_URL} data-star>
             Star on GitHub
