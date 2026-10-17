@@ -14,6 +14,25 @@ export type Release = {
 // and update VERSION in site.ts. Dates are publication dates, not commit dates.
 export const RELEASES: Release[] = [
   {
+    version: "1.4.1",
+    date: "2026-10-17",
+    title: "Updates install themselves.",
+    summary: "Check for Updates now downloads the new version inside Pocket, checks it, swaps it in and reopens. No browser, no disk image to drag.",
+    theme: "update",
+    highlights: [
+      { title: "Install and Relaunch", description: "When a new version is out, click Install and Relaunch. Pocket shows the download's progress, replaces itself and opens again, usually in a few seconds." },
+      { title: "Checked before it's installed", description: "Pocket only installs a download that is signed with Pocket's Developer ID and is the version it offered. If anything doesn't match, this copy stays exactly as it was." },
+      { title: "Still works from anywhere", description: "If Pocket is running from Downloads or the disk image, where it can't replace itself, it downloads the update and opens it for you to drag into Applications." },
+    ],
+    detailsTitle: "Good to know",
+    details: [
+      "This first update to 1.4.1 still opens your browser, because 1.4.0 has the old Check for Updates. From 1.4.1 on, updates install inside Pocket.",
+      "Your data lives in its own folder, so updating never touches your money.",
+      "Pocket still asks GitHub for the latest release only when you click Check for Updates.",
+    ],
+    source: "https://github.com/orlandoascanio/pocketleft/releases/tag/v1.4.1",
+  },
+  {
     version: "1.4.0",
     date: "2026-10-16",
     title: "Forecasts that count your everyday spending.",
